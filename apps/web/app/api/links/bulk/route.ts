@@ -298,23 +298,8 @@ export const PATCH = withWorkspace(
       );
 
     let { tagNames, expiresAt } = data;
-    const tagIds = combineTagIds(data);
     // tag checks
-    if (tagIds && tagIds.length > 0) {
-      const tags = await prisma.tag.findMany({
-        select: {
-          id: true,
-        },
-        where: { projectId: workspace?.id, id: { in: tagIds } },
-      });
-
-      if (tags.length !== tagIds.length) {
-        throw new DubApiError({
-          code: "unprocessable_entity",
-          message: `Invalid tagIds detected: ${tagIds.filter((tagId) => tags.find(({ id }) => tagId === id) === undefined).join(", ")}`,
-        });
-      }
-    } else if (tagNames && Array.isArray(tagNames) && tagNames.length > 0) {
+    if (tagNames && Array.isArray(tagNames) && tagNames.length > 0) {
       const tags = await prisma.tag.findMany({
         select: {
           name: true,
@@ -429,7 +414,6 @@ export const PATCH = withWorkspace(
             linkIds: validLinkIds,
             data: {
               ...data,
-              tagIds,
               expiresAt,
             },
             workspaceId: workspace.id,
