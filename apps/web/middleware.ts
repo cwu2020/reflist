@@ -33,52 +33,75 @@ export const config = {
 };
 
 export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
-  const { domain, path, key, fullKey } = parse(req);
-
-  AxiomMiddleware(req, ev);
-
-  // for App
-  if (APP_HOSTNAMES.has(domain)) {
-    return AppMiddleware(req);
-  }
-
-  // for API
-  if (API_HOSTNAMES.has(domain)) {
-    return ApiMiddleware(req);
-  }
-
-  // for public stats pages (e.g. d.to/stats/try)
-  if (path.startsWith("/stats/")) {
-    return NextResponse.rewrite(new URL(`/${domain}${path}`, req.url));
-  }
-
-  // for .well-known routes
-  if (path.startsWith("/.well-known/")) {
-    const file = path.split("/.well-known/").pop();
-    if (file && supportedWellKnownFiles.includes(file)) {
-      return NextResponse.rewrite(
-        new URL(`/wellknown/${domain}/${file}`, req.url),
-      );
+  try {
+    // Get the host header safely
+    const host = req.headers.get("host");
+    if (!host) {
+      console.error("No host header found in request");
+      return NextResponse.next();
     }
-  }
 
-  // default redirects for dub.sh
-  if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
-    return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
-  }
+    // Parse the request
+    const { domain, path, key, fullKey } = parse(req);
 
-  // for Admin
-  if (ADMIN_HOSTNAMES.has(domain)) {
-    return AdminMiddleware(req);
-  }
+    // Log the parsed values for debugging
+    console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
 
-  if (PARTNERS_HOSTNAMES.has(domain)) {
-    return PartnersMiddleware(req);
-  }
+    AxiomMiddleware(req, ev);
 
-  if (isValidUrl(fullKey)) {
-    return CreateLinkMiddleware(req);
-  }
+    // for App
+    if (APP_HOSTNAMES.has(domain)) {
+      return AppMiddleware(req);
+    }
 
-  return LinkMiddleware(req, ev);
+    // for API
+    if (API_HOSTNAMES.has(domain)) {
+      return ApiMiddleware(req);
+    }
+
+    // for public stats pages (e.g. d.to/stats/try)
+    if (path.startsWith("/stats/")) {
+      return NextResponse.rewrite(new URL(`/${domain}${path}`, req.url));
+    }
+
+    // for .well-known routes
+    if (path.startsWith("/.well-known/")) {
+      const file = path.split("/.well-known/").pop();
+      if (file && supportedWellKnownFiles.includes(file)) {
+        return NextResponse.rewrite(
+          new URL(`/wellknown/${domain}/${file}`, req.url),
+        );
+      }
+    }
+
+    // default redirects for dub.sh
+    if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
+      return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
+    }
+
+    // for Admin
+    if (ADMIN_HOSTNAMES.has(domain)) {
+      return AdminMiddleware(req);
+    }
+
+    if (PARTNERS_HOSTNAMES.has(domain)) {
+      return PartnersMiddleware(req);
+    }
+
+    if (isValidUrl(fullKey)) {
+      return CreateLinkMiddleware(req);
+    }
+
+    return LinkMiddleware(req, ev);
+  } catch (error) {
+    console.error("Middleware error:", error);
+    // Return a 500 error response with appropriate headers
+    return NextResponse.rewrite(new URL("/error", req.url), {
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Robots-Tag": "noindex",
+      },
+      status: 500,
+    });
+  }
 }

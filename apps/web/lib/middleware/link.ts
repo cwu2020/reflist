@@ -83,63 +83,75 @@ export default async function LinkMiddleware(
   let isPartnerLink = Boolean(cachedLink?.programId && cachedLink?.partnerId);
 
   if (!cachedLink) {
-    let linkData = await getLinkViaEdge({
-      domain,
-      key,
-    });
+    try {
+      let linkData = await getLinkViaEdge({
+        domain,
+        key,
+      });
 
-    if (!linkData) {
-      // TODO: remove this once everything is migrated over
-      if (domain === "buff.ly") {
-        return NextResponse.rewrite(
-          new URL(`/api/links/crawl/bitly/${domain}/${key}`, req.url),
-        );
-      }
-
-      // check if domain has notFoundUrl configured
-      const domainData = await getDomainViaEdge(domain);
-      if (domainData?.notFoundUrl) {
-        return NextResponse.redirect(domainData.notFoundUrl, {
-          headers: {
-            ...DUB_HEADERS,
-            "X-Robots-Tag": "googlebot: noindex",
-            // pass the Referer value to the not found URL
-            Referer: req.url,
-          },
-          status: 302,
-        });
-      } else {
-        return NextResponse.rewrite(new URL(`/${domain}/not-found`, req.url), {
-          headers: DUB_HEADERS,
-        });
-      }
-    }
-
-    isPartnerLink = Boolean(linkData.programId && linkData.partnerId);
-
-    // format link to fit the RedisLinkProps interface
-    cachedLink = formatRedisLink(linkData as any);
-
-    ev.waitUntil(
-      (async () => {
-        if (!isPartnerLink) {
-          linkCache.set(linkData as any);
-          return;
+      if (!linkData) {
+        // TODO: remove this once everything is migrated over
+        if (domain === "buff.ly") {
+          return NextResponse.rewrite(
+            new URL(`/api/links/crawl/bitly/${domain}/${key}`, req.url),
+          );
         }
 
-        const { partner, discount } = await getPartnerAndDiscount({
-          programId: linkData.programId,
-          partnerId: linkData.partnerId,
-        });
+        // check if domain has notFoundUrl configured
+        const domainData = await getDomainViaEdge(domain);
+        if (domainData?.notFoundUrl) {
+          return NextResponse.redirect(domainData.notFoundUrl, {
+            headers: {
+              ...DUB_HEADERS,
+              "X-Robots-Tag": "googlebot: noindex",
+              // pass the Referer value to the not found URL
+              Referer: req.url,
+            },
+            status: 302,
+          });
+        } else {
+          return NextResponse.rewrite(new URL(`/${domain}/not-found`, req.url), {
+            headers: DUB_HEADERS,
+          });
+        }
+      }
 
-        // we'll use this data on /track/click
-        linkCache.set({
-          ...(linkData as any),
-          ...(partner && { partner }),
-          ...(discount && { discount }),
-        });
-      })(),
-    );
+      isPartnerLink = Boolean(linkData.programId && linkData.partnerId);
+
+      // format link to fit the RedisLinkProps interface
+      cachedLink = formatRedisLink(linkData as any);
+
+      ev.waitUntil(
+        (async () => {
+          if (!isPartnerLink) {
+            linkCache.set(linkData as any);
+            return;
+          }
+
+          const { partner, discount } = await getPartnerAndDiscount({
+            programId: linkData.programId,
+            partnerId: linkData.partnerId,
+          });
+
+          // we'll use this data on /track/click
+          linkCache.set({
+            ...(linkData as any),
+            ...(partner && { partner }),
+            ...(discount && { discount }),
+          });
+        })(),
+      );
+    } catch (error) {
+      console.error(`Error fetching link data for ${domain}/${key}:`, error);
+      // Return a 500 error response with appropriate headers
+      return NextResponse.rewrite(new URL(`/${domain}/error`, req.url), {
+        headers: {
+          ...DUB_HEADERS,
+          "X-Robots-Tag": "googlebot: noindex",
+        },
+        status: 500,
+      });
+    }
   }
 
   const {
