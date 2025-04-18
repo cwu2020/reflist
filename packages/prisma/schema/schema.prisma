@@ -9,9 +9,9 @@ generator client {
   previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
 }
 
-import "workspace.prisma"
-import "domain.prisma"
-import "webhook.prisma"
+include "workspace.prisma"
+include "domain.prisma"
+include "webhook.prisma"
 
 model User {
   id            String    @id @default(cuid())
