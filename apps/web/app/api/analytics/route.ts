@@ -56,7 +56,11 @@ export const GET = withWorkspace(
     if (oldEvent && typeof oldEvent === "string" && ["clicks", "sales", "leads", "composite"].includes(oldEvent)) {
       event = oldEvent as "clicks" | "sales" | "leads" | "composite";
     }
-    groupBy = oldType || groupBy;
+
+    // Only assign oldType to groupBy if it's a valid analytics endpoint
+    if (oldType && typeof oldType === "string" && VALID_ANALYTICS_ENDPOINTS.includes(oldType as (typeof VALID_ANALYTICS_ENDPOINTS)[number])) {
+      groupBy = oldType as (typeof VALID_ANALYTICS_ENDPOINTS)[number];
+    }
 
     if (domain) {
       await getDomainOrThrow({ workspace, domain: domain as string });
