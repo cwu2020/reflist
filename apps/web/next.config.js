@@ -118,10 +118,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "app.dub.sh",
+            value: "app.refl.ist",
           },
         ],
-        destination: "https://app.dub.co",
+        destination: "https://app.reflist.com",
         permanent: true,
         statusCode: 301,
       },
@@ -130,10 +130,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "app.dub.sh",
+            value: "app.refl.ist",
           },
         ],
-        destination: "https://app.dub.co/:path*",
+        destination: "https://app.reflist.com/:path*",
         permanent: true,
         statusCode: 301,
       },
@@ -144,10 +144,10 @@ module.exports = withAxiom({
             has: [
               {
                 type: "host",
-                value: "dub.sh",
+                value: "refl.ist",
               },
             ],
-            destination: `https://dub.co/${segment}`,
+            destination: `https://reflist.com/${segment}`,
             permanent: true,
             statusCode: 301,
           },
@@ -156,10 +156,10 @@ module.exports = withAxiom({
             has: [
               {
                 type: "host",
-                value: "dub.sh",
+                value: "refl.ist",
               },
             ],
-            destination: `https://dub.co/${segment}/:path*`,
+            destination: `https://reflist.com/${segment}/:path*`,
             permanent: true,
             statusCode: 301,
           }
@@ -170,10 +170,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "dub.sh",
+            value: "refl.ist",
           },
         ],
-        destination: "https://dub.co/tools/metatags",
+        destination: "https://reflist.com/tools/metatags",
         permanent: true,
         statusCode: 301,
       },
@@ -182,7 +182,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "dub.co",
+            value: "refl.ist",
           },
         ],
         destination: "/tools/metatags",
@@ -194,10 +194,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "staging.dub.sh",
+            value: "staging.refl.ist",
           },
         ],
-        destination: "https://dub.co",
+        destination: "https://reflist.com",
         permanent: true,
         statusCode: 301,
       },
@@ -206,10 +206,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "preview.dub.sh",
+            value: "preview.refl.ist",
           },
         ],
-        destination: "https://preview.dub.co",
+        destination: "https://preview.reflist.com",
         permanent: true,
         statusCode: 301,
       },
@@ -218,10 +218,10 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "admin.dub.sh",
+            value: "admin.refl.ist",
           },
         ],
-        destination: "https://admin.dub.co",
+        destination: "https://admin.reflist.com",
         permanent: true,
         statusCode: 301,
       },
@@ -229,10 +229,10 @@ module.exports = withAxiom({
   },
   async rewrites() {
     return [
-      // for dub proxy
+      // for reflist proxy
       {
-        source: "/_proxy/dub/track/click",
-        destination: "https://api.dub.co/track/click",
+        source: "/_proxy/reflist/track/click",
+        destination: "https://api.reflist.com/track/click",
       },
       // for posthog proxy
       {

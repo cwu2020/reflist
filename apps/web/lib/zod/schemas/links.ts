@@ -472,6 +472,10 @@ export const bulkUpdateLinksBodySchema = z.object({
           .describe(
             "The unique name of the tags assigned to the short link (case insensitive).",
           ),
+        expiresAt: z
+          .string()
+          .nullish()
+          .describe("The date and time when the short link will expire at."),
       }),
     ),
 });
