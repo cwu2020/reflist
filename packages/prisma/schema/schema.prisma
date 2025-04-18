@@ -6,8 +6,12 @@ datasource db {
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "prismaSchemaFolder", "omitApi"]
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
 }
+
+import "workspace.prisma"
+import "domain.prisma"
+import "webhook.prisma"
 
 model User {
   id            String    @id @default(cuid())
@@ -77,4 +81,12 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DefaultDomains {
+  id          String  @id @default(cuid())
+  reflist     Boolean @default(true)
+  dublink     Boolean @default(false)
+  projectId   String  @unique
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

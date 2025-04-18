@@ -14,10 +14,16 @@ export const GET = withPartnerProfile(
     });
 
     const parsedParams = analyticsQuerySchema
-      .omit({
-        workspaceId: true,
-        externalId: true,
-        tenantId: true,
+      .pick({
+        event: true,
+        groupBy: true,
+        linkId: true,
+        domain: true,
+        key: true,
+        interval: true,
+        start: true,
+        end: true,
+        timezone: true,
       })
       .parse(searchParams);
 
@@ -41,10 +47,10 @@ export const GET = withPartnerProfile(
     }
 
     const response = await getAnalytics({
+      ...rest,
       programId: program.id,
       partnerId: partner.id,
       linkId,
-      ...rest,
       dataAvailableFrom: program.createdAt,
     });
 

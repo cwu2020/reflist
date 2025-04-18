@@ -18,9 +18,9 @@ export const POST = async (req: Request) => {
   const signedContent = `${svix_id}.${svix_timestamp}.${rawBody}`;
 
   // Need to base64 decode the secret
-  const secretBytes = Buffer.from(secret.split("_")[1], "base64");
+  const secretBytes = secret.split("_")[1];
   const signature = crypto
-    .createHmac("sha256", secretBytes)
+    .createHmac("sha256", secretBytes, { encoding: "base64" })
     .update(signedContent)
     .digest("base64");
 

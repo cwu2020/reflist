@@ -46,37 +46,77 @@ export type EventsFilters = z.infer<typeof eventsQuerySchema> & {
   customerId?: string;
   folderIds?: string[];
   isMegaFolder?: boolean;
+  eventType?: EventType;
+  event?: EventType;
+  limit?: number;
+  offset?: number;
+  order?: "asc" | "desc";
+  sortBy?: string;
+  page?: number;
 };
 
-const partnerAnalyticsSchema = analyticsQuerySchema
-  .pick({
-    event: true,
-    interval: true,
-    start: true,
-    end: true,
-    groupBy: true,
-    linkId: true,
-  })
-  .partial();
+const partnerAnalyticsSchema = z.object({
+  event: z.string().optional(),
+  interval: z.string().optional(),
+  start: z.union([z.string(), z.date()]).optional(),
+  end: z.union([z.string(), z.date()]).optional(),
+  groupBy: z.string().optional(),
+  linkId: z.string().optional(),
+});
 
 export type PartnerAnalyticsFilters = z.infer<typeof partnerAnalyticsSchema>;
 export type PartnerEarningsTimeseriesFilters = z.infer<
   typeof getPartnerEarningsTimeseriesSchema
 >;
 
-const partnerEventsSchema = eventsQuerySchema
-  .pick({
-    event: true,
-    interval: true,
-    start: true,
-    end: true,
-    groupBy: true,
-    page: true,
-    limit: true,
-    order: true,
-    sortOrder: true,
-    sortBy: true,
-  })
-  .partial();
+const partnerEventsSchema = z.object({
+  event: z.string().optional(),
+  interval: z.string().optional(),
+  start: z.union([z.string(), z.date()]).optional(),
+  end: z.union([z.string(), z.date()]).optional(),
+  groupBy: z.string().optional(),
+  page: z.number().optional(),
+  limit: z.number().optional(),
+  order: z.string().optional(),
+  sortOrder: z.string().optional(),
+  sortBy: z.string().optional(),
+});
 
 export type PartnerEventsFilters = z.infer<typeof partnerEventsSchema>;
+
+export type PartnerAnalyticsResponse = {
+  count: {
+    clicks: number;
+    leads: number;
+    sales: number;
+    saleAmount: number;
+    earnings: number;
+  };
+  timeseries: Array<{
+    start: string;
+    clicks: number;
+    leads: number;
+    sales: number;
+    saleAmount: number;
+    earnings: number;
+  }>;
+  top_links: Array<{
+    id: string;
+    link: string;
+    clicks: number;
+    leads: number;
+    sales: number;
+    saleAmount: number;
+    earnings: number;
+    createdAt: string;
+  }>;
+};
+
+export type PartnerAnalyticsTimeseries = Array<{
+  start: string;
+  clicks: number;
+  leads: number;
+  sales: number;
+  saleAmount: number;
+  earnings: number;
+}>;

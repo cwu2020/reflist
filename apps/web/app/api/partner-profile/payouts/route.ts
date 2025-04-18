@@ -18,8 +18,34 @@ export const GET = withPartnerProfile(async ({ partner, searchParams }) => {
       ...(programId && { programId }),
       ...(status && { status }),
     },
-    include: {
-      program: true,
+    select: {
+      id: true,
+      invoiceId: true,
+      amount: true,
+      currency: true,
+      status: true,
+      description: true,
+      periodStart: true,
+      periodEnd: true,
+      quantity: true,
+      createdAt: true,
+      paidAt: true,
+      program: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logo: true,
+          minPayoutAmount: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        },
+      },
     },
     skip: (page - 1) * pageSize,
     take: pageSize,

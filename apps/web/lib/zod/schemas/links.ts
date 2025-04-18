@@ -250,6 +250,10 @@ export const createLinkBodySchema = z.object({
     .string()
     .nullish()
     .describe("The ID of the partner the short link is associated with."),
+  projectId: z
+    .string()
+    .nullish()
+    .describe("The ID of the project the short link is associated with."),
   prefix: z
     .string()
     .optional()
@@ -365,8 +369,7 @@ export const createLinkBodySchema = z.object({
     .nullish()
     .describe(
       "Geo targeting information for the short link in JSON format `{[COUNTRY]: https://example.com }`.",
-    )
-    .openapi({ ref: "linkGeoTargeting" }),
+    ),
   doIndex: z
     .boolean()
     .optional()
@@ -440,7 +443,7 @@ export const bulkUpdateLinksBodySchema = z.object({
       "The IDs of the links to update. Takes precedence over `externalIds`.",
     )
     .max(100, "You can only update up to 100 links at a time.")
-    .default([]),
+    .optional(),
   externalIds: z
     .array(z.string())
     .describe(
@@ -448,209 +451,39 @@ export const bulkUpdateLinksBodySchema = z.object({
     )
     .max(100, "You can only update up to 100 links at a time.")
     .refine((v) => v.map((id) => id.replace("ext_", "")))
-    .default([]),
-  data: createLinkBodySchema
-    .omit({
-      id: true,
-      domain: true,
-      key: true,
-      externalId: true,
-      prefix: true,
-    })
-    .merge(
-      z.object({
-        url: parseUrlSchema
-          .describe("The destination URL of the short link.")
-          .openapi({
-            example: "https://google.com",
-          })
-          .optional(),
-        tagNames: z
-          .union([z.string(), z.array(z.string())])
-          .transform((v) => (Array.isArray(v) ? v : v.split(",")))
-          .optional()
-          .describe(
-            "The unique name of the tags assigned to the short link (case insensitive).",
-          ),
-        expiresAt: z
-          .string()
-          .nullish()
-          .describe("The date and time when the short link will expire at."),
-      }),
-    ),
-});
-
-export const LinkSchema = z
-  .object({
-    id: z.string().describe("The unique ID of the short link."),
-    domain: z
-      .string()
+    .optional(),
+  data: z.object({
+    url: parseUrlSchema
+      .describe("The destination URL of the short link.")
+      .openapi({
+        example: "https://google.com",
+      })
+      .optional(),
+    title: z.string().describe("The title of the short link.").optional(),
+    description: z.string().describe("The description of the short link.").optional(),
+    image: z.string().describe("The image URL for the short link.").optional(),
+    proxy: z.boolean().describe("Whether to proxy the destination URL.").optional(),
+    folderId: z.string().nullish().describe("The ID of the folder the short link belongs to."),
+    tagId: z.string().describe("The ID of a single tag to assign to the short link.").optional(),
+    tagIds: z.array(z.string()).describe("The IDs of tags to assign to the short link.").optional(),
+    tagNames: z
+      .union([z.string(), z.array(z.string())])
+      .transform((v) => (Array.isArray(v) ? v : v.split(",")))
+      .optional()
       .describe(
-        "The domain of the short link. If not provided, the primary domain for the workspace will be used (or `dub.sh` if the workspace has no domains).",
+        "The unique name of the tags assigned to the short link (case insensitive).",
       ),
-    key: z
-      .string()
-      .describe(
-        "The short link slug. If not provided, a random 7-character slug will be generated.",
-      ),
-    url: z.string().url().describe("The destination URL of the short link."),
-    trackConversion: z
-      .boolean()
-      .default(false)
-      .describe("Whether to track conversions for the short link."),
-    externalId: z
-      .string()
-      .nullable()
-      .describe(
-        "The ID of the link in your database. If set, it can be used to identify the link in future API requests (must be prefixed with 'ext_' when passed as a query parameter). This key is unique across your workspace.",
-      ),
-    tenantId: z
-      .string()
-      .nullable()
-      .describe(
-        "The ID of the tenant that created the link inside your system. If set, it can be used to fetch all links for a tenant.",
-      ),
-    programId: z
-      .string()
-      .nullable()
-      .describe("The ID of the program the short link is associated with."),
-    partnerId: z
-      .string()
-      .nullable()
-      .describe("The ID of the partner the short link is associated with."),
-    archived: z
-      .boolean()
-      .default(false)
-      .describe("Whether the short link is archived."),
+    webhookIds: z.array(z.string()).describe("The IDs of webhooks to trigger for this short link.").optional(),
     expiresAt: z
       .string()
-      .nullable()
-      .describe(
-        "The date and time when the short link will expire in ISO-8601 format.",
-      ),
-    expiredUrl: z
-      .string()
-      .url()
-      .nullable()
-      .describe("The URL to redirect to when the short link has expired."),
-    password: z
-      .string()
-      .nullable()
-      .describe(
-        "The password required to access the destination URL of the short link.",
-      ),
-    proxy: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether the short link uses Custom Social Media Cards feature.",
-      ),
-    title: z
-      .string()
-      .nullable()
-      .describe(
-        "The title of the short link generated via `api.dub.co/metatags`. Will be used for Custom Social Media Cards if `proxy` is true.",
-      ),
-    description: z
-      .string()
-      .nullable()
-      .describe(
-        "The description of the short link generated via `api.dub.co/metatags`. Will be used for Custom Social Media Cards if `proxy` is true.",
-      ),
-    image: z
-      .string()
-      .nullable()
-      .describe(
-        "The image of the short link generated via `api.dub.co/metatags`. Will be used for Custom Social Media Cards if `proxy` is true.",
-      ),
-    video: z
-      .string()
-      .nullable()
-      .describe(
-        "The custom link preview video (og:video). Will be used for Custom Social Media Cards if `proxy` is true. Learn more: https://d.to/og",
-      ),
-    rewrite: z
-      .boolean()
-      .default(false)
-      .describe("Whether the short link uses link cloaking."),
-    doIndex: z
-      .boolean()
-      .default(false)
-      .describe("Whether to allow search engines to index the short link."),
-    ios: z
-      .string()
-      .nullable()
-      .describe(
-        "The iOS destination URL for the short link for iOS device targeting.",
-      ),
-    android: z
-      .string()
-      .nullable()
-      .describe(
-        "The Android destination URL for the short link for Android device targeting.",
-      ),
+      .nullish()
+      .describe("The date and time when the short link will expire at."),
     geo: z
-      .record(z.enum(COUNTRY_CODES), z.string().url())
-      .nullable()
+      .record(z.enum(COUNTRY_CODES), parseUrlSchema)
+      .nullish()
       .describe(
-        "Geo targeting information for the short link in JSON format `{[COUNTRY]: https://example.com }`. Learn more: https://d.to/geo",
+        "Geo targeting information for the short link in JSON format `{[COUNTRY]: https://example.com }`.",
       ),
-    publicStats: z
-      .boolean()
-      .default(false)
-      .describe("Whether the short link's stats are publicly accessible."),
-    tagId: z
-      .string()
-      .nullable()
-      .describe(
-        "The unique ID of the tag assigned to the short link. This field is deprecated – use `tags` instead.",
-      )
-      .openapi({ deprecated: true }),
-    tags: TagSchema.array()
-      .nullable()
-      .describe("The tags assigned to the short link."),
-    folderId: z
-      .string()
-      .nullable()
-      .describe("The unique ID of the folder assigned to the short link."),
-    webhookIds: z
-      .array(z.string())
-      .describe(
-        "The IDs of the webhooks that the short link is associated with.",
-      ),
-    comments: z
-      .string()
-      .nullable()
-      .describe("The comments for the short link."),
-    shortLink: z
-      .string()
-      .url()
-      .describe(
-        "The full URL of the short link, including the https protocol (e.g. `https://dub.sh/try`).",
-      ),
-    qrCode: z
-      .string()
-      .url()
-      .describe(
-        "The full URL of the QR code for the short link (e.g. `https://api.dub.co/qr?url=https://dub.sh/try`).",
-      ),
-    utm_source: z
-      .string()
-      .nullable()
-      .describe("The UTM source of the short link."),
-    utm_medium: z
-      .string()
-      .nullable()
-      .describe("The UTM medium of the short link."),
-    utm_campaign: z
-      .string()
-      .nullable()
-      .describe("The UTM campaign of the short link."),
-    utm_term: z.string().nullable().describe("The UTM term of the short link."),
-    utm_content: z
-      .string()
-      .nullable()
-      .describe("The UTM content of the short link."),
     testVariants: ABTestVariantsSchema.nullish(),
     testStartedAt: z
       .string()
@@ -659,56 +492,78 @@ export const LinkSchema = z
     testCompletedAt: z
       .string()
       .nullish()
-      .describe("The date and time when the tests were or will be completed."),
-    userId: z
-      .string()
-      .nullable()
-      .describe("The user ID of the creator of the short link."),
-    workspaceId: z.string().describe("The workspace ID of the short link."),
-    clicks: z
-      .number()
-      .default(0)
-      .describe("The number of clicks on the short link."),
-    lastClicked: z
-      .string()
-      .nullable()
-      .describe("The date and time when the short link was last clicked."),
-    leads: z
-      .number()
-      .default(0)
-      .describe("The number of leads the short links has generated."),
-    sales: z
-      .number()
-      .default(0)
-      .describe("The number of sales the short links has generated."),
-    saleAmount: z
-      .number()
-      .default(0)
-      .describe(
-        "The total dollar amount of sales the short links has generated (in cents).",
-      ),
-    createdAt: z
-      .string()
-      .describe("The date and time when the short link was created."),
-    updatedAt: z
-      .string()
-      .describe("The date and time when the short link was last updated."),
-    projectId: z
-      .string()
-      .describe(
-        "The project ID of the short link. This field is deprecated – use `workspaceId` instead.",
-      )
-      .openapi({ deprecated: true }),
+      .describe("The date and time when the tests were or will be completed.")
   })
-  .openapi({ title: "Link" });
+});
 
-export const LinkErrorSchema = z
-  .object({
-    link: z.any().describe("The link that caused the error."),
-    error: z.string().describe("The error message."),
-    code: ErrorCode.describe("The error code."),
-  })
-  .openapi({ title: "LinkError" });
+export const LinkSchema = z.object({
+  id: z.string(),
+  domain: z.string(),
+  key: z.string(),
+  url: z.string(),
+  shortLink: z.string(),
+  archived: z.boolean(),
+  expiresAt: z.date().nullable(),
+  expiredUrl: z.string().nullable(),
+  password: z.string().nullable(),
+  trackConversion: z.boolean(),
+  proxy: z.boolean(),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  image: z.string().nullable(),
+  rewrite: z.boolean(),
+  doIndex: z.boolean(),
+  geo: z.record(z.enum(COUNTRY_CODES), z.string().url()).nullable(),
+  publicStats: z.boolean(),
+  tagId: z.string().nullable(),
+  tags: TagSchema.array().nullable(),
+  folderId: z.string().nullable(),
+  webhookIds: z.array(z.string()),
+  comments: z.string().nullable(),
+  qrCode: z.string().url(),
+  utm_source: z.string().nullable(),
+  utm_medium: z.string().nullable(),
+  utm_campaign: z.string().nullable(),
+  utm_term: z.string().nullable(),
+  utm_content: z.string().nullable(),
+  testVariants: ABTestVariantsSchema.nullish(),
+  testStartedAt: z.date().nullish(),
+  testCompletedAt: z.date().nullish(),
+  userId: z.string().nullable(),
+  workspaceId: z.string(),
+  clicks: z.number(),
+  lastClicked: z.date().nullable(),
+  leads: z.number(),
+  sales: z.number(),
+  saleAmount: z.number(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  programId: z.string().nullable(),
+});
+
+export const linkEventSchema = LinkSchema.extend({
+  url: z.string(),
+  expiredUrl: z.string().nullable(),
+  archived: z.coerce.boolean(),
+  doIndex: z.coerce.boolean(),
+  proxy: z.coerce.boolean(),
+  publicStats: z.coerce.boolean(),
+  rewrite: z.coerce.boolean(),
+  trackConversion: z.coerce.boolean(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  lastClicked: z.coerce.date(),
+  expiresAt: z.coerce.date(),
+  testCompletedAt: z.coerce.date().nullable(),
+  testStartedAt: z.coerce.date().nullable(),
+  userId: z.string().nullable()
+});
+
+export const LinkErrorSchema = z.object({
+  link: z.any().describe("The link that caused the error."),
+  error: z.string().describe("The error message."),
+  code: ErrorCode.describe("The error code.")
+});
 
 export const getLinkInfoQuerySchema = domainKeySchema.partial().merge(
   z.object({
@@ -720,13 +575,13 @@ export const getLinkInfoQuerySchema = domainKeySchema.partial().merge(
     externalId: z
       .string()
       .optional()
-      .describe("This is the ID of the link in the your database.")
-      .openapi({ example: "123456" }),
-  }),
+      .describe("This is the ID of the link in your database.")
+      .openapi({ example: "123456" })
+  })
 );
+
 export const getLinksQuerySchemaExtended = getLinksQuerySchemaBase.merge(
   z.object({
-    // Only Dub UI uses the following query parameters
     includeUser: booleanQuerySchema.default("false"),
     includeWebhooks: booleanQuerySchema.default("false"),
     includeDashboard: booleanQuerySchema.default("false"),
@@ -739,28 +594,6 @@ export const getLinksQuerySchemaExtended = getLinksQuerySchemaBase.merge(
     searchMode: z
       .enum(["fuzzy", "exact"])
       .default("fuzzy")
-      .describe("Search mode to filter by."),
-  }),
+      .describe("Search mode to filter by.")
+  })
 );
-
-export const linkEventSchema = LinkSchema.extend({
-  // here we use string because url can be empty
-  url: z.string(),
-  expiredUrl: z.string().nullable(),
-  // coerce boolean fields
-  archived: z.coerce.boolean(),
-  doIndex: z.coerce.boolean(),
-  proxy: z.coerce.boolean(),
-  publicStats: z.coerce.boolean(),
-  rewrite: z.coerce.boolean(),
-  trackConversion: z.coerce.boolean(),
-  // coerce date fields
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-  lastClicked: z.coerce.date(),
-  expiresAt: z.coerce.date(),
-  testCompletedAt: z.coerce.date().nullable(),
-  testStartedAt: z.coerce.date().nullable(),
-  // userId can be null
-  userId: z.string().nullable(),
-});

@@ -52,7 +52,7 @@ export function PayoutsCard({ programId }: { programId?: string }) {
         {payouts ? (
           payouts.length ? (
             <div className="-mx-2 flex flex-col divide-y divide-neutral-200">
-              {payouts?.map((payout) => {
+              {payouts?.map((payout: PartnerPayoutResponse) => {
                 const badge = PayoutStatusBadges[payout.status];
                 return (
                   <button

@@ -23,6 +23,7 @@ import NumberFlow from "@number-flow/react";
 import Link from "next/link";
 import { ComponentProps, useMemo, useRef } from "react";
 import { usePartnerLinksContext } from "./page-client";
+import { PartnerAnalyticsResponse, PartnerAnalyticsTimeseries } from "@/lib/analytics/types";
 
 const CHARTS = [
   {
@@ -69,20 +70,18 @@ export function PartnerLinkCard({
     saleAmount: number;
   } | null>(null);
 
-  const { data: timeseries, error } = usePartnerAnalytics(
+  const { data } = usePartnerAnalytics(
     {
       linkId: link.id,
-      groupBy: "timeseries",
-      event: "composite",
-      interval,
-      start,
-      end,
+      interval: "30d",
       enabled: isVisible,
     },
     {
       keepPreviousData: false,
     },
   );
+
+  const timeseries = data?.timeseries as PartnerAnalyticsTimeseries | undefined;
 
   const totals = useMemo(() => {
     const newTotals = timeseries?.reduce(
@@ -282,13 +281,7 @@ export function PartnerLinkCard({
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    {error ? (
-                      <p className="text-xs text-neutral-500">
-                        Failed to load data
-                      </p>
-                    ) : (
-                      <LoadingSpinner className="size-4" />
-                    )}
+                    <LoadingSpinner className="size-4" />
                   </div>
                 )}
               </div>

@@ -7,6 +7,9 @@ import {
   ShieldAlert,
 } from "@dub/ui/icons";
 import { currencyFormatter } from "@dub/utils";
+import { StatusBadge } from "@dub/ui";
+
+type StatusVariant = "neutral" | "new" | "success" | "pending" | "warning" | "error";
 
 interface CommissionTooltipDataProps {
   holdingPeriodDays: number;
@@ -14,7 +17,15 @@ interface CommissionTooltipDataProps {
   supportEmail: string;
 }
 
-export const CommissionStatusBadges = {
+interface CommissionStatusBadge {
+  label: string;
+  variant: StatusVariant;
+  className: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tooltip: (data: CommissionTooltipDataProps) => React.ReactNode | null;
+}
+
+export const CommissionStatusBadges: Record<string, CommissionStatusBadge> = {
   pending: {
     label: "Pending",
     variant: "pending",

@@ -2,7 +2,7 @@ import { cn } from "@dub/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
 const badgeVariants = cva(
-  "max-w-fit rounded-full border px-2 py-px text-xs font-medium whitespace-nowrap",
+  "max-w-fit rounded-full border text-xs font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -20,9 +20,15 @@ const badgeVariants = cva(
         rainbow:
           "bg-gradient-to-r from-violet-600 to-pink-600 text-white border-transparent",
       },
+      size: {
+        sm: "px-1.5 py-px text-xs",
+        md: "px-2 py-1 text-sm",
+        lg: "px-3 py-1.5 text-base",
+      },
     },
     defaultVariants: {
       variant: "neutral",
+      size: "md",
     },
   },
 );
@@ -31,9 +37,9 @@ interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, size, ...props }: BadgeProps) {
   return (
-    <span className={cn(badgeVariants({ variant }), className)} {...props} />
+    <span className={cn(badgeVariants({ variant, size }), className)} {...props} />
   );
 }
 

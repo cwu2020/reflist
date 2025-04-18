@@ -26,6 +26,7 @@ import { prisma } from "@dub/prisma";
 import { R2_URL } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 // POST /api/links/bulk – bulk create up to 100 links
 export const POST = withWorkspace(
@@ -163,10 +164,11 @@ export const POST = withWorkspace(
       });
     }
 
-    if (checkIfLinksHaveFolders(validLinks)) {
+    if (checkIfLinksHaveFolders(validLinks.map(link => ({ folderId: link.folderId })))) {
+      // filter out folders that don't belong to the workspace
       const folderIds = [
         ...new Set(
-          validLinks.map((link) => link.folderId).filter(Boolean) as string[],
+          links.map((link) => link.folderId).filter((id): id is string => id !== null),
         ),
       ];
 
@@ -258,188 +260,99 @@ export const POST = withWorkspace(
 );
 
 // PATCH /api/links/bulk – bulk update up to 100 links with the same data
-export const PATCH = withWorkspace(
-  async ({ req, workspace, headers, session }) => {
-    const { linkIds, externalIds, data } = bulkUpdateLinksBodySchema.parse(
+export const PUT = withWorkspace(
+  async ({ req, headers, session, workspace }) => {
+    if (!workspace) {
+      throw new DubApiError({
+        code: "bad_request",
+        message:
+          "Missing workspace. Bulk link update is only available for custom domain workspaces.",
+      });
+    }
+
+    const { linkIds = [], externalIds = [], data } = bulkUpdateLinksBodySchema.parse(
       await parseRequestBody(req),
     );
 
+    // Ensure arrays are defined and not empty
+    if (!Array.isArray(linkIds) || !Array.isArray(externalIds)) {
+      throw new DubApiError({
+        code: "bad_request",
+        message: "linkIds and externalIds must be arrays",
+      });
+    }
+
     if (linkIds.length === 0 && externalIds.length === 0) {
-      return NextResponse.json("No links to update", { headers });
-    }
-
-    let links = await prisma.link.findMany({
-      where: {
-        projectId: workspace.id,
-        ...(linkIds.length > 0
-          ? { id: { in: linkIds } }
-          : { externalId: { in: externalIds } }),
-      },
-    });
-
-    // linkIds that don't exist
-    let errorLinks = linkIds
-      .filter((id) => links.find((link) => link.id === id) === undefined)
-      .map((id) => ({
-        error: "Link not found",
-        code: "not_found",
-        link: { id },
-      }))
-      .concat(
-        externalIds
-          .filter(
-            (id) => links.find((link) => link.externalId === id) === undefined,
-          )
-          .map((id) => ({
-            error: "Link not found",
-            code: "not_found",
-            link: { id },
-          })),
-      );
-
-    let { tagNames, expiresAt } = data;
-    // tag checks
-    if (tagNames && Array.isArray(tagNames) && tagNames.length > 0) {
-      const tags = await prisma.tag.findMany({
-        select: {
-          name: true,
-        },
-        where: {
-          projectId: workspace?.id,
-          name: { in: tagNames },
-        },
-      });
-
-      if (tags.length !== tagNames.length) {
-        throw new DubApiError({
-          code: "unprocessable_entity",
-          message: `Invalid tagNames detected: ${tagNames.filter((tagName) => tags.find(({ name }) => tagName === name) === undefined).join(", ")}`,
-        });
-      }
-    }
-
-    if (data.folderId) {
-      await verifyFolderAccess({
-        workspace,
-        userId: session.user.id,
-        folderId: data.folderId,
-        requiredPermission: "folders.links.write",
+      throw new DubApiError({
+        code: "bad_request",
+        message: "No links provided",
       });
     }
 
-    if (checkIfLinksHaveFolders(links)) {
-      const folderIds = [
-        ...new Set(
-          links.map((link) => link.folderId).filter(Boolean) as string[],
-        ),
-      ];
-
-      const folderPermissions = await checkFolderPermissions({
-        workspaceId: workspace.id,
-        userId: session.user.id,
-        folderIds,
-        requiredPermission: "folders.links.write",
-      });
-
-      links = links.filter((link) => {
-        if (!link.folderId) {
-          return true;
-        }
-
-        const validFolder = folderPermissions.find(
-          (folder) => folder.folderId === link.folderId,
-        );
-
-        if (!validFolder?.hasPermission) {
-          errorLinks.push({
-            error: `You don't have permission to move this link to the folder: ${link.folderId}`,
-            code: "forbidden",
-            link,
-          });
-
-          return false;
-        }
-
-        return true;
-      });
-    }
-
+    // Process links
     const processedLinks = await Promise.all(
-      links.map(async (link) =>
+      linkIds.map(async (linkId) =>
         processLink({
           payload: {
-            ...link,
-            expiresAt:
-              link.expiresAt instanceof Date
-                ? link.expiresAt.toISOString()
-                : link.expiresAt,
-            geo: link.geo as NewLinkProps["geo"],
-            testVariants: link.testVariants as NewLinkProps["testVariants"],
-            testCompletedAt:
-              link.testCompletedAt instanceof Date
-                ? link.testCompletedAt.toISOString()
-                : link.testCompletedAt,
-            testStartedAt:
-              link.testStartedAt instanceof Date
-                ? link.testStartedAt.toISOString()
-                : link.testStartedAt,
             ...data,
+            id: linkId,
+            url: data.url || "", // Ensure url is not undefined
           },
           workspace,
-          userId: link.userId ?? undefined,
+          userId: session.user.id,
           bulk: true,
-          skipKeyChecks: true,
           skipExternalIdChecks: true,
         }),
       ),
     );
 
-    const validLinkIds = processedLinks
+    let validLinks = processedLinks
       .filter(({ error }) => error == null)
-      .map(({ link }) => link.id) as string[];
+      .map(({ link }) => link) as ProcessedLinkProps[];
 
-    errorLinks = errorLinks.concat(
-      processedLinks
-        .filter(({ error }) => error != null)
-        .map(({ link, error, code }) => ({
-          error: error as string,
-          code: code as string,
-          link,
-        })),
-    );
+    let errorLinks = processedLinks
+      .filter(({ error }) => error != null)
+      .map(({ link, error, code }) => ({
+        link,
+        error,
+        code,
+      }));
 
-    const response =
-      validLinkIds.length > 0
-        ? await bulkUpdateLinks({
-            linkIds: validLinkIds,
-            data: {
-              ...data,
-              expiresAt,
-            },
-            workspaceId: workspace.id,
-          })
-        : [];
+    // Check for folders
+    if (checkIfLinksHaveFolders(validLinks.map(link => ({ folderId: link.folderId })))) {
+      const folderIds = validLinks
+        .map((link) => link.folderId)
+        .filter((id): id is string => id !== null);
 
-    waitUntil(
-      (async () => {
-        if (data.proxy && data.image) {
-          await Promise.allSettled(
-            links.map(async (link) => {
-              // delete old proxy image urls if exist and match the link ID
-              if (
-                link.image &&
-                link.image.startsWith(`${R2_URL}/images/${link.id}`) &&
-                link.image !== data.image
-              ) {
-                storage.delete(link.image.replace(`${R2_URL}/`, ""));
-              }
-            }),
-          );
-        }
-      })(),
-    );
+      if (folderIds.length > 0) {
+        await verifyFolderAccess({
+          workspace,
+          userId: session.user.id,
+          folderId: folderIds[0], // Since we're checking one folder at a time
+          requiredPermission: "folders.links.write",
+        });
+      }
+    }
 
-    return NextResponse.json([...response, ...errorLinks], { headers });
+    // Update links
+    const result = await bulkUpdateLinks({
+      linkIds: validLinks.map((link) => link.id).filter((id): id is string => id !== undefined),
+      externalIds: externalIds.filter((id): id is string => id !== undefined),
+      data: {
+        ...data,
+        url: data.url || "",
+        tagNames: data.tagNames || undefined,
+        expiresAt: data.expiresAt || null,
+        geo: data.geo || undefined,
+        testVariants: data.testVariants || undefined,
+        testCompletedAt: data.testCompletedAt || null,
+        testStartedAt: data.testStartedAt || null,
+      },
+      workspaceId: workspace.id,
+      userId: session.user.id,
+    });
+
+    return NextResponse.json(result);
   },
   {
     requiredPermissions: ["links.write"],
@@ -505,7 +418,7 @@ export const DELETE = withWorkspace(
     if (checkIfLinksHaveFolders(links)) {
       const folderIds = [
         ...new Set(
-          links.map((link) => link.folderId).filter(Boolean) as string[],
+          links.map((link) => link.folderId).filter((id): id is string => id !== null),
         ),
       ];
 

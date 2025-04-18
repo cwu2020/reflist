@@ -44,6 +44,7 @@ model RegisteredDomain {
 model DefaultDomains {
   id          String  @id @default(cuid())
   reflist     Boolean @default(true)
+  dublink     Boolean @default(false)
   projectId   String  @unique
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

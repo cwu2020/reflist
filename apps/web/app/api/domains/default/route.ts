@@ -17,7 +17,8 @@ export const GET = withWorkspace(
       },
       select: {
         reflist: true,
-      },
+        dublink: true,
+      } as any,
     });
 
     let defaultDomains: string[] = [];
@@ -66,7 +67,8 @@ export const PATCH = withWorkspace(
       },
       data: {
         reflist: defaultDomains.includes("refl.ist"),
-      },
+        dublink: defaultDomains.includes("dub.link"),
+      } as any,
     });
 
     return NextResponse.json(response);

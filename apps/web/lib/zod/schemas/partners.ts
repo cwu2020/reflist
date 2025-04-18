@@ -1,4 +1,9 @@
 import {
+  DUB_PARTNERS_ANALYTICS_INTERVAL,
+  intervals,
+} from "@/lib/analytics/constants";
+import { DUB_MIN_PAYOUT_AMOUNT_CENTS } from "@/lib/partners/constants";
+import {
   PartnerBannedReason,
   PartnerProfileType,
   PartnerStatus,
@@ -10,8 +15,12 @@ import { analyticsQuerySchema } from "./analytics";
 import { analyticsResponse } from "./analytics-response";
 import { createLinkBodySchema } from "./links";
 import { getPaginationQuerySchema } from "./misc";
-import { ProgramEnrollmentSchema } from "./programs";
-import { parseUrlSchema } from "./utils";
+import {
+  ProgramEnrollmentSchema,
+  ProgramPartnerLinkSchema,
+} from "./programs";
+import { RewardSchema } from "./rewards";
+import { parseUrlSchema, parseDateSchema } from "./utils";
 
 export const PARTNERS_MAX_PAGE_SIZE = 100;
 export const PAYOUTS_MAX_PAGE_SIZE = 100;
@@ -111,98 +120,94 @@ export const partnerInvitesQuerySchema = getPaginationQuerySchema({
   pageSize: 100,
 });
 
-export const PartnerOnlinePresenceSchema = z.object({
-  website: z.string().nullable(),
-  websiteTxtRecord: z.string().nullable(),
-  websiteVerifiedAt: z.date().nullable(),
-  youtube: z.string().nullable(),
-  youtubeVerifiedAt: z.date().nullable(),
-  twitter: z.string().nullable(),
-  twitterVerifiedAt: z.date().nullable(),
-  linkedin: z.string().nullable(),
-  linkedinVerifiedAt: z.date().nullable(),
-  instagram: z.string().nullable(),
-  instagramVerifiedAt: z.date().nullable(),
-  tiktok: z.string().nullable(),
-  tiktokVerifiedAt: z.date().nullable(),
+export const PartnerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  companyName: z.string().nullish(),
+  profileType: z.nativeEnum(PartnerProfileType),
+  email: z.string().nullish(),
+  image: z.string().nullish(),
+  description: z.string().nullish(),
+  website: z.string().nullish(),
+  twitter: z.string().nullish(),
+  facebook: z.string().nullish(),
+  instagram: z.string().nullish(),
+  tiktok: z.string().nullish(),
+  youtube: z.string().nullish(),
+  linkedin: z.string().nullish(),
+  github: z.string().nullish(),
+  projectId: z.string().nullish(),
+  country: z.string().nullish(),
+  status: z.nativeEnum(PartnerStatus),
+  stripeConnectId: z.string().nullish(),
+  payoutsEnabledAt: z.date().nullish(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  twitterVerifiedAt: z.date().nullish(),
+  facebookVerifiedAt: z.date().nullish(),
+  instagramVerifiedAt: z.date().nullish(),
+  tiktokVerifiedAt: z.date().nullish(),
+  youtubeVerifiedAt: z.date().nullish(),
+  linkedinVerifiedAt: z.date().nullish(),
+  githubVerifiedAt: z.date().nullish(),
+  websiteTxtRecord: z.string().nullish(),
+  websiteVerifiedAt: z.date().nullish(),
 });
 
-export const PartnerSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    companyName: z.string().nullable(),
-    profileType: z.nativeEnum(PartnerProfileType),
-    email: z.string().nullable(),
-    image: z.string().nullable(),
-    description: z.string().nullish(),
-    country: z.string().nullable(),
-    status: z.nativeEnum(PartnerStatus),
-    stripeConnectId: z.string().nullable(),
-    payoutsEnabledAt: z.date().nullable(),
-    createdAt: z.date(),
-    updatedAt: z.date(),
-  })
-  .merge(PartnerOnlinePresenceSchema);
-
 // Used externally by GET+POST /api/partners and partner.enrolled webhook
-export const EnrolledPartnerSchema = PartnerSchema.pick({
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-  description: true,
-  country: true,
-  payoutsEnabledAt: true,
-  createdAt: true,
-})
-  .merge(
-    ProgramEnrollmentSchema.pick({
-      status: true,
-      programId: true,
-      tenantId: true,
-      links: true,
-    }),
-  )
-  .extend({
-    clicks: z.number().default(0),
-    leads: z.number().default(0),
-    sales: z.number().default(0),
-    saleAmount: z.number().default(0),
-    earnings: z.number().default(0),
-  })
-  .extend({
-    applicationId: z.string().nullish(),
-  });
+export const EnrolledPartnerSchema = z.object({
+  // Partner fields
+  id: z.string(),
+  name: z.string(),
+  email: z.string().nullish(),
+  image: z.string().nullish(),
+  description: z.string().nullish(),
+  country: z.string().nullish(),
+  payoutsEnabledAt: z.date().nullish(),
+  createdAt: z.date(),
+  website: z.string().nullish(),
+  twitter: z.string().nullish(),
+  facebook: z.string().nullish(),
+  instagram: z.string().nullish(),
+  tiktok: z.string().nullish(),
+  youtube: z.string().nullish(),
+  linkedin: z.string().nullish(),
+  github: z.string().nullish(),
+  twitterVerifiedAt: z.date().nullish(),
+  facebookVerifiedAt: z.date().nullish(),
+  instagramVerifiedAt: z.date().nullish(),
+  tiktokVerifiedAt: z.date().nullish(),
+  youtubeVerifiedAt: z.date().nullish(),
+  linkedinVerifiedAt: z.date().nullish(),
+  githubVerifiedAt: z.date().nullish(),
+  websiteTxtRecord: z.string().nullish(),
+  websiteVerifiedAt: z.date().nullish(),
+
+  // Program enrollment fields
+  programId: z.string(),
+  tenantId: z.string().nullable(),
+  links: z.array(ProgramPartnerLinkSchema).nullable(),
+  status: z.nativeEnum(ProgramEnrollmentStatus),
+
+  // Additional fields
+  clicks: z.number().default(0),
+  leads: z.number().default(0),
+  sales: z.number().default(0),
+  saleAmount: z.number().default(0),
+  earnings: z.number().default(0),
+  applicationId: z.string().nullish(),
+  commissions: z.number().default(0),
+  netRevenue: z.number().default(0),
+  bannedAt: z.date().nullish(),
+  bannedReason: z.nativeEnum(PartnerBannedReason).nullish(),
+});
 
 // Used internally in the Dub dashboard for partners table
-export const EnrolledPartnerSchemaWithExpandedFields =
-  EnrolledPartnerSchema.merge(PartnerOnlinePresenceSchema).extend({
-    commissions: z.number().default(0),
-    netRevenue: z.number().default(0),
-    bannedAt: z.date().nullish(),
-    bannedReason: z
-      .enum(
-        Object.keys(BAN_PARTNER_REASONS) as [
-          PartnerBannedReason,
-          ...PartnerBannedReason[],
-        ],
-      )
-      .nullish(),
-  });
+export const EnrolledPartnerSchemaWithExpandedFields = EnrolledPartnerSchema;
 
 export const LeaderboardPartnerSchema = z.object({
   id: z.string(),
-  name: z.string().transform((name) => {
-    const parts = name.trim().split(/\s+/);
-    return parts[0]; // return first name only
-
-    // old approach: return first name and last initial
-    // if (parts.length < 2) return name; // Return original if single word
-    // const firstName = parts[0];
-    // const lastInitial = parts[parts.length - 1][0];
-    // return `${firstName} ${lastInitial}.`;
-  }),
+  name: z.string().transform((name) => name.trim().split(/\s+/)[0]),
   clicks: z.number().default(0),
   leads: z.number().default(0),
   sales: z.number().default(0),
@@ -291,12 +296,12 @@ export const onboardPartnerSchema = createPartnerSchema
     username: true,
     email: true,
     linkProps: true,
-  })
+  } as const)
   .merge(
     z.object({
       image: z.string(),
       country: z.enum(COUNTRY_CODES),
-      profileType: z.enum(["individual", "company"]).default("individual"),
+      profileType: z.nativeEnum(PartnerProfileType).default("individual"),
       companyName: z.string().nullish(),
     }),
   )
@@ -318,42 +323,37 @@ export const onboardPartnerSchema = createPartnerSchema
     companyName: data.profileType === "individual" ? null : data.companyName,
   }));
 
-export const createPartnerLinkSchema = z
-  .object({
-    programId: z
-      .string()
-      .describe("The ID of the program that the partner is enrolled in."),
-    partnerId: z
-      .string()
-      .nullish()
-      .describe(
-        "The ID of the partner to create a link for. Will take precedence over `tenantId` if provided.",
-      ),
-    tenantId: z
-      .string()
-      .nullish()
-      .describe(
-        "The ID of the partner in your system. If both `partnerId` and `tenantId` are not provided, an error will be thrown.",
-      ),
-    url: parseUrlSchema
-      .describe(
-        "The URL to shorten (if not provided, the program's default URL will be used). Will throw an error if the domain doesn't match the program's default URL domain.",
-      )
-      .nullish(),
-    key: z
-      .string()
-      .max(190)
-      .optional()
-      .describe(
-        "The short link slug. If not provided, a random 7-character slug will be generated.",
-      ),
-    comments: z.string().nullish().describe("The comments for the short link."),
-  })
-  .merge(
-    createPartnerSchema.pick({
-      linkProps: true,
-    }),
-  );
+export const createPartnerLinkSchema = z.object({
+  programId: z
+    .string()
+    .describe("The ID of the program that the partner is enrolled in."),
+  partnerId: z
+    .string()
+    .nullish()
+    .describe(
+      "The ID of the partner to create a link for. Will take precedence over `tenantId` if provided.",
+    ),
+  tenantId: z
+    .string()
+    .nullish()
+    .describe(
+      "The ID of the partner in your system. If both `partnerId` and `tenantId` are not provided, an error will be thrown.",
+    ),
+  url: parseUrlSchema
+    .describe(
+      "The URL to shorten (if not provided, the program's default URL will be used). Will throw an error if the domain doesn't match the program's default URL domain.",
+    )
+    .nullish(),
+  key: z
+    .string()
+    .max(190)
+    .optional()
+    .describe(
+      "The short link slug. If not provided, a random 7-character slug will be generated.",
+    ),
+  comments: z.string().nullish().describe("The comments for the short link."),
+  linkProps: createLinkBodySchema.partial()
+});
 
 export const upsertPartnerLinkSchema = createPartnerLinkSchema.merge(
   z.object({
@@ -364,28 +364,23 @@ export const upsertPartnerLinkSchema = createPartnerLinkSchema.merge(
 );
 
 // For /api/partners/analytics
-export const partnerAnalyticsQuerySchema = analyticsQuerySchema
-  .pick({
-    partnerId: true,
-    tenantId: true,
-    interval: true,
-    start: true,
-    end: true,
-    timezone: true,
-  })
-  .merge(
-    z.object({
-      groupBy: z
-        .enum(["top_links", "timeseries", "count"])
-        .default("count")
-        .describe(
-          "The parameter to group the analytics data points by. Defaults to `count` if undefined.",
-        ),
-      programId: z
-        .string()
-        .describe("The ID of the program to retrieve analytics for."),
-    }),
-  );
+export const partnerAnalyticsQuerySchema = z.object({
+  partnerId: z.string().optional(),
+  tenantId: z.string().optional(),
+  interval: z.enum(intervals).optional(),
+  start: parseDateSchema.optional(),
+  end: parseDateSchema.optional(),
+  timezone: z.string().optional(),
+  groupBy: z
+    .enum(["top_links", "timeseries", "count"])
+    .default("count")
+    .describe(
+      "The parameter to group the analytics data points by. Defaults to `count` if undefined.",
+    ),
+  programId: z
+    .string()
+    .describe("The ID of the program to retrieve analytics for."),
+});
 
 const earningsSchema = z.object({
   earnings: z.number().default(0),
@@ -455,12 +450,7 @@ export const banPartnerSchema = z.object({
   workspaceId: z.string(),
   programId: z.string(),
   partnerId: z.string(),
-  reason: z.enum(
-    Object.keys(BAN_PARTNER_REASONS) as [
-      PartnerBannedReason,
-      ...PartnerBannedReason[],
-    ],
-  ),
+  reason: z.nativeEnum(PartnerBannedReason),
 });
 
 export const retrievePartnerLinksSchema = z

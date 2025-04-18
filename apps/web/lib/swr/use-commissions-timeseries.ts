@@ -20,8 +20,8 @@ export default function useCommissionsTimeseries(
     event: params?.event ?? "composite",
     ...(params?.start && params?.end
       ? {
-          start: params.start.toISOString(),
-          end: params.end.toISOString(),
+          start: typeof params.start === "string" ? params.start : params.start.toISOString(),
+          end: typeof params.end === "string" ? params.end : params.end.toISOString(),
         }
       : { interval: params?.interval ?? DUB_PARTNERS_ANALYTICS_INTERVAL }),
     groupBy: params?.groupBy ?? "count",

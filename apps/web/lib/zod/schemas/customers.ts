@@ -62,6 +62,7 @@ export const CustomerSchema = z.object({
   avatar: z.string().nullish().describe("Avatar URL of the customer."),
   country: z.string().nullish().describe("Country of the customer."),
   createdAt: z.date().describe("The date the customer was created."),
+  programId: z.string().nullable().describe("The ID of the program the customer is associated with."),
 });
 
 // An extended schema that includes the customer's link, partner, and discount.
@@ -73,7 +74,6 @@ export const CustomerEnrichedSchema = CustomerSchema.extend({
     shortLink: true,
     programId: true,
   }).nullish(),
-  programId: z.string().nullish(),
   partner: PartnerSchema.pick({
     id: true,
     name: true,

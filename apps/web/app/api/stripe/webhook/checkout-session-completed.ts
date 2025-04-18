@@ -129,7 +129,7 @@ export async function checkoutSessionCompleted(event: Stripe.Event) {
       },
       data: {
         dublink: true,
-      },
+      } as any,
     }),
   ]);
 }

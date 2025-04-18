@@ -1,0 +1,1162 @@
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
+}
+enum CommissionStatus {
+  pending
+  processed
+  paid
+  refunded
+  duplicate
+  fraud
+  canceled
+}
+
+enum EventType {
+  click
+  lead
+  sale
+}
+
+model Commission {
+  id         String  @id @default(cuid())
+  programId  String
+  partnerId  String
+  linkId     String
+  payoutId   String?
+  invoiceId  String? // only for sales (idempotency key, each sale event is associated with a unique invoice)
+  customerId String? // only for leads and sales
+  eventId    String? @unique // only for leads and sales
+
+  type     EventType
+  amount   Int // only for sales (amount of the sale event)
+  quantity Int // only for clicks/leads (quantity of the event)
+  earnings Int              @default(0) // amount earned by the partner
+  currency String           @default("usd")
+  status   CommissionStatus @default(pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program  Program   @relation(fields: [programId], references: [id])
+  partner  Partner   @relation(fields: [partnerId], references: [id])
+  payout   Payout?   @relation(fields: [payoutId], references: [id])
+  link     Link      @relation(fields: [linkId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@unique([programId, invoiceId])
+  @@index([earnings, programId, partnerId, status])
+  @@index([partnerId, customerId])
+  @@index(payoutId)
+  @@index(customerId)
+  @@index(linkId)
+  @@index(status)
+}
+model Customer {
+  id               String  @id @default(cuid())
+  name             String?
+  email            String?
+  avatar           String? @db.Text
+  externalId       String?
+  stripeCustomerId String? @unique
+
+  linkId    String?
+  clickId   String?
+  clickedAt DateTime?
+  country   String?
+
+  projectId        String
+  projectConnectId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  link        Link?        @relation(fields: [linkId], references: [id])
+  commissions Commission[]
+
+  @@unique([projectId, externalId])
+  @@unique([projectConnectId, externalId])
+  @@index(externalId)
+  @@index(linkId)
+}
+model Dashboard {
+  id String @id @default(cuid())
+
+  link   Link?   @relation(fields: [linkId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  linkId String? @unique
+
+  // Project that the share link belongs to
+  project   Project? @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId String?
+
+  // User who created the shared dashboard
+  user   User?   @relation(fields: [userId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  userId String?
+
+  // additional link configurations
+  doIndex         Boolean @default(false) // whether to index the share link on Google or not
+  password        String? // password to access the share link
+  showConversions Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index(projectId)
+  @@index(userId)
+}
+model Discount {
+  id String @id @default(cuid())
+
+  amount      Int            @default(0)
+  type        CommissionType @default(percentage)
+  maxDuration Int? // in months (0 -> not recurring, null -> lifetime)
+  description String?
+
+  couponId     String?
+  couponTestId String?
+
+  programId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  programEnrollments ProgramEnrollment[]
+  defaultForProgram  Program?            @relation("ProgramDefaultDiscount")
+  program            Program             @relation("ProgramDiscounts", fields: [programId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index(programId)
+}
+model Domain {
+  id                      String            @id @default(cuid())
+  slug                    String            @unique
+  verified                Boolean           @default(false)
+  placeholder             String?
+  expiredUrl              String?           @db.LongText // URL to redirect to for expired links
+  notFoundUrl             String?           @db.LongText // URL to redirect to for links that don't exist
+  primary                 Boolean           @default(false)
+  archived                Boolean           @default(false)
+  lastChecked             DateTime          @default(now())
+  logo                    String?
+  appleAppSiteAssociation Json?
+  assetLinks              Json?
+  links                   Link[]
+  project                 Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId               String?
+  registeredDomain        RegisteredDomain?
+  programs                Program[]
+
+  // these attributes will exist on both Link and Domain models
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index(projectId)
+  @@index(lastChecked(sort: Asc))
+}
+
+model RegisteredDomain {
+  id        String   @id @default(cuid())
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  domain    Domain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  domainId  String? @unique
+
+  @@index(projectId)
+  @@index(expiresAt(sort: Asc))
+}
+
+model DefaultDomains {
+  id          String  @id @default(cuid())
+  reflist     Boolean @default(true)
+  dublink     Boolean @default(false)
+  projectId   String  @unique
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+enum FolderType {
+  default
+  mega
+}
+
+enum FolderAccessLevel {
+  read // can view the links
+  write // can view and move links
+}
+
+enum FolderUserRole {
+  owner // full control
+  editor // can move links to the folder
+  viewer // can view the links
+}
+
+model Folder {
+  id          String             @id @default(cuid())
+  name        String
+  projectId   String
+  type        FolderType         @default(default)
+  accessLevel FolderAccessLevel? // Access level of the folder within the workspace
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  project        Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  links          Link[]
+  users          FolderUser[]
+  accessRequests FolderAccessRequest[]
+
+  @@unique([name, projectId])
+  @@index(projectId)
+}
+
+model FolderUser {
+  id        String          @id @default(cuid())
+  folderId  String
+  userId    String
+  role      FolderUserRole?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, userId])
+  @@index(userId)
+}
+
+model FolderAccessRequest {
+  id        String   @id @default(cuid())
+  folderId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  folder Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([folderId, userId])
+  @@index(userId)
+}
+model Integration {
+  id          String   @id @default(cuid())
+  userId      String?
+  projectId   String
+  name        String
+  slug        String   @unique
+  description String?
+  readme      String?  @db.LongText
+  developer   String
+  website     String
+  logo        String?
+  screenshots Json?
+  verified    Boolean  @default(false)
+  installUrl  String?  @db.Text
+  guideUrl    String?  @db.Text
+  category    String?
+  comingSoon  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user          User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project       Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  oAuthApp      OAuthApp?
+  installations InstalledIntegration[]
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model InstalledIntegration {
+  id            String   @id @default(cuid())
+  userId        String // user who installed the integration
+  integrationId String // integration that was installed
+  projectId     String // workspace where integration was installed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  credentials   Json?
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integration   Integration         @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  project       Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  refreshTokens OAuthRefreshToken[]
+  accessTokens  RestrictedToken[]
+  webhook       Webhook?
+
+  @@unique([userId, integrationId, projectId])
+  @@index([projectId])
+  @@index([integrationId])
+}
+enum InvoiceStatus {
+  processing
+  completed
+  failed
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  programId    String
+  workspaceId  String
+  number       String?       @unique // This starts with the customer’s unique invoicePrefix
+  status       InvoiceStatus @default(processing)
+  amount       Int           @default(0)
+  fee          Int           @default(0)
+  total        Int           @default(0)
+  receiptUrl   String?       @db.Text
+  failedReason String?       @db.Text
+  createdAt    DateTime      @default(now())
+  paidAt       DateTime?
+
+  payouts   Payout[]
+  program   Program  @relation(fields: [programId], references: [id])
+  workspace Project  @relation(fields: [workspaceId], references: [id])
+
+  @@index(programId)
+  @@index(workspaceId)
+}
+model jackson_index {
+  id       Int    @id @default(autoincrement())
+  key      String @db.VarChar(250)
+  storeKey String @db.VarChar(250)
+
+  @@index([key, storeKey], map: "_jackson_index_key_store")
+}
+
+model jackson_store {
+  key        String    @id @db.VarChar(250)
+  value      String    @db.Text
+  iv         String?   @db.VarChar(64)
+  tag        String?   @db.VarChar(64)
+  namespace  String?   @db.VarChar(64)
+  createdAt  DateTime  @default(now()) @db.Timestamp(0)
+  modifiedAt DateTime? @db.Timestamp(0)
+
+  @@index([namespace], map: "_jackson_store_namespace")
+}
+
+model jackson_ttl {
+  key       String @id @db.VarChar(250)
+  expiresAt BigInt
+
+  @@index([expiresAt], map: "_jackson_ttl_expires_at")
+}
+model Link {
+  id              String    @id @default(cuid())
+  domain          String // domain of the link (e.g. dub.sh) – also stored on Redis
+  key             String // key of the link (e.g. /github) – also stored on Redis
+  url             String    @db.LongText // target url (e.g. https://github.com/dubinc/dub) – also stored on Redis
+  shortLink       String    @unique @db.VarChar(400) // new column for the full short link
+  archived        Boolean   @default(false) // whether the link is archived or not
+  expiresAt       DateTime? // when the link expires – stored on Redis via ttl
+  expiredUrl      String?   @db.Text // URL to redirect the user to when the link is expired
+  password        String? // password to access the link
+  trackConversion Boolean   @default(false) // whether to track conversions or not
+
+  proxy       Boolean @default(false) // Proxy to use custom OG tags (stored on redis) – if false, will use OG tags from target url
+  title       String? // OG title for the link (e.g. Dub.co - Open-Source Link Management Infrastructure)
+  description String? @db.VarChar(280) // OG description for the link (e.g. An open-source link management tool for modern marketing teams to create, share, and track short links.)
+  image       String? @db.LongText // OG image for the link (e.g. https://d.to/og)
+  video       String? @db.Text // OG video for the link
+
+  // UTM parameters
+  utm_source   String? // UTM source for the link (e.g. youtube.com)
+  utm_medium   String? // UTM medium for the link (e.g. social)
+  utm_campaign String? // UTM campaign for the link (e.g. summer-sale)
+  utm_term     String? // UTM term for the link (e.g. dub)
+  utm_content  String? // UTM content for the link (e.g. description)
+
+  // Link cloaking/masking via rewrite
+  rewrite Boolean @default(false) // whether to rewrite the link or not
+
+  doIndex Boolean @default(false) // we don't index short links by default
+
+  // Custom device targeting
+  ios     String? @db.Text // custom link for iOS devices
+  android String? @db.Text // custom link for Android devices
+  geo     Json?   @db.Json // custom link for specific countries
+
+  // A/B Testing
+  testVariants    Json?     @db.Json
+  testStartedAt   DateTime? // When tests were started
+  testCompletedAt DateTime? // When tests were or will be completed
+
+  // User who created the link
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  // Project that the link belongs to
+  project       Project? @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId     String?
+  // Relational reference to the project domain
+  projectDomain Domain?  @relation(fields: [domain], references: [slug], onUpdate: Cascade, onDelete: Cascade)
+  // Program that the link belongs to
+  programId     String?
+
+  folderId String?
+  folder   Folder? @relation(fields: [folderId], references: [id], onUpdate: Cascade, onDelete: SetNull)
+
+  // External & tenant IDs (for API usage + multi-tenancy)
+  externalId String?
+  tenantId   String?
+
+  publicStats Boolean   @default(false) // whether to show public stats or not
+  clicks      Int       @default(0) // number of clicks
+  lastClicked DateTime? // when the link was last clicked
+  leads       Int       @default(0)
+  sales       Int       @default(0) // number of sales
+  saleAmount  Int       @default(0) // total dollar value of sales (in cents)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Link tags
+  tags LinkTag[]
+
+  // Link webhooks
+  webhooks LinkWebhook[]
+
+  // Comments on the particular shortlink
+  comments String? @db.Text
+
+  dashboard         Dashboard?
+  partnerId         String?
+  programEnrollment ProgramEnrollment? @relation(fields: [programId, partnerId], references: [programId, partnerId])
+
+  program     Program?     @relation(fields: [programId], references: [id])
+  customers   Customer[]
+  commissions Commission[]
+
+  @@unique([domain, key])
+  @@index([projectId, url(length: 500)])
+  @@index([projectId, folderId, archived, createdAt(sort: Desc)])
+  @@unique([projectId, externalId])
+  @@index([programId, partnerId])
+  @@index(folderId) // used in /api/folders
+  @@index(userId) // for relation to User table
+}
+model YearInReview {
+  id   String @id @default(cuid())
+  year Int
+
+  totalLinks   Int
+  totalClicks  Int
+  topLinks     Json
+  topCountries Json
+
+  workspaceId String
+  workspace   Project @relation(fields: [workspaceId], references: [id])
+
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([workspaceId])
+}
+model OAuthApp {
+  id                  String  @id @default(cuid())
+  integrationId       String  @unique
+  clientId            String  @unique
+  hashedClientSecret  String
+  partialClientSecret String
+  redirectUris        Json
+  pkce                Boolean @default(false)
+
+  oAuthCodes  OAuthCode[]
+  integration Integration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+}
+
+model OAuthCode {
+  id                  String   @id @default(cuid())
+  clientId            String
+  userId              String // User who granted access
+  projectId           String // Workspace that user granted access to
+  code                String   @unique
+  scopes              String?
+  redirectUri         String
+  codeChallenge       String?
+  codeChallengeMethod String?
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+
+  oAuthApp OAuthApp @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model OAuthRefreshToken {
+  id                 String   @id @default(cuid())
+  installationId     String
+  accessTokenId      String
+  hashedRefreshToken String   @unique
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+
+  accessToken          RestrictedToken      @relation(fields: [accessTokenId], references: [id], onDelete: Cascade)
+  installedIntegration InstalledIntegration @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([installationId])
+  @@index([accessTokenId])
+}
+enum PartnerStatus {
+  default
+  verified
+  featured
+}
+
+enum PartnerRole {
+  owner
+  member
+}
+
+enum PartnerProfileType {
+  individual
+  company
+}
+
+model Partner {
+  id                String             @id @default(cuid())
+  name              String
+  companyName       String?
+  profileType       PartnerProfileType @default(individual)
+  email             String?            @unique
+  image             String?
+  description       String?            @db.Text
+  country           String?
+  status            PartnerStatus      @default(default)
+  stripeConnectId   String?            @unique
+  payoutsEnabledAt  DateTime?
+  connectPayoutsLastRemindedAt DateTime?
+  showOnLeaderboard Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+
+  programs     ProgramEnrollment[]
+  users        PartnerUser[]
+  invites      PartnerInvite[]
+  payouts      Payout[]
+  commissions  Commission[]
+
+  website           String?
+  websiteTxtRecord  String?
+  websiteVerifiedAt DateTime?
+
+  youtube           String?
+  youtubeVerifiedAt DateTime?
+
+  twitter           String?
+  twitterVerifiedAt DateTime?
+
+  linkedin           String?
+  linkedinVerifiedAt DateTime?
+
+  instagram           String?
+  instagramVerifiedAt DateTime?
+
+  tiktok           String?
+  tiktokVerifiedAt DateTime?
+}
+
+model PartnerUser {
+  id        String      @id @default(cuid())
+  role      PartnerRole @default(member)
+  userId    String
+  partnerId String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, partnerId])
+  @@index([partnerId])
+}
+
+model PartnerInvite {
+  email     String
+  expires   DateTime
+  partnerId String
+  role      PartnerRole @default(member)
+  createdAt DateTime    @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([email, partnerId])
+  @@index([partnerId])
+}
+enum PayoutStatus {
+  pending
+  processing
+  completed
+  failed
+  canceled
+}
+
+model Payout {
+  id               String       @id @default(cuid())
+  programId        String
+  partnerId        String
+  invoiceId        String?
+  userId           String? // user who made the payout
+  amount           Int          @default(0)
+  currency         String       @default("USD")
+  status           PayoutStatus @default(pending)
+  description      String?
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  quantity         Int? // Number of clicks/leads/sales in this payout
+  stripeTransferId String?      @unique
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  paidAt           DateTime?
+
+  program     Program      @relation(fields: [programId], references: [id])
+  partner     Partner      @relation(fields: [partnerId], references: [id])
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  commissions Commission[]
+
+  @@index(programId)
+  @@index(partnerId)
+  @@index(invoiceId)
+  @@index(status)
+  @@index(userId)
+}
+enum ProgramType {
+  affiliate
+  referral
+}
+
+enum CommissionType {
+  percentage
+  flat
+}
+
+enum ProgramEnrollmentStatus {
+  pending // pending applications that need approval
+  approved // partner who has been approved/actively enrolled
+  rejected // program rejected the partner
+  invited // partner who has been invited
+  declined // partner declined the invite
+  banned // partner is banned from the program
+}
+
+model Program {
+  id                String      @id @default(cuid())
+  workspaceId       String
+  defaultFolderId   String?
+  name              String
+  slug              String      @unique
+  logo              String?
+  wordmark          String?
+  brandColor        String?
+  domain            String?
+  url               String?
+  type              ProgramType @default(affiliate)
+  cookieLength      Int         @default(90)
+  holdingPeriodDays Int         @default(0) // number of days to wait before earnings are added to a payout
+  minPayoutAmount   Int         @default(10000) // Default minimum payout amount of $100
+  defaultRewardId   String?     @unique // default reward for the program
+  defaultDiscountId String?     @unique // default discount for the program
+  embedData         Json?       @db.Json
+  landerData        Json?       @db.Json
+  resources         Json?       @db.Json
+  termsUrl          String?     @db.Text
+  helpUrl           String?     @db.Text
+  supportEmail      String?
+  ageVerification   Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace       Project              @relation(fields: [workspaceId], references: [id])
+  primaryDomain   Domain?              @relation(fields: [domain], references: [slug], onUpdate: Cascade)
+  partners        ProgramEnrollment[]
+  payouts         Payout[]
+  invoices        Invoice[]
+  applications    ProgramApplication[]
+  links           Link[]
+  commissions     Commission[]
+  rewards         Reward[]
+  defaultReward   Reward?              @relation("ProgramDefaultReward", fields: [defaultRewardId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  discounts       Discount[]           @relation("ProgramDiscounts")
+  defaultDiscount Discount?            @relation("ProgramDefaultDiscount", fields: [defaultDiscountId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workspaceId])
+  @@index([domain])
+}
+
+enum PartnerBannedReason {
+  tos_violation
+  inappropriate_content
+  fake_traffic
+  fraud
+  spam
+  brand_abuse
+}
+
+model ProgramEnrollment {
+  id            String                  @id @default(cuid())
+  partnerId     String
+  programId     String
+  tenantId      String?
+  discountId    String? // custom discount for this partner
+  applicationId String?                 @unique
+  status        ProgramEnrollmentStatus @default(pending)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  bannedAt      DateTime?
+  bannedReason  PartnerBannedReason?
+
+  partner     Partner             @relation(fields: [partnerId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  program     Program             @relation(fields: [programId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  links       Link[]
+  discount    Discount?           @relation(fields: [discountId], references: [id])
+  application ProgramApplication? @relation(fields: [applicationId], references: [id])
+  rewards     PartnerReward[]
+
+  @@unique([partnerId, programId])
+  @@unique([tenantId, programId])
+  @@index([programId])
+  @@index([discountId])
+}
+
+model ProgramApplication {
+  id        String   @id @default(cuid())
+  programId String
+  name      String
+  email     String
+  proposal  String?  @db.Text
+  website   String?  @db.Text
+  comments  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program    Program            @relation(fields: [programId], references: [id])
+  enrollment ProgramEnrollment?
+
+  @@index([programId])
+}
+model Reward {
+  id        String @id @default(cuid())
+  programId String
+
+  name        String?
+  description String?
+  event       EventType
+  type        CommissionType @default(percentage)
+  amount      Int            @default(0)
+  maxDuration Int?  // in months (0 -> not recurring, null -> infinite)
+  maxAmount     Int? // how much a partner can receive payouts (in cents)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  defaultForProgram Program?        @relation("ProgramDefaultReward")
+  program           Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  partners          PartnerReward[]
+
+  @@index(programId)
+  @@index(event) // used in /api/cron/aggregate-clicks
+}
+
+model PartnerReward {
+  id                  String @id @default(cuid())
+  programEnrollmentId String
+  rewardId            String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  programEnrollment ProgramEnrollment @relation(fields: [programEnrollmentId], references: [id], onDelete: Cascade)
+  reward            Reward            @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@unique([programEnrollmentId, rewardId])
+  @@index(rewardId)
+}
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
+}
+
+import "workspace.prisma"
+import "domain.prisma"
+import "webhook.prisma"
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  isMachine     Boolean   @default(false)
+
+  // password data
+  passwordHash         String?
+  invalidLoginAttempts Int       @default(0)
+  lockedAt             DateTime?
+
+  createdAt             DateTime               @default(now())
+  subscribed            Boolean                @default(true) // email subscription
+  source                String? // where the user came from
+  defaultWorkspace      String? // slug of the user's default workspace
+  defaultPartnerId      String? // the user's default partner ID
+  // relational data
+  accounts              Account[]
+  sessions              Session[]
+  projects              ProjectUsers[]
+  partners              PartnerUser[]
+  links                 Link[]
+  dashboards            Dashboard[]
+  tokens                Token[]
+  restrictedTokens      RestrictedToken[]
+  oAuthCodes            OAuthCode[]
+  integrations          Integration[] // Integrations user created in their workspace
+  installedIntegrations InstalledIntegration[] // Integrations user installed in their workspace
+  folders               FolderUser[]
+  folderAccessRequests  FolderAccessRequest[]
+  utmTemplates          UtmTemplate[]
+  payouts               Payout[]
+
+  @@index(source)
+  @@index(defaultWorkspace)
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  refresh_token_expires_in Int?
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model DefaultDomains {
+  id          String  @id @default(cuid())
+  reflist     Boolean @default(true)
+  dublink     Boolean @default(false)
+  projectId   String  @unique
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+model Tag {
+  id        String    @id @default(cuid())
+  name      String
+  color     String    @default("blue")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  project   Project   @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId String
+  links     LinkTag[]
+
+  @@unique([name, projectId])
+  @@index(projectId)
+}
+
+model LinkTag {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  link      Link     @relation(fields: [linkId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  linkId    String
+  tag       Tag      @relation(fields: [tagId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  tagId     String
+
+  @@unique([linkId, tagId])
+  @@index(tagId)
+}
+model Token {
+  id         String    @id @default(cuid())
+  name       String
+  hashedKey  String    @unique
+  partialKey String
+  expires    DateTime?
+  lastUsed   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+
+  @@index([userId])
+}
+
+model RestrictedToken {
+  id             String    @id @default(cuid())
+  name           String
+  hashedKey      String    @unique
+  partialKey     String
+  scopes         String? // space separated (Eg: "links:write", "domains:read")
+  expires        DateTime?
+  lastUsed       DateTime?
+  rateLimit      Int       @default(60) // rate limit per minute
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  userId         String
+  projectId      String
+  installationId String? // if the token is generated by an OAuth client
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  refreshTokens        OAuthRefreshToken[]
+  installedIntegration InstalledIntegration? @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([installationId])
+}
+
+// Login tokens
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Email verification OTPs
+model EmailVerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Password reset tokens
+model PasswordResetToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+model UtmTemplate {
+  id   String @id @default(cuid())
+  name String
+
+  // Parameters
+  utm_source   String?
+  utm_medium   String?
+  utm_campaign String?
+  utm_term     String?
+  utm_content  String?
+  ref          String?
+
+  // User who created the template
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  // Project that the template belongs to
+  project   Project? @relation(fields: [projectId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  projectId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, name])
+  @@index(userId)
+}
+enum WebhookReceiver {
+  user
+  zapier
+  make
+  slack
+  segment
+}
+
+model Webhook {
+  id                  String          @id @default(cuid())
+  projectId           String
+  installationId      String?         @unique // indicates which integration installation added the webhook
+  receiver            WebhookReceiver @default(user)
+  name                String
+  url                 String          @db.LongText
+  secret              String
+  triggers            Json
+  consecutiveFailures Int             @default(0)
+  lastFailedAt        DateTime?
+  disabledAt          DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  installedIntegration InstalledIntegration? @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  links                LinkWebhook[]
+
+  @@index([projectId])
+}
+
+model LinkWebhook {
+  id        String @id @default(cuid())
+  linkId    String
+  webhookId String
+
+  link    Link    @relation(fields: [linkId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  webhook Webhook @relation(fields: [webhookId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+
+  @@unique([linkId, webhookId])
+  @@index(webhookId)
+}
+model Project {
+  id         String  @id @default(cuid())
+  name       String
+  slug       String  @unique
+  logo       String?
+  inviteCode String? @unique
+
+  plan              String    @default("free")
+  stripeId          String?   @unique // Stripe subscription ID
+  billingCycleStart Int // day of the month when the billing cycle starts
+  paymentFailedAt   DateTime?
+  invoicePrefix     String?   @unique // prefix used to generate unique invoice numbers (for Dub Payouts)
+
+  stripeConnectId String? @unique // for Stripe Integration
+  shopifyStoreId  String? @unique // for Shopify Integration
+
+  totalLinks  Int @default(0) // Total number of links in the workspace
+  totalClicks Int @default(0) // Total number of clicks in the workspace
+
+  usage        Int @default(0)
+  usageLimit   Int @default(1000)
+  linksUsage   Int @default(0)
+  linksLimit   Int @default(25)
+  salesUsage   Int @default(0)
+  salesLimit   Int @default(0)
+  domainsLimit Int @default(3)
+  tagsLimit    Int @default(5)
+  foldersUsage Int @default(0)
+  foldersLimit Int @default(0)
+  usersLimit   Int @default(1)
+  aiUsage      Int @default(0)
+  aiLimit      Int @default(10)
+
+  referralLinkId  String? @unique
+  referredSignups Int     @default(0)
+
+  store            Json? // General key-value store for things like persisting toggles, dismissing popups, etc.
+  allowedHostnames Json?
+
+  conversionEnabled Boolean @default(false) // Whether to enable conversion tracking for links by default
+  webhookEnabled    Boolean @default(false)
+  partnersEnabled   Boolean @default(false)
+  ssoEnabled        Boolean @default(false)
+  dotLinkClaimed    Boolean @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  usageLastChecked DateTime @default(now())
+
+  users                 ProjectUsers[]
+  invites               ProjectInvite[]
+  sentEmails            SentEmail[]
+  links                 Link[]
+  domains               Domain[]
+  tags                  Tag[]
+  programs              Program[]
+  invoices              Invoice[]
+  customers             Customer[]
+  defaultDomains        DefaultDomains[]
+  restrictedTokens      RestrictedToken[]
+  oAuthCodes            OAuthCode[]
+  integrations          Integration[] // Integrations workspace published
+  installedIntegrations InstalledIntegration[] // Integrations workspace installed
+  webhooks              Webhook[]
+  folders               Folder[]
+  registeredDomains     RegisteredDomain[]
+  dashboards            Dashboard[]
+  utmTemplates          UtmTemplate[]
+  yearInReviews         YearInReview[]
+
+  @@index(usageLastChecked(sort: Asc))
+}
+
+enum Role {
+  owner
+  member
+}
+
+model ProjectInvite {
+  email     String
+  expires   DateTime
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  role      Role     @default(member)
+  createdAt DateTime @default(now())
+
+  @@unique([email, projectId])
+  @@index([projectId])
+}
+
+model ProjectUsers {
+  id                     String                  @id @default(cuid())
+  role                   Role                    @default(member)
+  userId                 String
+  projectId              String
+  notificationPreference NotificationPreference?
+  workspacePreferences   Json?
+  defaultFolderId        String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+model SentEmail {
+  id        String   @id @default(cuid())
+  type      String
+  createdAt DateTime @default(now())
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  @@index([projectId])
+}
+
+model NotificationPreference {
+  id                         String  @id @default(cuid())
+  projectUserId              String  @unique
+  linkUsageSummary           Boolean @default(true)
+  domainConfigurationUpdates Boolean @default(true)
+  newPartnerSale             Boolean @default(true)
+  newPartnerApplication      Boolean @default(true)
+
+  projectUser ProjectUsers @relation(fields: [projectUserId], references: [id], onDelete: Cascade)
+}

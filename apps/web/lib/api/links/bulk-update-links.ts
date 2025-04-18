@@ -1,141 +1,152 @@
-import { isStored, storage } from "@/lib/storage";
 import z from "@/lib/zod";
 import { bulkUpdateLinksBodySchema } from "@/lib/zod/schemas/links";
 import { prisma } from "@dub/prisma";
 import { Prisma } from "@dub/prisma/client";
-import { R2_URL, getParamsFromURL, nanoid, truncate } from "@dub/utils";
+import { R2_URL, nanoid } from "@dub/utils";
+import { storage } from "@/lib/storage";
 import { waitUntil } from "@vercel/functions";
 import { combineTagIds } from "../tags/combine-tag-ids";
 import { propagateBulkLinkChanges } from "./propagate-bulk-link-changes";
 import { transformLink } from "./utils";
 
-export async function bulkUpdateLinks(
-  // omit externalIds from params
-  params: Omit<z.infer<typeof bulkUpdateLinksBodySchema>, "externalIds"> & {
-    workspaceId: string;
-  },
-) {
-  const { linkIds, data, workspaceId } = params;
-
+export async function bulkUpdateLinks({
+  linkIds,
+  externalIds,
+  data,
+  workspaceId,
+  userId,
+}: {
+  linkIds?: string[];
+  externalIds?: string[];
+  data: z.infer<typeof bulkUpdateLinksBodySchema>["data"];
+  workspaceId: string;
+  userId: string;
+}) {
   const {
     url,
     title,
     description,
     image,
     proxy,
-    expiresAt,
-    geo,
-    testVariants,
+    folderId,
     tagId,
     tagIds,
     tagNames,
     webhookIds,
-    ...rest
+    expiresAt,
+    geo,
+    testVariants,
+    testStartedAt,
+    testCompletedAt
   } = data;
 
-  const combinedTagIds = combineTagIds({ tagId, tagIds });
+  // If linkIds is provided, use it to update links
+  if (linkIds && linkIds.length > 0) {
+    const imageUrlNonce = nanoid(7);
+    const imageUrl = image
+      ? `${R2_URL}/images/${linkIds[0]}_${imageUrlNonce}`
+      : null;
 
-  const imageUrlNonce = nanoid(7);
+    // Upload image to R2 if provided
+    if (image && imageUrl) {
+      await storage.upload(`images/${linkIds[0]}_${imageUrlNonce}`, image);
+    }
 
-  const updatedLinks = await Promise.all(
-    linkIds.map((linkId) =>
-      prisma.link.update({
-        where: {
-          id: linkId,
-        },
-        data: {
-          ...rest,
-          url,
-          proxy,
-          title: truncate(title, 120),
-          description: truncate(description, 240),
-          image:
-            proxy && image && !isStored(image)
-              ? `${R2_URL}/images/${linkIds[0]}_${imageUrlNonce}`
-              : image,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
-          geo: geo || Prisma.JsonNull,
-          testVariants: testVariants || Prisma.JsonNull,
-
-          ...(url && getParamsFromURL(url)),
-          // Associate tags by tagNames
-          ...(tagNames &&
-            workspaceId && {
-              tags: {
-                deleteMany: {},
-                create: tagNames.map((tagName, idx) => ({
-                  tag: {
-                    connect: {
-                      name_projectId: {
-                        name: tagName,
-                        projectId: workspaceId as string,
-                      },
-                    },
-                  },
-                  createdAt: new Date(new Date().getTime() + idx * 100), // increment by 100ms for correct order
-                })),
-              },
-            }),
-
-          // Associate tags by IDs (takes priority over tagNames)
-          ...(combinedTagIds && {
+    // Update links in database
+    return await prisma.$transaction(
+      linkIds.map((linkId) =>
+        prisma.link.update({
+          where: {
+            id: linkId,
+          },
+          data: {
+            url,
+            title,
+            description,
+            image: imageUrl,
+            proxy,
+            folderId,
             tags: {
               deleteMany: {},
-              create: combinedTagIds.map((tagId, idx) => ({
-                tagId,
-                createdAt: new Date(new Date().getTime() + idx * 100), // increment by 100ms for correct order
-              })),
+              ...(tagId && {
+                create: {
+                  tagId,
+                }
+              }),
+              ...(tagIds?.length && {
+                createMany: {
+                  data: tagIds.map(id => ({ tagId: id })),
+                }
+              })
             },
-          }),
-
-          // Associate webhooks
-          ...(webhookIds && {
-            webhooks: {
+            webhooks: webhookIds ? {
               deleteMany: {},
-              create: webhookIds.map((webhookId) => ({
-                webhookId,
-              })),
-            },
-          }),
-        },
-        include: {
-          tags: {
-            select: {
-              tagId: true,
-              tag: {
-                select: {
-                  id: true,
-                  name: true,
-                  color: true,
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
+              createMany: {
+                data: webhookIds.map(id => ({ webhookId: id })),
+              }
+            } : undefined,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            geo: geo || Prisma.JsonNull,
+            testVariants: testVariants || Prisma.JsonNull,
+            testStartedAt: testStartedAt ? new Date(testStartedAt) : null,
+            testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,
+            updatedAt: new Date(),
+            userId,
+          },
+        })
+      )
+    );
+  }
+
+  // If externalIds is provided, use it to update links
+  if (externalIds && externalIds.length > 0) {
+    return await prisma.$transaction(
+      externalIds.map((externalId) =>
+        prisma.link.update({
+          where: {
+            projectId_externalId: {
+              projectId: workspaceId,
+              externalId,
             },
           },
-          webhooks: webhookIds ? { select: { webhookId: true } } : false,
-        },
-      }),
-    ),
-  );
+          data: {
+            url,
+            title,
+            description,
+            image,
+            proxy,
+            folderId,
+            tags: {
+              deleteMany: {},
+              ...(tagId && {
+                create: {
+                  tagId,
+                }
+              }),
+              ...(tagIds?.length && {
+                createMany: {
+                  data: tagIds.map(id => ({ tagId: id })),
+                }
+              })
+            },
+            webhooks: webhookIds ? {
+              deleteMany: {},
+              createMany: {
+                data: webhookIds.map(id => ({ webhookId: id })),
+              }
+            } : undefined,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            geo: geo || Prisma.JsonNull,
+            testVariants: testVariants || Prisma.JsonNull,
+            testStartedAt: testStartedAt ? new Date(testStartedAt) : null,
+            testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,
+            updatedAt: new Date(),
+            userId,
+          },
+        })
+      )
+    );
+  }
 
-  waitUntil(
-    Promise.all([
-      // propagate changes to redis and tinybird
-      propagateBulkLinkChanges({
-        links: updatedLinks,
-      }),
-      // if proxy is true and image is not stored in R2, upload image to R2
-      proxy &&
-        image &&
-        !isStored(image) &&
-        storage.upload(`images/${linkIds[0]}_${imageUrlNonce}`, image, {
-          width: 1200,
-          height: 630,
-        }),
-    ]),
-  );
-
-  return updatedLinks.map((link) => transformLink(link));
+  return [];
 }

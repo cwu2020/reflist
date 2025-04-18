@@ -6,8 +6,18 @@ import {
   EnvelopeArrowRight,
   UserDelete,
 } from "@dub/ui/icons";
+import { StatusBadge } from "@dub/ui";
 
-export const PartnerStatusBadges = {
+type StatusVariant = "neutral" | "new" | "success" | "pending" | "warning" | "error";
+
+interface PartnerStatusBadge {
+  label: string;
+  variant: StatusVariant;
+  className: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+export const PartnerStatusBadges: Record<string, PartnerStatusBadge> = {
   pending: {
     label: "Pending",
     variant: "pending",

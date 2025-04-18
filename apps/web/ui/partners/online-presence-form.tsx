@@ -39,13 +39,13 @@ type OnlinePresenceFormData = z.infer<typeof onlinePresenceSchema>;
 interface OnlinePresenceFormProps {
   variant?: "onboarding" | "settings";
   partner?: {
-    email: string | null;
-    website: string | null;
-    youtube: string | null;
-    twitter: string | null;
-    linkedin: string | null;
-    instagram: string | null;
-    tiktok: string | null;
+    email?: string | null | undefined;
+    website?: string | null | undefined;
+    youtube?: string | null | undefined;
+    twitter?: string | null | undefined;
+    linkedin?: string | null | undefined;
+    instagram?: string | null | undefined;
+    tiktok?: string | null | undefined;
   } | null;
   onSubmitSuccessful?: () => void;
 }

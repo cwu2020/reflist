@@ -4,8 +4,18 @@ import {
   CircleWarning,
   CircleXmark,
 } from "@dub/ui/icons";
+import { StatusBadge } from "@dub/ui";
 
-export const PayoutStatusBadges = {
+type StatusVariant = "neutral" | "new" | "success" | "pending" | "warning" | "error";
+
+interface PayoutStatusBadge {
+  label: string;
+  variant: StatusVariant;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+}
+
+export const PayoutStatusBadges: Record<string, PayoutStatusBadge> = {
   pending: {
     label: "Pending",
     variant: "pending",

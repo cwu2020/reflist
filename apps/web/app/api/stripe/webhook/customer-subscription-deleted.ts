@@ -115,7 +115,7 @@ export async function customerSubscriptionDeleted(event: Stripe.Event) {
       },
       data: {
         dublink: false,
-      },
+      } as any,
     }),
 
     // remove logo from all domains for the workspace

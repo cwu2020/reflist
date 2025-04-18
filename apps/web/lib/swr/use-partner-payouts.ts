@@ -22,7 +22,7 @@ export default function usePartnerPayouts(opts?: Record<string, string>) {
   );
 
   return {
-    payouts,
+    payouts: payouts as PartnerPayoutResponse[] | undefined,
     error,
     loading: !payouts && !error,
   };

@@ -2,7 +2,7 @@
 
 import { DUB_PARTNERS_ANALYTICS_INTERVAL } from "@/lib/analytics/constants";
 import { formatDateTooltip } from "@/lib/analytics/format-date-tooltip";
-import { IntervalOptions } from "@/lib/analytics/types";
+import { IntervalOptions, PartnerAnalyticsResponse, PartnerAnalyticsTimeseries } from "@/lib/analytics/types";
 import { useSyncedLocalStorage } from "@/lib/hooks/use-synced-local-storage";
 import usePartnerAnalytics from "@/lib/swr/use-partner-analytics";
 import { usePartnerEarningsTimeseries } from "@/lib/swr/use-partner-earnings-timeseries";
@@ -74,6 +74,18 @@ export default function ProgramPageClient() {
 
   const program = programEnrollment?.program;
   const defaultProgramLink = programEnrollment?.links?.[0];
+
+  const { data } = usePartnerAnalytics(
+    {
+      interval: "30d",
+      enabled: true,
+    },
+    {
+      keepPreviousData: false,
+    },
+  );
+
+  const timeseries = data?.timeseries as PartnerAnalyticsTimeseries | undefined;
 
   return (
     <MaxWidthWrapper className="pb-10">
@@ -302,13 +314,15 @@ function StatCard({
     end,
   });
 
-  const { data: timeseries, error } = usePartnerAnalytics({
+  const { data, error } = usePartnerAnalytics({
     groupBy: "timeseries",
     interval,
     start,
     end,
     event,
   });
+
+  const timeseries = data?.timeseries as PartnerAnalyticsTimeseries | undefined;
 
   return (
     <div className="group block rounded-lg border border-neutral-300 bg-white p-5 pb-3">

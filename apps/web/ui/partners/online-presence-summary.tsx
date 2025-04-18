@@ -17,7 +17,7 @@ const fields: {
     data: (partner) => ({
       value: partner.website ? getPrettyUrl(partner.website) : null,
       verified: !!partner.websiteVerifiedAt,
-      href: partner.website,
+      href: partner.website || null,
     }),
   },
   {
@@ -25,7 +25,7 @@ const fields: {
     data: (partner) => ({
       value: partner.youtube ? `@${partner.youtube}` : null,
       verified: !!partner.youtubeVerifiedAt,
-      href: `https://youtube.com/@${partner.youtube}`,
+      href: partner.youtube ? `https://youtube.com/@${partner.youtube}` : null,
     }),
   },
   {
@@ -33,15 +33,15 @@ const fields: {
     data: (partner) => ({
       value: partner.twitter ? `@${partner.twitter}` : null,
       verified: !!partner.twitterVerifiedAt,
-      href: `https://x.com/${partner.twitter}`,
+      href: partner.twitter ? `https://x.com/${partner.twitter}` : null,
     }),
   },
   {
     label: "LinkedIn",
     data: (partner) => ({
-      value: partner.linkedin,
+      value: partner.linkedin || null,
       verified: !!partner.linkedinVerifiedAt,
-      href: `https://linkedin.com/in/${partner.linkedin}`,
+      href: partner.linkedin ? `https://linkedin.com/in/${partner.linkedin}` : null,
     }),
   },
   {

@@ -75,17 +75,30 @@ export const PayoutResponseSchema = PayoutSchema.merge(
   }),
 );
 
-export const PartnerPayoutResponseSchema = PayoutResponseSchema.omit({
-  partner: true,
-  _count: true,
-}).merge(
-  z.object({
-    program: ProgramSchema.pick({
-      id: true,
-      name: true,
-      slug: true,
-      logo: true,
-      minPayoutAmount: true,
-    }),
+export const PartnerPayoutResponseSchema = z.object({
+  id: z.string(),
+  invoiceId: z.string().nullable(),
+  amount: z.number(),
+  currency: z.string(),
+  status: z.nativeEnum(PayoutStatus),
+  description: z.string().nullish(),
+  periodStart: z.date().nullable(),
+  periodEnd: z.date().nullable(),
+  quantity: z.number().nullable(),
+  createdAt: z.date(),
+  paidAt: z.date().nullable(),
+  program: ProgramSchema.pick({
+    id: true,
+    name: true,
+    slug: true,
+    logo: true,
+    minPayoutAmount: true,
   }),
-);
+  user: z
+    .object({
+      id: z.string(),
+      name: z.string().nullable(),
+      image: z.string().nullable(),
+    })
+    .nullish(),
+});
