@@ -23,7 +23,14 @@ export const GET = withWorkspace(
       analyticsPathParamsSchema.parse(params);
 
     // for backwards compatibility (we used to support /analytics/[endpoint] as well)
-    if (!oldType && oldEvent && VALID_ANALYTICS_ENDPOINTS.includes(oldEvent)) {
+    if (
+      !oldType &&
+      oldEvent &&
+      typeof oldEvent === "string" &&
+      VALID_ANALYTICS_ENDPOINTS.includes(
+        oldEvent as (typeof VALID_ANALYTICS_ENDPOINTS)[number],
+      )
+    ) {
       oldType = oldEvent;
       oldEvent = undefined;
     }
@@ -49,16 +56,16 @@ export const GET = withWorkspace(
     groupBy = oldType || groupBy;
 
     if (domain) {
-      await getDomainOrThrow({ workspace, domain });
+      await getDomainOrThrow({ workspace, domain: domain as string });
     }
 
     if (linkId || externalId || (domain && key)) {
       link = await getLinkOrThrow({
         workspaceId: workspace.id,
-        linkId,
-        externalId,
-        domain,
-        key,
+        linkId: linkId as string | undefined,
+        externalId: externalId as string | undefined,
+        domain: domain as string | undefined,
+        key: key as string | undefined,
       });
     }
 
@@ -69,7 +76,7 @@ export const GET = withWorkspace(
       selectedFolder = await verifyFolderAccess({
         workspace,
         userId: session.user.id,
-        folderId: folderIdToVerify,
+        folderId: folderIdToVerify as string,
         requiredPermission: "folders.read",
       });
     }
@@ -77,9 +84,9 @@ export const GET = withWorkspace(
     validDateRangeForPlan({
       plan: workspace.plan,
       dataAvailableFrom: workspace.createdAt,
-      interval,
-      start,
-      end,
+      interval: interval as string | undefined,
+      start: start as Date | null | undefined,
+      end: end as Date | null | undefined,
       throwError: true,
     });
 
