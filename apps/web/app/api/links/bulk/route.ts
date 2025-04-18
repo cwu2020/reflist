@@ -314,7 +314,7 @@ export const PATCH = withWorkspace(
           message: `Invalid tagIds detected: ${tagIds.filter((tagId) => tags.find(({ id }) => tagId === id) === undefined).join(", ")}`,
         });
       }
-    } else if (tagNames && tagNames.length > 0) {
+    } else if (tagNames && Array.isArray(tagNames) && tagNames.length > 0) {
       const tags = await prisma.tag.findMany({
         select: {
           name: true,

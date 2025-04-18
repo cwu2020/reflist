@@ -465,6 +465,13 @@ export const bulkUpdateLinksBodySchema = z.object({
             example: "https://google.com",
           })
           .optional(),
+        tagNames: z
+          .union([z.string(), z.array(z.string())])
+          .transform((v) => (Array.isArray(v) ? v : v.split(",")))
+          .optional()
+          .describe(
+            "The unique name of the tags assigned to the short link (case insensitive).",
+          ),
       }),
     ),
 });
