@@ -119,7 +119,7 @@ export const WorkspaceSchema = z
       .array(z.string())
       .nullable()
       .describe("Specifies hostnames permitted for client-side click tracking.")
-      .openapi({ example: ["dub.sh"] }),
+      .openapi({ example: ["refl.ist"] }),
   })
   .openapi({
     title: "Workspace",

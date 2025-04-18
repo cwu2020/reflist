@@ -172,7 +172,7 @@ function PartnerLinkModalContent({
   const destinationDomain =
     getDomainWithoutWWW(programEnrollment?.program?.url || "https://dub.co") ??
     "dub.co";
-  const shortLinkDomain = programEnrollment?.program?.domain ?? "dub.sh";
+  const shortLinkDomain = programEnrollment?.program?.domain ?? "refl.ist";
 
   const [lockKey, setLockKey] = useState(Boolean(link));
   const [isLoading, setIsLoading] = useState(false);

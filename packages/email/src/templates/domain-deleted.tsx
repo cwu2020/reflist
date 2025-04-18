@@ -16,7 +16,7 @@ import { Footer } from "../components/footer";
 
 export function DomainDeleted({
   email = "panic@thedis.co",
-  domain = "dub.sh",
+  domain = "refl.ist",
   workspaceSlug = "dub",
 }: {
   email: string;

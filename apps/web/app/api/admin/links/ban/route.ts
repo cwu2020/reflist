@@ -10,7 +10,7 @@ import {
 } from "@dub/utils";
 import { NextResponse } from "next/server";
 
-// DELETE /api/admin/links/ban – ban a dub.sh link by key
+// DELETE /api/admin/links/ban – ban a refl.ist link by key
 export const DELETE = withAdmin(async ({ searchParams }) => {
   const { domain, key } = domainKeySchema.parse(searchParams);
 

@@ -215,7 +215,7 @@ export const createLinkBodySchema = z.object({
     .max(190)
     .optional()
     .describe(
-      "The domain of the short link. If not provided, the primary domain for the workspace will be used (or `dub.sh` if the workspace has no domains).",
+      "The domain of the short link. If not provided, the primary domain for the workspace will be used (or `refl.ist` if the workspace has no domains).",
     ),
   key: z
     .string()
@@ -475,7 +475,7 @@ export const LinkSchema = z
     domain: z
       .string()
       .describe(
-        "The domain of the short link. If not provided, the primary domain for the workspace will be used (or `dub.sh` if the workspace has no domains).",
+        "The domain of the short link. If not provided, the primary domain for the workspace will be used (or `refl.ist` if the workspace has no domains).",
       ),
     key: z
       .string()
@@ -615,13 +615,13 @@ export const LinkSchema = z
       .string()
       .url()
       .describe(
-        "The full URL of the short link, including the https protocol (e.g. `https://dub.sh/try`).",
+        "The full URL of the short link, including the https protocol (e.g. `https://refl.ist/try`).",
       ),
     qrCode: z
       .string()
       .url()
       .describe(
-        "The full URL of the QR code for the short link (e.g. `https://api.dub.co/qr?url=https://dub.sh/try`).",
+        "The full URL of the QR code for the short link (e.g. `https://api.dub.co/qr?url=https://refl.ist/try`).",
       ),
     utm_source: z
       .string()

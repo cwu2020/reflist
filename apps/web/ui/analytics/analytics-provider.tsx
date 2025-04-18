@@ -320,7 +320,7 @@ export default function AnalyticsProvider({
         saleUnit,
         view,
         queryString,
-        domain: domain || undefined, // domain for the link (e.g. dub.sh, stey.me, etc.)
+        domain: domain || undefined, // domain for the link (e.g. refl.ist, stey.me, etc.)
         key: key ? decodeURIComponent(key) : undefined, // link key (e.g. github, weathergpt, etc.)
         url: dashboardProps?.url, // url for the link (only for public stats pages)
         start, // start of time period

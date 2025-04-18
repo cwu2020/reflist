@@ -169,7 +169,7 @@ export const DUB_DEMO_LINKS = [
   },
   {
     id: "cltshzzpd0005126z3rd2lvo4",
-    domain: "dub.sh",
+    domain: "refl.ist",
     key: "try",
     dashboardId: "dash_bUNOfMQVcKS0VMDa2HaYhOjg",
   },

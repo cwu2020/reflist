@@ -2,7 +2,7 @@ export const E2E_USER_ID = "clxz1q7c7000hbqx5ckv4r82h";
 export const E2E_WORKSPACE_ID = "ws_clrei1gld0002vs9mzn93p8ik";
 
 export const E2E_LINK = {
-  domain: "dub.sh",
+  domain: "refl.ist",
   url: "https://github.com/dubinc",
 };
 

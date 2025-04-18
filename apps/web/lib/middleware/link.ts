@@ -167,7 +167,7 @@ export default async function LinkMiddleware(
 
   const url = testUrl || cachedLink.url;
 
-  // by default, we only index default dub domain links (e.g. dub.sh)
+  // by default, we only index default dub domain links (e.g. refl.ist)
   // everything else is not indexed by default, unless the user has explicitly set it to be indexed
   const shouldIndex = isDubDomain(domain) || doIndex === true;
 

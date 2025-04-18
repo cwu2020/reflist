@@ -118,7 +118,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "app.dub.sh",
+            value: "app.refl.ist",
           },
         ],
         destination: "https://app.dub.co",
@@ -130,7 +130,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "app.dub.sh",
+            value: "app.refl.ist",
           },
         ],
         destination: "https://app.dub.co/:path*",
@@ -144,7 +144,7 @@ module.exports = withAxiom({
             has: [
               {
                 type: "host",
-                value: "dub.sh",
+                value: "refl.ist",
               },
             ],
             destination: `https://dub.co/${segment}`,
@@ -156,7 +156,7 @@ module.exports = withAxiom({
             has: [
               {
                 type: "host",
-                value: "dub.sh",
+                value: "refl.ist",
               },
             ],
             destination: `https://dub.co/${segment}/:path*`,
@@ -170,7 +170,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "dub.sh",
+            value: "refl.ist",
           },
         ],
         destination: "https://dub.co/tools/metatags",
@@ -194,7 +194,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "staging.dub.sh",
+            value: "staging.refl.ist",
           },
         ],
         destination: "https://dub.co",
@@ -206,7 +206,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "preview.dub.sh",
+            value: "preview.refl.ist",
           },
         ],
         destination: "https://preview.dub.co",
@@ -218,7 +218,7 @@ module.exports = withAxiom({
         has: [
           {
             type: "host",
-            value: "admin.dub.sh",
+            value: "admin.refl.ist",
           },
         ],
         destination: "https://admin.dub.co",

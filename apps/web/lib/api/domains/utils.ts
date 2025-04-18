@@ -5,8 +5,10 @@ import { DubApiError } from "../errors";
 export const isValidDomain = (domain: string) => {
   return (
     validDomainRegex.test(domain) &&
-    // make sure the domain doesn't contain dub.co/dub.sh/d.to
-    !/^(dub\.co|.*\.dub\.co|dub\.sh|.*\.dub\.sh|d\.to|.*\.d\.to)$/i.test(domain)
+    // make sure the domain doesn't contain thereflist.com/refl.ist/d.to
+    !/^(thereflist\.com|.*\.thereflist\.com|refl\.ist|.*\.refl\.ist|d\.to|.*\.d\.to)$/i.test(
+      domain,
+    )
   );
 };
 

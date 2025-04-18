@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 
 export const parse = (req: NextRequest) => {
   let domain = req.headers.get("host") as string;
-  // path is the path of the URL (e.g. dub.sh/stats/github -> /stats/github)
+  // path is the path of the URL (e.g. refl.ist/stats/github -> /stats/github)
   let path = req.nextUrl.pathname;
 
   // remove www. from domain and convert to lowercase
@@ -25,7 +25,7 @@ export const parse = (req: NextRequest) => {
   const fullPath = `${path}${searchParamsString}`;
 
   // Here, we are using decodeURIComponent to handle foreign languages like Hebrew
-  const key = decodeURIComponent(path.split("/")[1]); // key is the first part of the path (e.g. dub.sh/stats/github -> stats)
+  const key = decodeURIComponent(path.split("/")[1]); // key is the first part of the path (e.g. refl.ist/stats/github -> stats)
   const fullKey = decodeURIComponent(path.slice(1)); // fullKey is the full path without the first slash (to account for multi-level subpaths, e.g. d.to/github/repo -> github/repo)
 
   return {

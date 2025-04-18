@@ -42,7 +42,7 @@ export async function keyChecks({
   }
 
   if (isDubDomain(domain) && process.env.NEXT_PUBLIC_IS_DUB) {
-    if (domain === "dub.sh" || domain === "dub.link") {
+    if (domain === "refl.ist" || domain === "dub.link") {
       if (DEFAULT_REDIRECTS[key] || RESERVED_SLUGS.includes(key)) {
         return {
           error: "Duplicate key: This short link already exists.",

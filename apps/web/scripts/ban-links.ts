@@ -6,7 +6,7 @@ import { linkCache } from "../lib/api/links/cache";
 async function main() {
   const links = await prisma.link.findMany({
     where: {
-      domain: "dub.sh",
+      domain: "refl.ist",
       url: {
         contains: "kurtdavisjr.com",
       },

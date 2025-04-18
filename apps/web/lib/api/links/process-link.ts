@@ -155,13 +155,13 @@ export async function processLink<T extends Record<string, any>>({
 
   // if domain is not defined, set it to the workspace's primary domain
   if (!domain) {
-    domain = domains?.find((d) => d.primary)?.slug || "dub.sh";
+    domain = domains?.find((d) => d.primary)?.slug || "refl.ist";
   }
 
-  // checks for dub.sh and dub.link links
-  if (domain === "dub.sh" || domain === "dub.link") {
+  // checks for refl.ist and dub.link links
+  if (domain === "refl.ist") {
     // for dub.link: check if workspace plan is pro+
-    if (domain === "dub.link" && (!workspace || workspace.plan === "free")) {
+    if (domain === "refl.ist" && (!workspace || workspace.plan === "free")) {
       return {
         link: payload,
         error:
@@ -170,8 +170,8 @@ export async function processLink<T extends Record<string, any>>({
       };
     }
 
-    // for dub.sh: check if user exists (if userId is passed)
-    if (domain === "dub.sh" && userId) {
+    // for refl.ist: check if user exists (if userId is passed)
+    if (domain === "refl.ist" && userId) {
       const userExists = await checkIfUserExists(userId);
       if (!userExists) {
         return {

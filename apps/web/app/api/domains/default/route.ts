@@ -16,30 +16,20 @@ export const GET = withWorkspace(
         projectId: workspace.id,
       },
       select: {
-        dubsh: true,
-        dublink: true,
-        chatgpt: true,
-        sptifi: true,
-        gitnew: true,
-        callink: true,
-        amznid: true,
-        ggllink: true,
-        figpage: true,
+        reflist: true,
       },
     });
 
     let defaultDomains: string[] = [];
 
-    if (data) {
-      defaultDomains = Object.keys(data)
-        .filter((key) => data[key])
-        .map(
-          (domain) =>
-            DUB_DOMAINS_ARRAY.find((d) => d.replace(".", "") === domain)!,
-        )
-        .filter((domain) =>
-          search ? domain?.toLowerCase().includes(search.toLowerCase()) : true,
-        );
+    if (data?.reflist) {
+      defaultDomains = ["refl.ist"];
+    }
+
+    if (search) {
+      defaultDomains = defaultDomains.filter((domain) =>
+        domain.toLowerCase().includes(search.toLowerCase())
+      );
     }
 
     return NextResponse.json(defaultDomains);
@@ -73,15 +63,7 @@ export const PATCH = withWorkspace(
         projectId: workspace.id,
       },
       data: {
-        dubsh: defaultDomains.includes("dub.sh"),
-        dublink: defaultDomains.includes("dub.link"),
-        chatgpt: defaultDomains.includes("chatg.pt"),
-        sptifi: defaultDomains.includes("spti.fi"),
-        gitnew: defaultDomains.includes("git.new"),
-        callink: defaultDomains.includes("cal.link"),
-        amznid: defaultDomains.includes("amzn.id"),
-        ggllink: defaultDomains.includes("ggl.link"),
-        figpage: defaultDomains.includes("fig.page"),
+        reflist: defaultDomains.includes("refl.ist"),
       },
     });
 

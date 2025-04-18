@@ -6,7 +6,7 @@ import { env } from "../utils/env";
 import { IntegrationHarness } from "../utils/integration";
 
 const filter = {
-  domain: "dub.sh",
+  domain: "refl.ist",
   key: "checkly-check",
   interval: "30d",
 };

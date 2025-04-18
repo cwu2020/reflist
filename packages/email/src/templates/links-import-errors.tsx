@@ -24,12 +24,12 @@ export function LinksImportErrors({
   provider = "CSV",
   errorLinks = [
     {
-      domain: "dub.sh",
+      domain: "refl.ist",
       key: "123",
       error: "Invalid URL",
     },
     {
-      domain: "dub.sh",
+      domain: "refl.ist",
       key: "456",
       error: "Invalid URL",
     },

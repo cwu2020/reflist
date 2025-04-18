@@ -7,9 +7,9 @@ const common = {
   os: "Mac OS",
 };
 
-const dubLink = {
+const reflistLink = {
   id: "1",
-  domain: "dub.link",
+  domain: "refl.ist",
   key: "uxUrVCz",
   shortLink: "https://dub.co/uxUrVCz",
   url: "https://dub.co/",
@@ -54,7 +54,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "NA",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
     },
     {
       event: "click",
@@ -67,7 +67,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "NA",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
     },
     {
       event: "click",
@@ -97,7 +97,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "NA",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
       customer: steven,
     },
     {
@@ -113,7 +113,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "AS",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
       customer: kiran,
     },
     {
@@ -152,7 +152,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "NA",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
       customer: steven,
     },
     {
@@ -173,7 +173,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "NA",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
       customer: tim,
     },
     {
@@ -194,7 +194,7 @@ export const EXAMPLE_EVENTS_DATA = {
         continent: "AS",
         ...common,
       },
-      link: dubLink,
+      link: reflistLink,
       customer: kiran,
     },
   ],
