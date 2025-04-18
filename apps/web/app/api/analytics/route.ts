@@ -52,7 +52,10 @@ export const GET = withWorkspace(
 
     let link: Link | null = null;
 
-    event = oldEvent || event;
+    // Only assign oldEvent to event if it's a valid event type
+    if (oldEvent && typeof oldEvent === "string" && ["clicks", "sales", "leads", "composite"].includes(oldEvent)) {
+      event = oldEvent as "clicks" | "sales" | "leads" | "composite";
+    }
     groupBy = oldType || groupBy;
 
     if (domain) {
