@@ -42,8 +42,9 @@ export const getRelativeUrl = (url: string, imageUrl: string) => {
   if (isValidUrl(imageUrl)) {
     return imageUrl;
   }
-  const { protocol, host } = new URL(url);
-  const baseURL = `${protocol}//${host}`;
+  // const { protocol, host } = new URL(url);
+  // const baseURL = `${protocol}//${host}`;
+  const baseURL = "https://thereflist.com";
   return new URL(imageUrl, baseURL).toString();
 };
 
