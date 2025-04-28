@@ -37,6 +37,6 @@ test("GET /links", async (ctx) => {
     projectId,
     workspaceId,
     shortLink: `https://${domain}/${firstLink.key}`,
-    qrCode: `https://api.dub.co/qr?url=https://${domain}/${firstLink.key}?qr=1`,
+    qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${firstLink.key}?qr=1`,
   });
 });

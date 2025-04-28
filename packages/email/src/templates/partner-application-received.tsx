@@ -54,7 +54,7 @@ export function PartnerApplicationReceived({
     slug: string;
   };
 }) {
-  const applicationUrl = `https://app.dub.co/${workspace.slug}/programs/${program.id}/partners?status=pending&partnerId=${partner.id}`;
+  const applicationUrl = `https://app.thereflist.com/${workspace.slug}/programs/${program.id}/partners?status=pending&partnerId=${partner.id}`;
 
   return (
     <Html>
@@ -159,7 +159,7 @@ export function PartnerApplicationReceived({
 
             <Footer
               email={email}
-              notificationSettingsUrl={`https://app.dub.co/${workspace.slug}/settings/notifications`}
+              notificationSettingsUrl={`https://app.thereflist.com/${workspace.slug}/settings/notifications`}
             />
           </Container>
         </Body>

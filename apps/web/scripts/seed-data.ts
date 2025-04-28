@@ -5,7 +5,7 @@ const links = [
   {
     id: "clqo10sum0006js08vutzfxt3",
     shortLink: "d.to/try",
-    url: "https://app.dub.co/",
+    url: "https://app.thereflist.com/",
     domain: "d.to",
   },
   {

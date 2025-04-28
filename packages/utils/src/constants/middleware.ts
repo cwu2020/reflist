@@ -1,20 +1,20 @@
 export const DEFAULT_REDIRECTS = {
   home: "https://dub.co",
   dub: "https://dub.co",
-  signin: "https://app.dub.co/login",
-  login: "https://app.dub.co/login",
-  register: "https://app.dub.co/register",
-  signup: "https://app.dub.co/register",
-  app: "https://app.dub.co",
-  dashboard: "https://app.dub.co",
-  links: "https://app.dub.co/links",
-  settings: "https://app.dub.co/settings",
-  welcome: "https://app.dub.co/onboarding/welcome",
+  signin: "https://app.thereflist.com/login",
+  login: "https://app.thereflist.com/login",
+  register: "https://app.thereflist.com/register",
+  signup: "https://app.thereflist.com/register",
+  app: "https://app.thereflist.com",
+  dashboard: "https://app.thereflist.com",
+  links: "https://app.thereflist.com/links",
+  settings: "https://app.thereflist.com/settings",
+  welcome: "https://app.thereflist.com/onboarding/welcome",
   discord: "https://twitter.com/dubdotco", // placeholder for now
 };
 
 export const DUB_HEADERS = {
-  "x-powered-by": "Dub.co - Link management for modern marketing teams",
+  "x-powered-by": "RefList - Affiliate Links for Everyone",
 };
 
 export const REDIRECTION_QUERY_PARAM = "redir_url";

@@ -15,10 +15,10 @@ test("GET /metatags", async (ctx) => {
 
   expect(status).toEqual(200);
   expect(metatags).toStrictEqual({
-    title: "Dub.co - Link Management for Modern Marketing Teams",
+    title: "RefList - Affiliate Links for Everyone",
     description:
       "Dub.co is the open-source link management platform for modern marketing teams to create marketing campaigns, link sharing features, and referral programs.",
     image: "https://assets.dub.co/thumbnail.jpg",
-    poweredBy: "Dub.co - Link management for modern marketing teams",
+    poweredBy: "RefList - Affiliate Links for Everyone",
   });
 });

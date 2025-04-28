@@ -65,7 +65,7 @@ export function LinksImportErrors({
               {Intl.NumberFormat("en-us").format(errorLinks.length)} links from{" "}
               {provider} failed to import into your Dub workspace,{" "}
               <Link
-                href={`https://app.dub.co/${workspaceSlug}`}
+                href={`https://app.thereflist.com/${workspaceSlug}`}
                 className="font-medium text-blue-600 no-underline"
               >
                 {workspaceName}↗

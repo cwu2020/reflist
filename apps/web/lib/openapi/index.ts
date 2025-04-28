@@ -39,7 +39,7 @@ export const document = createDocument({
   },
   servers: [
     {
-      url: "https://api.dub.co",
+      url: "https://api.thereflist.com",
       description: "Production API",
     },
   ],

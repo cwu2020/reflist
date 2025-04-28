@@ -46,7 +46,7 @@ export function DomainTransferred({
               )}
               has been transferred to the workspace{" "}
               <Link
-                href={`https://app.dub.co/${newWorkspace.slug}/settings/domains`}
+                href={`https://app.thereflist.com/${newWorkspace.slug}/settings/domains`}
                 className="font-medium text-blue-600 no-underline"
               >
                 {newWorkspace.name}↗

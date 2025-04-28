@@ -429,7 +429,7 @@ export function LinksGraphic(props: SVGProps<SVGSVGElement>) {
           style={{ whiteSpace: "pre" }}
         >
           <tspan x="110" y="179.773">
-            app.dub.co/register
+            app.thereflist.com/register
           </tspan>
         </text>
         <path

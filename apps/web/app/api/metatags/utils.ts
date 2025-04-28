@@ -7,7 +7,7 @@ import { parse } from "node-html-parser";
 export const getHtml = async (url: string) => {
   return await fetchWithTimeout(url, {
     headers: {
-      "User-Agent": "Dub.co Metatags API (https://api.dub.co/metatags)",
+      "User-Agent": "RefList Metatags API (https://api.thereflist.com/metatags)",
     },
   })
     .then((r) => r.text())

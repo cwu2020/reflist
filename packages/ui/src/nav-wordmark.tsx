@@ -119,7 +119,7 @@ export function NavWordmark({
               <ContextMenuButton
                 text="Dashboard"
                 variant="outline"
-                onClick={() => window.open("https://app.dub.co", "_blank")}
+                onClick={() => window.open("https://app.thereflist.com", "_blank")}
                 icon={<LayoutGrid strokeWidth={2} className="h-4 w-4" />}
               />
             )}

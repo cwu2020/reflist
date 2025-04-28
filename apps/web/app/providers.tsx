@@ -29,7 +29,7 @@ export default function RootProviders({ children }: { children: ReactNode }) {
   return (
     <PostHogProvider client={posthog}>
       <PlausibleProvider
-        domain="dub.co"
+        domain="thereflist.com"
         revenue
         scriptProps={{
           src: "/_proxy/plausible/script.js",
@@ -43,12 +43,12 @@ export default function RootProviders({ children }: { children: ReactNode }) {
           <PosthogPageview />
           {children}
           <DubAnalytics
-            apiHost="/_proxy/dub"
+            apiHost="/_proxy/reflist"
             cookieOptions={{
-              domain: process.env.VERCEL === "1" ? ".dub.co" : "localhost",
+              domain: process.env.VERCEL === "1" ? ".thereflist.com" : "localhost",
             }}
             domainsConfig={{
-              refer: "refer.dub.co",
+              refer: "refer.thereflist.com",
             }}
           />
         </KeyboardShortcutProvider>

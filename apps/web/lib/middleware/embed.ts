@@ -16,7 +16,7 @@ export default async function EmbedMiddleware(req: NextRequest) {
     const tokenData = await embedTokenClass.get(token);
 
     if (tokenData) {
-      return NextResponse.rewrite(new URL(`/app.dub.co${fullPath}`, req.url), {
+      return NextResponse.rewrite(new URL(`/app.thereflist.com${fullPath}`, req.url), {
         headers: {
           "Set-Cookie": `${REFERRALS_EMBED_PUBLIC_TOKEN_COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=None; Path=/`,
         },

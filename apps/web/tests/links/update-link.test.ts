@@ -61,7 +61,7 @@ describe.sequential("PATCH /links/{linkId}", async () => {
       expiresAt: "2030-04-16T17:00:00.000Z",
       projectId,
       shortLink: `https://${domain}/${toUpdate.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
     });
 
     // Fetch the link
@@ -79,7 +79,7 @@ describe.sequential("PATCH /links/{linkId}", async () => {
       expiresAt: "2030-04-16T17:00:00.000Z",
       projectId,
       shortLink: `https://${domain}/${toUpdate.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
     });
   });
 
@@ -104,7 +104,7 @@ describe.sequential("PATCH /links/{linkId}", async () => {
       expiresAt: "2030-04-16T17:00:00.000Z",
       projectId,
       shortLink: `https://${domain}/${toUpdate.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
     });
 
     // Fetch the link
@@ -136,7 +136,7 @@ describe.sequential("PATCH /links/{linkId}", async () => {
       expiresAt: "2030-04-16T17:00:00.000Z",
       projectId,
       shortLink: `https://${domain}/${toUpdate.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
     });
 
     // Fetch the link
@@ -169,7 +169,7 @@ describe.sequential("PATCH /links/{linkId}", async () => {
       expiresAt: "2030-04-16T17:00:00.000Z",
       projectId,
       shortLink: `https://${domain}/${toUpdate.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
     });
 
     // Fetch the link
@@ -236,7 +236,7 @@ describe.sequential(
         expiresAt: "2030-04-16T17:00:00.000Z",
         projectId,
         shortLink: `https://${domain}/${toUpdate.key}`,
-        qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+        qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
       });
 
       // Fetch the link
@@ -254,7 +254,7 @@ describe.sequential(
         expiresAt: "2030-04-16T17:00:00.000Z",
         projectId,
         shortLink: `https://${domain}/${toUpdate.key}`,
-        qrCode: `https://api.dub.co/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
+        qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${toUpdate.key}?qr=1`,
       });
     });
   },

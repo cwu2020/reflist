@@ -43,7 +43,7 @@ export const sendEmailViaResend = async (opts: ResendEmailOptions) => {
     scheduledAt,
     ...(variant === "marketing" && {
       headers: {
-        "List-Unsubscribe": "https://app.dub.co/account/settings",
+        "List-Unsubscribe": "https://app.thereflist.com/account/settings",
       },
     }),
   });

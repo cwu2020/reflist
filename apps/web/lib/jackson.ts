@@ -12,7 +12,7 @@ export const samlAudience = "https://saml.dub.co";
 const opts: JacksonOption = {
   externalUrl:
     process.env.NODE_ENV === "production"
-      ? "https://api.dub.co"
+      ? "https://api.thereflist.com"
       : APP_DOMAIN_WITH_NGROK,
   samlPath:
     process.env.NODE_ENV === "production"

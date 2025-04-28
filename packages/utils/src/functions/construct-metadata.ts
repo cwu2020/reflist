@@ -47,7 +47,7 @@ export function constructMetadata({
       fullTitle ||
       (title
         ? `${title} | Dub.co`
-        : "Dub.co - Link Management for Modern Marketing Teams"),
+        : "RefList - Affiliate Links for Everyone"),
     description,
     openGraph: {
       title,

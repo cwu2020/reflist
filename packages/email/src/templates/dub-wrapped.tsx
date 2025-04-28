@@ -350,7 +350,7 @@ const StatTable = ({
                 {title === "Top Links" ? (
                   <div className="py-2">
                     <Link
-                      href={`https://app.dub.co/${workspaceSlug}/analytics?domain=${domain}&key=${path}&interval=1y`}
+                      href={`https://app.thereflist.com/${workspaceSlug}/analytics?domain=${domain}&key=${path}&interval=1y`}
                       className="font-medium text-black underline underline-offset-2"
                     >
                       {smartTruncate(item, 33)} ↗

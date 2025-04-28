@@ -65,8 +65,8 @@ export function NewSaleAlertProgramOwner({
     earnings: number;
   };
 }) {
-  const salesLink = `https://app.dub.co/${workspace.slug}/programs/${program.id}/sales?partnerId=${partner.id}`;
-  const notificationPreferencesLink = `https://app.dub.co/${workspace.slug}/settings/notifications`;
+  const salesLink = `https://app.thereflist.com/${workspace.slug}/programs/${program.id}/sales?partnerId=${partner.id}`;
+  const notificationPreferencesLink = `https://app.thereflist.com/${workspace.slug}/settings/notifications`;
 
   const saleAmountInDollars = currencyFormatter(sale.amount / 100, {
     minimumFractionDigits: 2,

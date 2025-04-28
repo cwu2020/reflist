@@ -196,7 +196,7 @@ export function Nav({
                 ) : !isLoading ? (
                   <>
                     <Link
-                      href="https://app.dub.co/login"
+                      href="https://app.thereflist.com/login"
                       className={cn(
                         buttonVariants({ variant: "secondary" }),
                         "flex h-8 items-center rounded-lg border px-4 text-sm",
@@ -206,7 +206,7 @@ export function Nav({
                       Log in
                     </Link>
                     <Link
-                      href="https://app.dub.co/register"
+                      href="https://app.thereflist.com/register"
                       className={cn(
                         buttonVariants({ variant: "primary" }),
                         "flex h-8 items-center rounded-lg border px-4 text-sm",

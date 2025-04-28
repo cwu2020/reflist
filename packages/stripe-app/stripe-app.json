@@ -50,9 +50,9 @@
     ],
     "content_security_policy": {
       "connect-src": [
-        "https://api.dub.co/oauth/",
+        "https://api.thereflist.com/oauth/",
         "https://api-staging.dub.co/oauth/",
-        "https://api.dub.co/stripe/integration",
+        "https://api.thereflist.com/stripe/integration",
         "https://api-staging.dub.co/stripe/integration"
       ],
       "image-src": null,
@@ -64,7 +64,7 @@
     "url": ""
   },
   "allowed_redirect_uris": [
-    "https://app.dub.co/api/stripe/integration/callback",
+    "https://app.thereflist.com/api/stripe/integration/callback",
     "https://preview.dub.co/api/stripe/integration/callback"
   ],
   "stripe_api_access_type": "oauth",

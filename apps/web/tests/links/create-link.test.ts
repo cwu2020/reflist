@@ -43,7 +43,7 @@ describe.sequential("POST /links", async () => {
       projectId: null,
       workspaceId: null,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
   });
 
@@ -76,7 +76,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -106,7 +106,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -139,7 +139,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -179,7 +179,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -209,7 +209,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -242,7 +242,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -276,7 +276,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -310,7 +310,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -365,7 +365,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
       tags: expect.arrayContaining(tags),
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
@@ -401,7 +401,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
   });
 
@@ -433,7 +433,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });
@@ -460,7 +460,7 @@ describe.sequential("POST /links", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
       webhookIds: [E2E_WEBHOOK_ID],
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
@@ -500,7 +500,7 @@ describe.sequential("POST /links", async () => {
       testCompletedAt: testCompletedAt.toISOString(),
       trackConversion: true,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
   });
 });
@@ -532,7 +532,7 @@ describe.sequential("POST /links?workspaceId=xxx", async () => {
       projectId,
       workspaceId,
       shortLink: `https://${domain}/${link.key}`,
-      qrCode: `https://api.dub.co/qr?url=https://${domain}/${link.key}?qr=1`,
+      qrCode: `https://api.thereflist.com/qr?url=https://${domain}/${link.key}?qr=1`,
     });
     expect(LinkSchema.strict().parse(link)).toBeTruthy();
   });

@@ -40,7 +40,7 @@ export function DomainDeleted({
               Your domain <code className="text-purple-600">{domain}</code> for
               your Dub workspace{" "}
               <Link
-                href={`https://app.dub.co/${workspaceSlug}`}
+                href={`https://app.thereflist.com/${workspaceSlug}`}
                 className="font-medium text-blue-600 no-underline"
               >
                 {workspaceSlug}↗
@@ -55,7 +55,7 @@ export function DomainDeleted({
             <Section className="my-8">
               <Link
                 className="rounded-lg bg-black px-6 py-3 text-center text-[12px] font-semibold text-white no-underline"
-                href={`https://app.dub.co/${workspaceSlug}/settings/domains`}
+                href={`https://app.thereflist.com/${workspaceSlug}/settings/domains`}
               >
                 Add a domain
               </Link>
@@ -66,7 +66,7 @@ export function DomainDeleted({
             </Text>
             <Footer
               email={email}
-              notificationSettingsUrl={`https://app.dub.co/${workspaceSlug}/settings/notifications`}
+              notificationSettingsUrl={`https://app.thereflist.com/${workspaceSlug}/settings/notifications`}
             />
           </Container>
         </Body>

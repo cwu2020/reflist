@@ -32,7 +32,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
 
         <div className="grid gap-2 pb-8 pt-4">
           <p className="text-xs text-neutral-600">
-            © {new Date().getFullYear()} Dub Technologies, Inc.
+            © {new Date().getFullYear()} RefList, Inc.
           </p>
           <div className="flex gap-3 text-center text-xs text-neutral-500 underline underline-offset-2">
             <a

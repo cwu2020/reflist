@@ -47,7 +47,7 @@ export function NewSaleAlertPartner({
     earnings: number;
   };
 }) {
-  const linkToEarnings = `https://partners.dub.co/programs/${program.slug}/earnings`;
+  const linkToEarnings = `https://partners.thereflist.com/programs/${program.slug}/earnings`;
 
   const earningsInDollars = currencyFormatter(sale.earnings / 100, {
     minimumFractionDigits: 2,

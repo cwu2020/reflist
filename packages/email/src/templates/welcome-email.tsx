@@ -52,7 +52,7 @@ export function WelcomeEmail({
             <Text className="ml-1 text-sm leading-4 text-black">
               ◆ Create a{" "}
               <Link
-                href="https://app.dub.co?newWorkspace=true"
+                href="https://app.thereflist.com?newWorkspace=true"
                 className="font-medium text-blue-600 no-underline"
               >
                 new workspace

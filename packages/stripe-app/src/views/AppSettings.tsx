@@ -168,7 +168,7 @@ const AppSettings = ({ userContext, oauthContext }: ExtensionContextValue) => {
           footerContent={
             <>
               Don&apos;t have an Dub account?{" "}
-              <Link href="https://app.dub.co/register" target="_blank" external>
+              <Link href="https://app.thereflist.com/register" target="_blank" external>
                 Sign up
               </Link>
             </>

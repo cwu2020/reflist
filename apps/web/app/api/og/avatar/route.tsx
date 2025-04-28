@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     "Access-Control-Allow-Headers": "Content-Type",
   };
 
-  if (origin && origin.endsWith(".dub.co")) {
+  if (origin && origin.endsWith(".thereflist.com")) {
     corsHeaders["Access-Control-Allow-Origin"] = origin;
   }
 

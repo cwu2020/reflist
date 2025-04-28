@@ -84,7 +84,7 @@ export function PartnerApplicationApproved({
             <Text className="ml-1 text-sm leading-5 text-black">
               1. Find your unique referral links in the{" "}
               <Link
-                href={`https://partners.dub.co/programs/${program.slug}/links`}
+                href={`https://partners.thereflist.com/programs/${program.slug}/links`}
               >
                 Links
               </Link>{" "}
@@ -98,12 +98,12 @@ export function PartnerApplicationApproved({
 
             <Text className="ml-1 text-sm leading-5 text-black">
               3. Track your{" "}
-              <Link href={`https://partners.dub.co/programs/${program.slug}`}>
+              <Link href={`https://partners.thereflist.com/programs/${program.slug}`}>
                 link performance
               </Link>{" "}
               and{" "}
               <Link
-                href={`https://partners.dub.co/programs/${program.slug}/earnings`}
+                href={`https://partners.thereflist.com/programs/${program.slug}/earnings`}
               >
                 earnings
               </Link>{" "}
@@ -113,7 +113,7 @@ export function PartnerApplicationApproved({
             {!partner.payoutsEnabled && (
               <Text className="ml-1 text-sm leading-5 text-black">
                 4. Connect your Stripe account to{" "}
-                <Link href="https://partners.dub.co/settings/payouts">
+                <Link href="https://partners.thereflist.com/settings/payouts">
                   enable payouts
                 </Link>
                 .
@@ -125,7 +125,7 @@ export function PartnerApplicationApproved({
             <Section className="mb-8 mt-8">
               <Link
                 className="rounded-lg bg-neutral-900 px-6 py-3 text-[13px] font-semibold text-white no-underline"
-                href={`https://partners.dub.co/programs/${program.slug}`}
+                href={`https://partners.thereflist.com/programs/${program.slug}`}
               >
                 Go to your dashboard
               </Link>

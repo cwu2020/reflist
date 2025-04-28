@@ -5,7 +5,7 @@
     "externalId": "cus_BH6tDUWc9n0Y2pf55tVbk1hc",
     "name": "Tiny Beige Badger",
     "email": "tiny.beige.badger@example.com",
-    "avatar": "https://api.dub.co/og/avatar?seed=cus_BH6tDUWc9n0Y2pf55tVbk1hc",
+    "avatar": "https://api.thereflist.com/og/avatar?seed=cus_BH6tDUWc9n0Y2pf55tVbk1hc",
     "createdAt": "2025-01-14T04:49:23.385Z"
   },
   "click": {
@@ -55,7 +55,7 @@
     "webhookIds": [],
     "comments": null,
     "shortLink": "https://dub.sh/track-test",
-    "qrCode": "https://api.dub.co/qr?url=https://dub.sh/track-test?qr=1",
+    "qrCode": "https://api.thereflist.com/qr?url=https://dub.sh/track-test?qr=1",
     "utm_source": null,
     "utm_medium": null,
     "utm_campaign": null,

@@ -1,7 +1,7 @@
 export const UA_BOTS = [
   "bot", // most bots
   "crawler", // most crawlers
-  "metatags", // Dub.co Metatags API (https://api.dub.co/metatags)
+  "metatags", // Dub.co Metatags API (https://api.thereflist.com/metatags)
   "chatgpt", // ChatGPT
   "bluesky", // Bluesky crawler
   "facebookexternalhit", // Facebook crawler

@@ -41,7 +41,7 @@ describe.concurrent("Folder access permissions", async () => {
             ),
             qrCode: expect.stringMatching(
               new RegExp(
-                `https://api.dub.co/qr\\?url=https://${domain}/.*\\?qr=1`,
+                `https://api.thereflist.com/qr\\?url=https://${domain}/.*\\?qr=1`,
               ),
             ),
           },

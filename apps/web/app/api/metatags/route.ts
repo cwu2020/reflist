@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         ...metatags,
-        poweredBy: "Dub.co - Link management for modern marketing teams",
+        poweredBy: "RefList - Affiliate Links for Everyone",
       },
       {
         headers: CORS_HEADERS,
