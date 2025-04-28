@@ -51,15 +51,7 @@ function AddFolderButton({
       shortcut="C"
       onClick={() => setShowAddFolderModal(true)}
       className="h-9 w-fit rounded-lg"
-      disabledTooltip={
-        plan === "free" && (
-          <TooltipContent
-            title="You can only use Link Folders on a Pro plan and above. Upgrade to Pro to continue."
-            cta="Upgrade to Pro"
-            href={`/${slug}/upgrade`}
-          />
-        )
-      }
+      disabledTooltip={false}
     />
   );
 }

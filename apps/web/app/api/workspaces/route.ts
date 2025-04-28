@@ -100,6 +100,9 @@ export const POST = withSession(async ({ req, session }) => {
             id: createWorkspaceId(),
             name,
             slug,
+            // Set high limits for creators
+            linksLimit: 1000000, // Effectively unlimited links
+            foldersLimit: 10, // Allow folders for creators
             users: {
               create: {
                 userId: session.user.id,

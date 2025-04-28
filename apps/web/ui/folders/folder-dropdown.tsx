@@ -134,13 +134,7 @@ export const FolderDropdown = ({
             shape="square"
           />
         ),
-        disabledTooltip: !canAddFolder ? (
-          <TooltipContent
-            title="You can only use Link Folders on a Pro plan and above. Upgrade to Pro to continue."
-            cta="Upgrade to Pro"
-            href={`/${slug}/upgrade`}
-          />
-        ) : undefined,
+        disabledTooltip: undefined,
       },
     ];
   }, [folders, selectedFolderData, canAddFolder, slug, debouncedSearch]);
@@ -239,15 +233,7 @@ export const FolderDropdown = ({
               }}
               variant="primary"
               className="h-7 w-fit px-2"
-              disabledTooltip={
-                !canAddFolder ? (
-                  <TooltipContent
-                    title="You can only use Link Folders on a Pro plan and above. Upgrade to Pro to continue."
-                    cta="Upgrade to Pro"
-                    href={`/${slug}/upgrade`}
-                  />
-                ) : undefined
-              }
+              disabledTooltip={undefined}
               text="Create folder"
             />
           </div>

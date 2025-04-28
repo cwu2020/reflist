@@ -5,7 +5,7 @@ export const getPlanCapabilities = (
   plan: WorkspaceProps["plan"] | undefined | string,
 ) => {
   return {
-    canAddFolder: plan && !["free"].includes(plan),
+    canAddFolder: true, // Allow all plans to add folders
     canManageFolderPermissions: plan && !["free", "pro"].includes(plan), // default access level is write
   };
 };
