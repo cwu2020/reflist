@@ -18,7 +18,7 @@ import { LOCALHOST_IP } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 
-// GET /api/links – get all links for a workspace
+// GET /api/links – get all links for a workspace
 export const GET = withWorkspace(
   async ({ headers, searchParams, workspace, session }) => {
     const params = getLinksQuerySchemaExtended.parse(searchParams);
@@ -30,7 +30,7 @@ export const GET = withWorkspace(
     }
 
     let selectedFolder: Pick<Folder, "id" | "type"> | null = null;
-    if (folderId) {
+    if (folderId && folderId !== "unsorted") {
       selectedFolder = await verifyFolderAccess({
         workspace,
         userId: session.user.id,

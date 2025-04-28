@@ -47,7 +47,7 @@ export const GET = withWorkspace(
     const folderIdToVerify = link?.folderId || folderId;
 
     let selectedFolder: Pick<Folder, "id" | "type"> | null = null;
-    if (folderIdToVerify) {
+    if (folderIdToVerify && folderIdToVerify !== "unsorted") {
       selectedFolder = await verifyFolderAccess({
         workspace,
         userId: session.user.id,
