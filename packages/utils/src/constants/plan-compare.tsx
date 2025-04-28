@@ -25,7 +25,7 @@ export const PLAN_COMPARE_FEATURES: {
 }[] = [
   {
     category: "Links",
-    href: "https://dub.co/home", // TODO: update to https://dub.co/links
+    href: "https://thereflist.com/home", // TODO: update to https://thereflist.com/links
     features: [
       {
         text: () => (

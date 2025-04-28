@@ -159,7 +159,7 @@ export const GET = withSession(async ({ session, params }) => {
         city: "San Francisco",
         state: "CA",
         postalCode: "94114",
-        email: "support@dub.co",
+        email: "support@thereflist.com",
       },
     },
     {
@@ -186,7 +186,7 @@ export const GET = withSession(async ({ session, params }) => {
             <Text style={tw("text-sm font-medium text-neutral-800")}>
               Dub Technologies Inc.
             </Text>
-            <Text style={tw("text-sm text-neutral-500 ")}>support@dub.co</Text>
+            <Text style={tw("text-sm text-neutral-500 ")}>support@thereflist.com</Text>
           </View>
         </View>
 
@@ -353,12 +353,12 @@ export const GET = withSession(async ({ session, params }) => {
 
         <Text style={tw("text-sm text-neutral-600 mt-6")}>
           If you have any questions, visit our support site at{" "}
-          <Link href="https://dub.co/help" style={tw("text-neutral-900")}>
-            https://dub.co/help
+          <Link href="https://thereflist.com/help" style={tw("text-neutral-900")}>
+            https://thereflist.com/help
           </Link>{" "}
           or contact us at{" "}
-          <Link href="mailto:support@dub.co" style={tw("text-neutral-900")}>
-            support@dub.co
+          <Link href="mailto:support@thereflist.com" style={tw("text-neutral-900")}>
+            support@thereflist.com
           </Link>
         </Text>
       </Page>

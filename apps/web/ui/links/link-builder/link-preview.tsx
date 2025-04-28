@@ -83,7 +83,7 @@ export const LinkPreview = memo(() => {
 
   const [debouncedUrl] = useDebounce(url, 500);
   const hostname = useMemo(() => {
-    if (password) return "dub.co";
+    if (password) return "thereflist.com";
     return getDomainWithoutWWW(debouncedUrl) ?? null;
   }, [password, debouncedUrl]);
 
@@ -129,7 +129,7 @@ export const LinkPreview = memo(() => {
               <TooltipContent
                 title="Custom Link Previews are only available on the Pro plan and above."
                 cta="Upgrade to Pro"
-                href={slug ? `/${slug}/upgrade` : "https://dub.co/pricing"}
+                href={slug ? `/${slug}/upgrade` : "https://thereflist.com/pricing"}
                 target="_blank"
               />
             ) : undefined

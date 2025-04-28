@@ -82,7 +82,7 @@ export function Footer({
   staticDomain?: string;
   className?: string;
 }) {
-  let { domain = "dub.co" } = useParams() as { domain: string };
+  let { domain = "thereflist.com" } = useParams() as { domain: string };
   if (staticDomain) {
     domain = staticDomain;
   }
@@ -235,7 +235,7 @@ export function Footer({
                     ))}
                     <li>
                       <a
-                        href="https://security.dub.co"
+                        href="https://security.thereflist.com"
                         target="_blank"
                         rel="noreferrer"
                         className={cn(

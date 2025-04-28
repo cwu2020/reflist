@@ -6,9 +6,9 @@ export const resend = process.env.RESEND_API_KEY
   : null;
 
 const VARIANT_TO_FROM_MAP = {
-  primary: "Dub.co <system@dub.co>",
-  notifications: "Dub.co <notifications@mail.dub.co>",
-  marketing: "Steven from Dub.co <steven@ship.dub.co>",
+  primary: "RefList <system@thereflist.com>",
+  notifications: "RefList <notifications@mail.thereflist.com>",
+  marketing: "Steven from RefList <steven@ship.thereflist.com>",
 };
 
 // Send email using Resend (Recommended for production)

@@ -188,7 +188,7 @@ export const PLANS = [
         tooltip: {
           title: "Use Dub Partners to manage and pay out your affiliates.",
           cta: "Learn more.",
-          href: "https://dub.co/partners",
+          href: "https://thereflist.com/partners",
         },
       },
       {

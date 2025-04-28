@@ -353,8 +353,8 @@ export const GET = withSession(async ({ session, params }) => {
 
         <Text style={tw("text-sm text-neutral-600 mt-6")}>
           If you have any questions, visit our support site at{" "}
-          <Link href="https://dub.co/help" style={tw("text-neutral-900")}>
-            https://dub.co/help
+          <Link href="https://thereflist.com/help" style={tw("text-neutral-900")}>
+            https://thereflist.com/help
           </Link>{" "}
           or contact us at{" "}
           <Link href="mailto:support@dub.co" style={tw("text-neutral-900")}>

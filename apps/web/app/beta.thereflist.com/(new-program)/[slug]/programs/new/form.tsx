@@ -106,13 +106,13 @@ export function Form() {
     {
       id: "short",
       label: "Short link",
-      example: `${domain || "refer.dub.co"}/steven`,
+      example: `${domain || "refer.thereflist.com"}/steven`,
       comingSoon: false,
     },
     {
       id: "dynamic",
       label: "Dynamic path",
-      example: `${(url && getDomainWithoutWWW(url)) || "dub.co"}/refer/steven`,
+      example: `${(url && getDomainWithoutWWW(url)) || "thereflist.com"}/refer/steven`,
       comingSoon: true,
     },
   ];
@@ -199,7 +199,7 @@ export function Form() {
           <Input
             {...register("url", { required: true })}
             type="url"
-            placeholder="https://dub.co"
+            placeholder="https://thereflist.com"
             className={"mt-2 max-w-full"}
           />
         </div>

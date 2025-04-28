@@ -1,6 +1,6 @@
 export const DEFAULT_REDIRECTS = {
-  home: "https://dub.co",
-  dub: "https://dub.co",
+  home: "https://thereflist.com",
+  dub: "https://thereflist.com",
   signin: "https://app.thereflist.com/login",
   login: "https://app.thereflist.com/login",
   register: "https://app.thereflist.com/register",

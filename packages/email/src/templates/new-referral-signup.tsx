@@ -29,7 +29,7 @@ export function NewReferralSignup({
     slug: string;
   };
 }) {
-  const referralLink = `https://refer.dub.co/${workspace.slug}`;
+  const referralLink = `https://refer.thereflist.com/${workspace.slug}`;
   return (
     <Html>
       <Head />

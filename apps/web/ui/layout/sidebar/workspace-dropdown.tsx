@@ -143,13 +143,13 @@ const LINKS = [
   {
     name: "Help Center",
     icon: HelpCircle,
-    href: "https://dub.co/help",
+    href: "https://thereflist.com/help",
     target: "_blank",
   },
   {
     name: "Documentation",
     icon: Book2,
-    href: "https://dub.co/docs",
+    href: "https://thereflist.com/docs",
     target: "_blank",
   },
 ];

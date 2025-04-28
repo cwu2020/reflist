@@ -145,7 +145,7 @@ const SAMLSection = () => {
                       <TooltipContent
                         title="SAML SSO is only available on Enterprise plans. Upgrade to get started."
                         cta="Contact sales"
-                        href="https://dub.co/enterprise"
+                        href="https://thereflist.com/enterprise"
                         target="_blank"
                       />
                     ),
@@ -159,7 +159,7 @@ const SAMLSection = () => {
 
         <div className="flex items-center justify-between rounded-b-lg border-t border-neutral-200 bg-neutral-50 px-3 py-5 sm:px-10">
           <a
-            href="https://dub.co/help/category/saml-sso"
+            href="https://thereflist.com/help/category/saml-sso"
             target="_blank"
             className="text-sm text-neutral-400 underline underline-offset-4 transition-colors hover:text-neutral-700"
           >
@@ -301,7 +301,7 @@ const SCIMSection = () => {
                       <TooltipContent
                         title="SCIM Directory Sync is only available on Enterprise plans. Upgrade to get started."
                         cta="Contact sales"
-                        href="https://dub.co/enterprise"
+                        href="https://thereflist.com/enterprise"
                         target="_blank"
                       />
                     ),
@@ -315,7 +315,7 @@ const SCIMSection = () => {
 
         <div className="flex items-center justify-between rounded-b-lg border-t border-neutral-200 bg-neutral-50 px-3 py-5 sm:px-10">
           <a
-            href="https://dub.co/help/category/saml-sso"
+            href="https://thereflist.com/help/category/saml-sso"
             target="_blank"
             className="text-sm text-neutral-400 underline underline-offset-4 transition-colors hover:text-neutral-700"
           >

@@ -7,7 +7,7 @@ import type {
 import samlJackson from "@boxyhq/saml-jackson";
 import { APP_DOMAIN_WITH_NGROK } from "@dub/utils";
 
-export const samlAudience = "https://saml.dub.co";
+export const samlAudience = "https://saml.thereflist.com";
 
 const opts: JacksonOption = {
   externalUrl:

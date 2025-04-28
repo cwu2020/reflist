@@ -72,7 +72,7 @@ export function Nav({
   staticDomain?: string;
   maxWidthWrapperClassName?: string;
 }) {
-  let { domain = "dub.co" } = useParams() as { domain: string };
+  let { domain = "thereflist.com" } = useParams() as { domain: string };
   if (staticDomain) {
     domain = staticDomain;
   }
@@ -82,7 +82,7 @@ export function Nav({
   const scrolled = useScroll(40);
   const pathname = usePathname();
   const { data: session, isLoading } = useSWR(
-    domain.endsWith("dub.co") && "/api/auth/session",
+    domain.endsWith("thereflist.com") && "/api/auth/session",
     fetcher,
     {
       dedupingInterval: 60000,

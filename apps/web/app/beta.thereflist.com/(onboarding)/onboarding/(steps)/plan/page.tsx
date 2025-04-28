@@ -23,7 +23,7 @@ export default function Plan() {
       <PlanSelector />
       <div className="mx-auto mt-8 flex w-fit flex-col items-center justify-center gap-6 text-sm md:flex-row">
         <a
-          href="https://dub.co/enterprise"
+          href="https://thereflist.com/enterprise"
           target="_blank"
           className="flex items-center text-gray-500 underline-offset-4 transition-colors hover:text-gray-800 hover:underline"
         >
@@ -36,7 +36,7 @@ export default function Plan() {
           Start for free, pick a plan later
         </LaterButton>
         <a
-          href="https://dub.co/pricing"
+          href="https://thereflist.com/pricing"
           target="_blank"
           className="flex items-center text-gray-500 underline-offset-4 transition-colors hover:text-gray-800 hover:underline"
         >

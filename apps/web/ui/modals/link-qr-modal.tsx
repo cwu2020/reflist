@@ -281,7 +281,7 @@ function LinkQRModalInner({
               <TooltipContent
                 title="You need to be on the Pro plan and above to customize your QR Code logo."
                 cta="Upgrade to Pro"
-                href={slug ? `/${slug}/upgrade` : "https://dub.co/pricing"}
+                href={slug ? `/${slug}/upgrade` : "https://thereflist.com/pricing"}
                 target="_blank"
               />
             ) : undefined

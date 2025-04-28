@@ -89,7 +89,7 @@ export async function chargeSucceeded(event: Stripe.Event) {
         sendEmail({
           subject: "You've been paid!",
           email: payout.partner.email,
-          from: "Dub Partners <system@dub.co>",
+          from: "Dub Partners <system@thereflist.com>",
           react: PartnerPayoutSent({
             email: payout.partner.email,
             program: payout.program,

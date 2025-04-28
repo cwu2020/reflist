@@ -13,7 +13,7 @@ export const metaTagsSchema = z.object({
     .nullable()
     .describe("The meta description tag for the URL.")
     .openapi({
-      example: "Dub.co is the open-source link management infrastructure ...",
+      example: "RefList is the open-source link management infrastructure ...",
     }),
   image: z
     .string()

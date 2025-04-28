@@ -18,8 +18,8 @@ describe.runIf(env.CI)("Link Redirects", async () => {
   test("root", async () => {
     const response = await fetch(h.baseUrl, fetchOptions);
 
-    // the location should start with "https://dub.co"
-    expect(response.headers.get("location")).toMatch(/^https:\/\/dub\.co\//);
+    // the location should start with "https://thereflist.com"
+    expect(response.headers.get("location")).toMatch(/^https:\/\/thereflist\.com\//);
     expect(response.headers.get("x-powered-by")).toBe(poweredBy);
     expect(response.status).toBe(301);
   });
@@ -102,7 +102,7 @@ describe.runIf(env.CI)("Link Redirects", async () => {
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://dub.co/blog?emptyquery",
+      "https://thereflist.com/blog?emptyquery",
     );
     expect(response.headers.get("x-powered-by")).toBe(poweredBy);
     expect(response.status).toBe(302);
@@ -114,7 +114,7 @@ describe.runIf(env.CI)("Link Redirects", async () => {
       fetchOptions,
     );
 
-    expect(response.headers.get("location")).toBe("https://dub.co/");
+    expect(response.headers.get("location")).toBe("https://thereflist.com/");
     expect(response.headers.get("x-powered-by")).toBe(poweredBy);
     expect(response.status).toBe(302);
   });
@@ -132,14 +132,14 @@ describe.runIf(env.CI)("Link Redirects", async () => {
 
   test("redirection url", async () => {
     const response = await fetch(
-      `${h.baseUrl}/redir-url-test?${REDIRECTION_QUERY_PARAM}=https://dub.co/blog`,
+      `${h.baseUrl}/redir-url-test?${REDIRECTION_QUERY_PARAM}=https://thereflist.com/blog`,
       {
         ...fetchOptions,
         headers: {},
       },
     );
 
-    expect(response.headers.get("location")).toBe("https://dub.co/blog");
+    expect(response.headers.get("location")).toBe("https://thereflist.com/blog");
     expect(response.headers.get("x-powered-by")).toBe(poweredBy);
     expect(response.status).toBe(302);
   });

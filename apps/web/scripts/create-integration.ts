@@ -8,8 +8,8 @@ async function main() {
       name: "Slack",
       slug: "slack",
       description: "Create links from Slack messages easily with Dub.",
-      developer: "Dub",
-      website: "https://dub.co",
+      developer: "RefList",
+      website: "https://thereflist.com",
       verified: true,
       projectId: DUB_WORKSPACE_ID,
 

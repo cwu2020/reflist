@@ -9,7 +9,7 @@ test("GET /metatags", async (ctx) => {
   const { status, data: metatags } = await http.get<MetaTag>({
     path: `/metatags`,
     query: {
-      url: "https://dub.co",
+      url: "https://thereflist.com",
     },
   });
 
@@ -17,7 +17,7 @@ test("GET /metatags", async (ctx) => {
   expect(metatags).toStrictEqual({
     title: "RefList - Affiliate Links for Everyone",
     description:
-      "Dub.co is the open-source link management platform for modern marketing teams to create marketing campaigns, link sharing features, and referral programs.",
+      "RefList is the open-source link management platform for modern marketing teams to create marketing campaigns, link sharing features, and referral programs.",
     image: "https://assets.dub.co/thumbnail.jpg",
     poweredBy: "RefList - Affiliate Links for Everyone",
   });

@@ -30,7 +30,7 @@
     "./client": "./client.ts"
   },
   "author": "Steven Tey <stevensteel97@gmail.com>",
-  "homepage": "https://dub.co",
+  "homepage": "https://thereflist.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dubinc/dub.git"
@@ -39,8 +39,8 @@
     "url": "https://github.com/dubinc/dub/issues"
   },
   "keywords": [
-    "dub",
-    "dub.co",
+    "reflist",
+    "thereflist.com",
     "prisma",
     "planetscale"
   ],

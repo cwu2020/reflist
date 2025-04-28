@@ -18,7 +18,7 @@ export function NewSaleAlertPartner({
   email = "panic@thedis.co",
   partner = {
     id: "pn_OfewI1Faaf5pV8QH3mha8L7S",
-    referralLink: "https://refer.dub.co/steven",
+    referralLink: "https://refer.thereflist.com/steven",
   },
   program = {
     id: "prog_CYCu7IMAapjkRpTnr8F1azjN",

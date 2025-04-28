@@ -27,14 +27,14 @@ export default function CustomPartnerAuthLayout({
 
           <div className="flex gap-3 text-center text-xs text-neutral-500 underline underline-offset-2">
             <a
-              href="https://dub.co/legal/privacy"
+              href="https://thereflist.com/legal/privacy"
               target="_blank"
               className="hover:text-neutral-800"
             >
               Privacy Policy
             </a>
             <a
-              href="https://dub.co/legal/terms"
+              href="https://thereflist.com/legal/terms"
               target="_blank"
               className="hover:text-neutral-800"
             >

@@ -434,7 +434,7 @@ export function AddEditDomainForm({
                                   }}
                                   customPreview={
                                     <QRCode
-                                      url="https://dub.co"
+                                      url="https://thereflist.com"
                                       fgColor="#000"
                                       logo={field.value || ""}
                                       scale={0.6}

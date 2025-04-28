@@ -9,8 +9,8 @@ const user = {
   email: "stevensteel97@gmail.com",
 };
 const workspace = {
-  name: "Dub",
-  slug: "dub",
+  name: "RefList",
+  slug: "reflist",
 };
 
 async function main() {
@@ -23,7 +23,7 @@ async function main() {
         : attemptCount == 3
           ? "3rd notice: "
           : ""
-    }Your payment for Dub.co failed`,
+    }Your payment for RefList failed`,
     react: (
       <FailedPayment
         attemptCount={attemptCount}

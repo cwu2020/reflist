@@ -4,7 +4,7 @@ import { HOME_DOMAIN } from "../constants";
 export function constructMetadata({
   title,
   fullTitle,
-  description = "Dub.co is the open-source link management platform for modern marketing teams to create marketing campaigns, link sharing features, and referral programs.",
+  description = "RefList is the open-source link management platform for modern marketing teams to create marketing campaigns, link sharing features, and referral programs.",
   image = "https://assets.dub.co/thumbnail.jpg",
   video,
   icons = [
@@ -46,7 +46,7 @@ export function constructMetadata({
     title:
       fullTitle ||
       (title
-        ? `${title} | Dub.co`
+        ? `${title} | thereflist.com`
         : "RefList - Affiliate Links for Everyone"),
     description,
     openGraph: {

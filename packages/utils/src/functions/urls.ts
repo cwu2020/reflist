@@ -143,8 +143,8 @@ export const createHref = (
   // any params, doesn't have to be all of them
   utmParams?: Partial<Record<(typeof UTMTags)[number], string>>,
 ) => {
-  if (domain === "dub.co") return href;
-  const url = new URL(href.startsWith("/") ? `https://dub.co${href}` : href);
+  if (domain === "thereflist.com") return href;
+  const url = new URL(href.startsWith("/") ? `https://thereflist.com${href}` : href);
   if (utmParams) {
     Object.entries(utmParams).forEach(([key, value]) => {
       url.searchParams.set(key, value);

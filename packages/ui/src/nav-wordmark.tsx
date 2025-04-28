@@ -33,7 +33,7 @@ export function NavWordmark({
   isInApp?: boolean;
   className?: string;
 }) {
-  const { domain = "dub.co" } = useParams() as { domain: string };
+  const { domain = "thereflist.com" } = useParams() as { domain: string };
 
   const { theme } = useContext(NavContext);
 
@@ -99,17 +99,17 @@ export function NavWordmark({
             <ContextMenuButton
               text="Brand Guidelines"
               variant="outline"
-              onClick={() => window.open("https://dub.co/brand", "_blank")}
+              onClick={() => window.open("https://thereflist.com/brand", "_blank")}
               icon={<BoxSelect strokeWidth={2} className="h-4 w-4" />}
             />
-            {/* If it's in the app or it's a domain placeholder page (not dub.co homepage), show the home button */}
-            {isInApp || domain != "dub.co" ? (
+            {/* If it's in the app or it's a domain placeholder page (not thereflist.com homepage), show the home button */}
+            {isInApp || domain != "thereflist.com" ? (
               <ContextMenuButton
                 text="Home Page"
                 variant="outline"
                 onClick={() =>
                   window.open(
-                    `https://dub.co${isInApp ? "/home" : ""}`,
+                    `https://thereflist.com${isInApp ? "/home" : ""}`,
                     "_blank",
                   )
                 }

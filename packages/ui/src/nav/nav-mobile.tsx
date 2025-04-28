@@ -18,7 +18,7 @@ export function NavMobile({
   theme?: NavTheme;
   staticDomain?: string;
 }) {
-  let { domain = "dub.co" } = useParams() as { domain: string };
+  let { domain = "thereflist.com" } = useParams() as { domain: string };
   if (staticDomain) {
     domain = staticDomain;
   }
@@ -34,7 +34,7 @@ export function NavMobile({
   }, [open]);
 
   const { data: session } = useSWR(
-    domain.endsWith("dub.co") && "/api/auth/session",
+    domain.endsWith("thereflist.com") && "/api/auth/session",
     fetcher,
     {
       dedupingInterval: 60000,
@@ -138,7 +138,7 @@ const MobileNavItem = ({
   childItems?: NavItemChildren;
   setOpen: (open: boolean) => void;
 }) => {
-  const { domain = "dub.co" } = useParams() as { domain: string };
+  const { domain = "thereflist.com" } = useParams() as { domain: string };
   const [expanded, setExpanded] = useState(false);
 
   if (childItems) {
@@ -216,7 +216,7 @@ const ChildItem = ({
   setOpen: (open: boolean) => void;
   size?: "normal" | "small";
 }) => {
-  const { domain = "dub.co" } = useParams() as { domain: string };
+  const { domain = "thereflist.com" } = useParams() as { domain: string };
 
   return (
     <Link

@@ -170,8 +170,8 @@ function PartnerLinkModalContent({
 }) {
   const { programEnrollment } = useProgramEnrollment();
   const destinationDomain =
-    getDomainWithoutWWW(programEnrollment?.program?.url || "https://dub.co") ??
-    "dub.co";
+    getDomainWithoutWWW(programEnrollment?.program?.url || "https://thereflist.com") ??
+    "thereflist.com";
   const shortLinkDomain = programEnrollment?.program?.domain ?? "dub.sh";
 
   const [lockKey, setLockKey] = useState(Boolean(link));
