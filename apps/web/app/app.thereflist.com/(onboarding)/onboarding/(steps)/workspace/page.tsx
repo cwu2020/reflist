@@ -6,14 +6,14 @@ export default function Workspace() {
   return (
     <StepPage
       icon={GridPlus}
-      title="Create a workspace"
+      title="Create your creator profile"
       description={
         <a
           href="https://dub.co/help/article/what-is-a-workspace"
           target="_blank"
           className="underline transition-colors hover:text-neutral-700"
         >
-          What is a workspace?
+          What is a creator profile?
         </a>
       }
     >

@@ -15,22 +15,39 @@ export default async function WorkspacesMiddleware(
     return NextResponse.redirect(new URL(searchParamsObj.next, req.url));
   }
 
-  const defaultWorkspace = await getDefaultWorkspace(user);
+  try {
+    // Get the default workspace for this user
+    const defaultWorkspace = await getDefaultWorkspace(user);
+    console.log(`WorkspacesMiddleware: Default workspace for user ${user.id} is ${defaultWorkspace}`);
 
-  if (defaultWorkspace) {
-    let redirectPath = path;
-    if (["/", "/login", "/register", "/workspaces"].includes(path)) {
-      redirectPath = "";
-    } else if (isTopLevelSettingsRedirect(path)) {
-      redirectPath = `/settings/${path}`;
+    // If no default workspace is found (rare case since we now create automatically)
+    if (!defaultWorkspace) {
+      console.log(`No default workspace found for user ${user.id}, redirecting to onboarding`);
+      // For creator-focused flow, redirect to link onboarding step directly
+      return NextResponse.redirect(new URL(`/onboarding/link`, req.url));
     }
+
+    // If user has a default workspace, redirect there
+    if (path === "/" || path === "/login" || path === "/register") {
+      console.log(`Redirecting user ${user.id} to default workspace: ${defaultWorkspace}`);
+      return NextResponse.redirect(new URL(`/${defaultWorkspace}`, req.url));
+    }
+
+    let redirectPath = path;
+    if (["/workspaces", "/links", "/analytics", "/events", "/programs", "/settings", "/upgrade", "/wrapped"].includes(path)) {
+      redirectPath = path === "/workspaces" ? "" : path;
+    } else if (isTopLevelSettingsRedirect(path)) {
+      redirectPath = `/settings${path}`;
+    }
+
+    // Redirecting to home page with default workspace
+    console.log(`Redirecting user ${user.id} to path: /${defaultWorkspace}${redirectPath}${searchParamsString}`);
     return NextResponse.redirect(
-      new URL(
-        `/${defaultWorkspace}${redirectPath || "/links"}${searchParamsString}`,
-        req.url,
-      ),
+      new URL(`/${defaultWorkspace}${redirectPath}${searchParamsString}`, req.url),
     );
-  } else {
-    return NextResponse.redirect(new URL("/onboarding/workspace", req.url));
+  } catch (error) {
+    console.error("Error in WorkspacesMiddleware:", error);
+    // Handle errors gracefully - redirect to homepage as fallback
+    return NextResponse.redirect(new URL("/", req.url));
   }
 }

@@ -8,7 +8,7 @@ export const DUB_DOMAINS = [
     primary: true,
     archived: false,
     placeholder: "https://dub.co/help/article/what-is-dub",
-    allowedHostnames: [],
+    allowedHostnames: null,
     description: "The default domain for all new accounts.",
     projectId: DUB_WORKSPACE_ID,
   },

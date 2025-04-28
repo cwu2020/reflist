@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-const PRE_WORKSPACE_STEPS = ["workspace"];
+// No longer any pre-workspace steps since workspace creation is automatic
+const PRE_WORKSPACE_STEPS: string[] = [];
 
 export function useOnboardingProgress() {
   const router = useRouter();

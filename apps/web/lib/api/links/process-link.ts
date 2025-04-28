@@ -7,6 +7,7 @@ import { NewLinkProps, ProcessedLinkProps, WorkspaceProps } from "@/lib/types";
 import { prisma } from "@dub/prisma";
 import {
   DUB_DOMAINS,
+  SHORT_DOMAIN,
   UTMTags,
   constructURLFromUTMParams,
   getApexDomain,
@@ -198,7 +199,9 @@ export async function processLink<T extends Record<string, any>>({
     const apexDomain = getApexDomain(url);
     if (
       key !== "_root" &&
+      domain !== SHORT_DOMAIN && // Add this condition to skip validation for refl.ist
       allowedHostnames &&
+      allowedHostnames.length > 0 && // Add this check to allow all domains when empty
       !allowedHostnames.includes(urlDomain) &&
       !allowedHostnames.includes(apexDomain)
     ) {

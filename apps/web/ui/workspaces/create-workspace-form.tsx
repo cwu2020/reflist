@@ -87,10 +87,10 @@ export function CreateWorkspaceForm({
       <div>
         <label htmlFor="name" className="flex items-center space-x-2">
           <p className="block text-sm font-medium text-neutral-700">
-            Workspace Name
+            Creator Name
           </p>
           <InfoTooltip
-            content={`This is the name of your workspace on ${process.env.NEXT_PUBLIC_APP_NAME}.`}
+            content={`This is the name of your creator profile on ${process.env.NEXT_PUBLIC_APP_NAME}.`}
           />
         </label>
         <div className="mt-2 flex rounded-md shadow-sm">
@@ -100,7 +100,7 @@ export function CreateWorkspaceForm({
             autoFocus={!isMobile}
             autoComplete="off"
             className="block w-full rounded-md border-neutral-300 text-neutral-900 placeholder-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-neutral-500 sm:text-sm"
-            placeholder="Acme, Inc."
+            placeholder="Your Brand Name"
             {...register("name", {
               required: true,
               onChange: (e) => setValue("slug", slugify(e.target.value)),
@@ -112,10 +112,10 @@ export function CreateWorkspaceForm({
       <div>
         <label htmlFor="slug" className="flex items-center space-x-2">
           <p className="block text-sm font-medium text-neutral-700">
-            Workspace Slug
+            URL Slug
           </p>
           <InfoTooltip
-            content={`This is your workspace's unique slug on ${process.env.NEXT_PUBLIC_APP_NAME}.`}
+            content={`This is your creator profile's unique URL on ${process.env.NEXT_PUBLIC_APP_NAME}.`}
           />
         </label>
         <div className="relative mt-2 flex rounded-md shadow-sm">
@@ -132,7 +132,7 @@ export function CreateWorkspaceForm({
                 ? "border-red-300 pr-10 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500"
                 : "border-neutral-300 text-neutral-900 placeholder-neutral-400 focus:border-neutral-500 focus:ring-neutral-500"
             } block w-full rounded-r-md focus:outline-none sm:text-sm`}
-            placeholder="acme"
+            placeholder="your-brand"
             {...register("slug", {
               required: true,
               minLength: 3,
@@ -171,7 +171,7 @@ export function CreateWorkspaceForm({
 
       <Button
         loading={isSubmitting || isSubmitSuccessful}
-        text="Create workspace"
+        text="Create profile"
       />
     </form>
   );

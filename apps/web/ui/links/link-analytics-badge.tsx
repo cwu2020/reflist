@@ -15,6 +15,7 @@ import {
   APP_DOMAIN,
   cn,
   currencyFormatter,
+  fetcher,
   INFINITY_NUMBER,
   nFormatter,
   pluralize,
@@ -22,6 +23,7 @@ import {
 } from "@dub/utils";
 import Link from "next/link";
 import { useContext, useMemo, useState } from "react";
+import useSWR from "swr";
 import { useShareDashboardModal } from "../modals/share-dashboard-modal";
 import { ResponseLink } from "./links-container";
 
@@ -34,8 +36,40 @@ export function LinkAnalyticsBadge({
   url?: string;
   sharingEnabled?: boolean;
 }) {
-  const { slug, plan } = useWorkspace();
-  const { domain, key, trackConversion, clicks, leads, saleAmount } = link;
+  const { slug, plan, id: workspaceId } = useWorkspace();
+  const { domain, key, trackConversion, leads, saleAmount } = link;
+
+  // Fetch fresh analytics data
+  const { data: analyticsData } = useSWR(
+    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=clicks` : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+    }
+  );
+
+  // Safely extract the total clicks count from the analytics data
+  const freshClicks = useMemo(() => {
+    if (!analyticsData) return null;
+    
+    // Handle different possible response formats
+    if (Array.isArray(analyticsData)) {
+      // If it's an array, sum up the clicks
+      return analyticsData.reduce((sum, item) => sum + (Number(item.clicks) || 0), 0);
+    } else if (typeof analyticsData === 'object' && analyticsData !== null) {
+      // If it's an object with a clicks property
+      return 'clicks' in analyticsData ? Number(analyticsData.clicks) : 0;
+    }
+    
+    return null;
+  }, [analyticsData]);
+
+  // Use fresh data if available, fall back to prop data
+  const clicks = freshClicks ?? link.clicks;
+
+  // Determine if there have been any clicks
+  const hasClicks = clicks > 0;
 
   const { isMobile } = useMediaQuery();
   const { variant } = useContext(CardList.Context);
@@ -70,7 +104,7 @@ export function LinkAnalyticsBadge({
           ]
         : []),
     ],
-    [link],
+    [clicks, trackConversion, leads, saleAmount]
   );
 
   const { ShareDashboardModal, setShowShareDashboardModal } =
@@ -90,7 +124,7 @@ export function LinkAnalyticsBadge({
       className="flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-sm text-neutral-800"
     >
       <CursorRays className="h-4 w-4 text-neutral-600" />
-      {nFormatter(link.clicks)}
+      {nFormatter(clicks)}
     </Link>
   ) : (
     <>
@@ -112,10 +146,10 @@ export function LinkAnalyticsBadge({
               </div>
             ))}
             <p className="text-xs leading-none text-neutral-400">
-              {link.lastClicked
-                ? `Last clicked ${timeAgo(link.lastClicked, {
-                    withAgo: true,
-                  })}`
+              {hasClicks 
+                ? (link.lastClicked 
+                  ? `Last clicked ${timeAgo(link.lastClicked, { withAgo: true })}`
+                  : "Recently clicked") 
                 : "No clicks yet"}
             </p>
 

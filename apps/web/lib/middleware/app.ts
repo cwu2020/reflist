@@ -59,7 +59,8 @@ export default async function AppMiddleware(req: NextRequest) {
     ) {
       let step = await getOnboardingStep(user);
       if (!step) {
-        return NextResponse.redirect(new URL("/onboarding", req.url));
+        // For new creator-focused flow, start with link creation (skip workspace)
+        return NextResponse.redirect(new URL("/onboarding/link", req.url));
       } else if (step === "completed") {
         return WorkspacesMiddleware(req, user);
       }
@@ -67,13 +68,15 @@ export default async function AppMiddleware(req: NextRequest) {
       const defaultWorkspace = await getDefaultWorkspace(user);
 
       if (defaultWorkspace) {
-        // Skip workspace step if user already has a workspace
+        // Skip workspace step for all users since they now get a personal workspace automatically
         step = step === "workspace" ? "link" : step;
         return NextResponse.redirect(
           new URL(`/onboarding/${step}?workspace=${defaultWorkspace}`, req.url),
         );
       } else {
-        return NextResponse.redirect(new URL("/onboarding", req.url));
+        // If somehow they don't have a default workspace, send them to link step
+        // This should rarely happen with auto-creation of personal workspaces
+        return NextResponse.redirect(new URL("/onboarding/link", req.url));
       }
 
       // if the path is / or /login or /register, redirect to the default workspace

@@ -20,6 +20,7 @@ import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 
 import { createId } from "../api/create-id";
+import { createWorkspaceId, prefixWorkspaceId } from "../api/workspace-id";
 import { completeProgramApplications } from "../partners/complete-program-applications";
 import { FRAMER_API_HOST } from "./constants";
 import {
@@ -28,6 +29,9 @@ import {
 } from "./lock-account";
 import { validatePassword } from "./password";
 import { trackLead } from "./track-lead";
+import { nanoid, generateRandomString } from "@dub/utils";
+import { redis } from "../upstash";
+import { Prisma } from "@dub/prisma/client";
 
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 
@@ -44,6 +48,91 @@ const CustomPrismaAdapter = (p: PrismaClient) => {
     },
   };
 };
+
+// Helper function to create a personal workspace for a user
+async function createPersonalWorkspace(userId: string, userName?: string | null, userEmail?: string | null) {
+  try {
+    // Create workspace name based on user info
+    const workspaceName = userName 
+      ? `${userName}'s Workspace` 
+      : userEmail 
+        ? `${userEmail.split('@')[0]}'s Workspace` 
+        : 'Personal Workspace';
+    
+    // Generate a slug from the workspace name
+    const baseSlug = workspaceName.toLowerCase()
+      .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric chars with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with a single one
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    
+    let slug = baseSlug;
+    let counter = 1;
+    
+    // Check if slug exists and add a number if necessary
+    while (true) {
+      const existingWorkspace = await prisma.project.findUnique({
+        where: { slug },
+      });
+      
+      if (!existingWorkspace) break;
+      
+      // If exists, try with a number suffix
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    console.log(`Creating personal workspace for user ${userId} with slug: ${slug}`);
+    
+    const workspace = await prisma.$transaction(
+      async (tx) => {
+        return await tx.project.create({
+          data: {
+            id: createWorkspaceId(),
+            name: workspaceName,
+            slug,
+            users: {
+              create: {
+                userId,
+                role: "owner",
+                notificationPreference: {
+                  create: {},
+                },
+              },
+            },
+            billingCycleStart: new Date().getDate(),
+            invoicePrefix: generateRandomString(8),
+            inviteCode: nanoid(24),
+            defaultDomains: {
+              create: {}, // by default, we give users all the default domains
+            },
+          },
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 5000,
+      },
+    );
+    
+    console.log(`Successfully created workspace with ID ${workspace.id} and slug ${workspace.slug}`);
+    
+    // Set this workspace as the user's default
+    await prisma.user.update({
+      where: { id: userId },
+      data: { defaultWorkspace: workspace.slug },
+    });
+    
+    // Set onboarding step to completed since we're skipping the process entirely
+    // This is important to avoid navigation issues
+    await redis.set(`onboarding-step:${userId}`, "completed");
+    
+    return workspace;
+  } catch (error) {
+    console.error("Error creating personal workspace:", error);
+    return null;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -503,6 +592,10 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           return;
         }
+        
+        // Create a personal workspace for new users
+        await createPersonalWorkspace(user.id, user.name, user.email);
+        
         // only send the welcome email if the user was created in the last 10s
         // (this is a workaround because the `isNewUser` flag is triggered when a user does `dangerousEmailAccountLinking`)
         if (
