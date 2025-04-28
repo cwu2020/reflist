@@ -10,7 +10,7 @@ export default function useFoldersCount({
   includeParams?: boolean;
   query?: Record<string, any>;
 } = {}) {
-  const { id: workspaceId, plan, flags } = useWorkspace();
+  const { id: workspaceId, flags } = useWorkspace();
 
   const { getQueryString } = useRouterStuff();
 
@@ -20,7 +20,7 @@ export default function useFoldersCount({
   );
 
   const { data, error } = useSWR<number>(
-    workspaceId && flags?.linkFolders && plan !== "free"
+    workspaceId && flags?.linkFolders
       ? `/api/folders/count${qs}`
       : null,
     fetcher,

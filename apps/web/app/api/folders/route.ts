@@ -34,15 +34,7 @@ export const GET = withWorkspace(
   },
   {
     requiredPermissions: ["folders.read"],
-    requiredPlan: [
-      "pro",
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );
@@ -50,17 +42,8 @@ export const GET = withWorkspace(
 // POST /api/folders - create a folder for a workspace
 export const POST = withWorkspace(
   async ({ req, workspace, headers, session }) => {
-    if (workspace.foldersUsage >= workspace.foldersLimit) {
-      throw new DubApiError({
-        code: "exceeded_limit",
-        message: exceededLimitError({
-          plan: workspace.plan,
-          limit: workspace.foldersLimit,
-          type: "folders",
-        }),
-      });
-    }
-
+    // Allow all users to create folders, regardless of their current usage or plan limits
+    
     const { name, accessLevel } = createFolderSchema.parse(
       await parseRequestBody(req),
     );
@@ -115,15 +98,7 @@ export const POST = withWorkspace(
   },
   {
     requiredPermissions: ["folders.write"],
-    requiredPlan: [
-      "pro",
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );

@@ -6,7 +6,7 @@ import {
 import { prisma } from "@dub/prisma";
 import { NextResponse } from "next/server";
 
-// GET /api/folders/[folderId]/users – get users with access to a folder
+// GET /api/folders/[folderId]/users – get users with access to a folder
 export const GET = withWorkspace(
   async ({ params, workspace, session }) => {
     const { folderId } = params;
@@ -74,14 +74,7 @@ export const GET = withWorkspace(
   },
   {
     requiredPermissions: ["folders.read"],
-    requiredPlan: [
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );

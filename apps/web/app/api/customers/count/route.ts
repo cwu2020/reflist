@@ -3,12 +3,17 @@ import { prisma } from "@dub/prisma";
 import { NextResponse } from "next/server";
 
 // GET /api/customers/count
-export const GET = withWorkspace(async ({ workspace, params }) => {
-  const count = await prisma.customer.count({
-    where: {
-      projectId: workspace.id,
-    },
-  });
+export const GET = withWorkspace(
+  async ({ workspace, params }) => {
+    const count = await prisma.customer.count({
+      where: {
+        projectId: workspace.id,
+      },
+    });
 
-  return NextResponse.json(count);
-});
+    return NextResponse.json(count);
+  },
+  {
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
+  }
+);

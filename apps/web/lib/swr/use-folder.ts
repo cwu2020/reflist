@@ -10,15 +10,14 @@ export default function useFolder({
   folderId?: string | null;
   enabled?: boolean;
 }) {
-  const { id: workspaceId, plan, flags } = useWorkspace();
+  const { id: workspaceId, flags } = useWorkspace();
 
   const swrEnabled =
     enabled &&
     folderId &&
     folderId !== "unsorted" &&
     workspaceId &&
-    flags?.linkFolders &&
-    plan !== "free";
+    flags?.linkFolders;
 
   const {
     data: folder,

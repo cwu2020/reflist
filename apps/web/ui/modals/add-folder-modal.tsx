@@ -42,7 +42,7 @@ function AddFolderButton({
   const { slug, plan } = useWorkspace();
 
   useKeyboardShortcut("c", () => setShowAddFolderModal(true), {
-    enabled: plan !== "free",
+    enabled: true,
   });
 
   return (

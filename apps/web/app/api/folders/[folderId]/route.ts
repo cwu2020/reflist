@@ -25,20 +25,12 @@ export const GET = withWorkspace(
   },
   {
     requiredPermissions: ["folders.read"],
-    requiredPlan: [
-      "pro",
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );
 
-// PATCH /api/folders/[folderId] – update a folder for a workspace
+// PATCH /api/folders/[folderId] – update a folder for a workspace
 export const PATCH = withWorkspace(
   async ({ req, params, workspace, session }) => {
     const { folderId } = params;
@@ -95,20 +87,12 @@ export const PATCH = withWorkspace(
   },
   {
     requiredPermissions: ["folders.write"],
-    requiredPlan: [
-      "pro",
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );
 
-// DELETE /api/folders/[folderId] – delete a folder for a workspace
+// DELETE /api/folders/[folderId] – delete a folder for a workspace
 export const DELETE = withWorkspace(
   async ({ params, workspace, session }) => {
     const { folderId } = params;
@@ -166,15 +150,7 @@ export const DELETE = withWorkspace(
   },
   {
     requiredPermissions: ["folders.write"],
-    requiredPlan: [
-      "pro",
-      "business",
-      "business plus",
-      "business extra",
-      "business max",
-      "advanced",
-      "enterprise",
-    ],
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
     featureFlag: "linkFolders",
   },
 );
