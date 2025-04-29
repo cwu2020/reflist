@@ -4,6 +4,7 @@ import usePrograms from "@/lib/swr/use-programs";
 import { useRouterStuff } from "@dub/ui";
 import {
   Books2,
+  CircleDollar,
   CircleInfo,
   ConnectedDots,
   ConnectedDots4,
@@ -61,6 +62,11 @@ const NAV_AREAS: SidebarNavAreas<{
             name: "Events",
             icon: CursorRays,
             href: `/${slug}/events${pathname === `/${slug}/events` ? "" : queryString}`,
+          },
+          {
+            name: "Earnings",
+            icon: CircleDollar,
+            href: `/${slug}/earnings${pathname === `/${slug}/earnings` ? "" : queryString}`,
           },
           ...(pathname.startsWith(`/${slug}/customers`)
             ? [

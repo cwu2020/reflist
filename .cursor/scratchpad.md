@@ -453,12 +453,320 @@ The new implementation has been tested and appears to be working correctly. User
 
 ## Lessons
 
-1. When modifying a field's purpose, it's important to maintain type compatibility with the existing schema
-2. Error handling is critical when dealing with external APIs, with clear fallback mechanisms
-3. Clear UI messaging helps users understand the data flow, especially when automated processing is involved
-4. When implementing field changes, ensure the entire data flow is updated, not just the UI labels
-5. Separating concerns (product URL vs destination URL) in the form makes the code clearer and less prone to bugs
-6. Visual separation of input fields helps users understand the relationship between different data elements
-7. Form initialization is crucial for edit flows - make sure to populate fields correctly from existing data
-8. Reuse of components between create and edit flows requires careful handling of initialization logic
-9. When retrofitting a UI change, all entry points must be updated, including specialized page components 
+1. When using utility functions like `currencyFormatter`, be cautious with option values. The `maximumFractionDigits` parameter must be within the range 0-20 as per the Intl.NumberFormat specification. It's often better to use the default formatting options unless specific formatting is required.
+
+2. When using mock data, carefully test the UI to ensure that no runtime errors occur in edge cases or with specific data formats. 
+
+# Earnings Dashboard Plan
+
+## Background and Motivation
+
+We need to create an earnings dashboard in app.thereflist.com that focuses solely on earnings. This dashboard will help users track their affiliate earnings, view trends, and initiate withdrawals. It should be structured similarly to the existing analytics and events pages, but with a specific focus on financial data.
+
+The dashboard should include:
+1. A "wallet" module at the top showing available balance, pending earnings, monthly earnings, and a withdraw button
+2. Weekly and monthly trendlines for earnings (similar to those in the sales part of the analytics dashboard)
+3. Additional relevant financial metrics and visualizations
+4. A payouts table showing past and pending payouts
+
+## Key Challenges and Analysis
+
+1. **Existing Infrastructure**: The codebase already has robust functionality for tracking commissions and earnings, primarily in the partners section. We need to adapt this to create a dedicated earnings dashboard.
+
+2. **Data Sources**: 
+   - Commission model in Prisma schema tracks earnings with fields for amount, earnings, status, etc.
+   - Partner earnings APIs exist for retrieving earnings data, timeseries data, and counts
+   - Existing analytics components can be adapted for displaying earnings trends
+
+3. **Missing Components**:
+   - No dedicated "wallet" UI component showing available balance
+   - No withdrawal functionality for users in the main app interface
+   - No dedicated earnings dashboard page
+
+4. **Integration Points**:
+   - Need to connect to existing commission/earnings data
+   - Need to leverage existing analytics visualization components
+   - Need to create new components for wallet and withdrawal functionality
+
+## Components to Reuse from Partners Portal
+
+After exploring the codebase, we've identified the following components that can be reused from the partners.thereflist.com directory:
+
+1. **Earnings Table Component**:
+   - `apps/web/app/partners.thereflist.com/(dashboard)/programs/[programSlug]/(enrolled)/earnings/earnings-table.tsx`
+   - This component provides a complete table for displaying earnings with columns for date, type, link, customer, sale amount, earnings, and status
+   - Uses the `usePartnerEarningsCount` and `useSWR` hooks to fetch data
+   - Includes filtering, pagination, and sorting functionality
+
+2. **Earnings Chart Component**:
+   - `apps/web/app/partners.thereflist.com/(dashboard)/programs/[programSlug]/(enrolled)/earnings/earnings-composite-chart.tsx`
+   - Provides visualizations for earnings data over time
+   - Uses the `usePartnerEarningsTimeseries` hook for data
+   - Includes date range selection and various filtering options
+   - Can switch between different visualization modes (by link or by type)
+
+3. **Payouts Components**:
+   - `apps/web/app/partners.thereflist.com/(dashboard)/settings/payouts/payout-table.tsx`
+   - `apps/web/ui/partners/amount-row-item.tsx`
+   - `apps/web/ui/partners/payout-details-sheet.tsx`
+   - These components display payout history, status, and details
+   - Include UI for viewing payout status, payout periods, and amounts
+
+4. **API Routes**:
+   - `/api/partner-profile/programs/[programId]/earnings` - Gets earnings data
+   - `/api/partner-profile/programs/[programId]/earnings/count` - Gets earnings count
+   - `/api/partner-profile/programs/[programId]/earnings/timeseries` - Gets time-series earnings data
+   - `/api/partner-profile/payouts` - Gets payout data
+
+5. **SWR Hooks**:
+   - `apps/web/lib/swr/use-partner-earnings-count.ts` - For counting earnings
+   - `apps/web/lib/swr/use-partner-earnings-timeseries.ts` - For timeseries data
+   - `apps/web/lib/swr/use-partner-payouts.ts` - For payout data
+   - `apps/web/lib/swr/use-partner-payouts-count.ts` - For payout counts
+
+## New Components to Create
+
+1. **Wallet Balance Component**:
+   - We need to create a new "wallet" UI component showing:
+     - Available balance (sum of processed commissions)
+     - Pending earnings (sum of pending commissions)
+     - This month's earnings (sum of all commissions in current month)
+     - Withdraw button
+   - This will aggregate data from the commission table with different status values
+
+2. **Withdrawal Modal/Sheet**:
+   - Create a new UI component for initiating withdrawals
+   - Similar structure to the existing `payout-details-sheet.tsx` but simplified for user-initiated withdrawals
+   - Should show available balance, withdrawal options, and confirmation flow
+
+3. **Earnings Dashboard Page**:
+   - Create a new page at `/app.thereflist.com/(dashboard)/[slug]/earnings`
+   - Layout similar to analytics page but focused on financial data
+   - Will integrate all the components (wallet, charts, tables)
+
+## Backend Requirements
+
+1. **Aggregate Queries**:
+   - Create queries to calculate available balance (processed commissions)
+   - Create queries to calculate pending earnings (pending commissions)
+   - Create queries to calculate current month's earnings
+
+2. **Withdrawal API Endpoint**:
+   - Create a new endpoint for initiating withdrawals
+   - Integrate with payment processor (similar to existing payout functionality)
+
+## Payouts Table Specifications
+
+The payouts table should:
+
+1. **Display Columns**:
+   - Period: The time period covered by the payout
+   - Amount: The payout amount
+   - Status: Current status of the payout (pending, processing, completed, failed)
+   - Date: When the payout was initiated or completed
+
+2. **Functionality**:
+   - Show historical payouts with their status
+   - Allow filtering by status
+   - Sort by date or amount
+   - Potentially allow clicking on a payout to see the included commissions
+
+3. **Status Indicators**:
+   - Use the existing `PayoutStatusBadges` from the partners UI to show status visually
+   - Include tooltips explaining each status
+
+4. **Data Source**:
+   - Use the existing Payout model from the Prisma schema
+   - Adapt the partner payouts API endpoint for user-specific queries
+
+## High-level Task Breakdown
+
+1. **Create Earnings Dashboard Page Structure**:
+   - Create a new page route at `/app.thereflist.com/(dashboard)/[slug]/earnings`
+   - Set up basic page layout similar to analytics and events pages
+   - Success criteria: Page is accessible and displays basic structure
+
+2. **Implement Wallet Module**:
+   - Adapt earnings data to create a "wallet" component showing:
+     - Available balance (sum of processed commissions)
+     - Pending earnings (sum of pending commissions)
+     - This month's earnings (sum of all commissions in current month)
+     - Withdraw button
+   - Success criteria: Wallet module displays accurate financial data
+
+3. **Implement Earnings Withdraw Functionality**:
+   - Create API endpoint for initiating withdrawals
+   - Implement withdrawal flow UI
+   - Success criteria: Users can initiate withdrawals for available balance
+
+4. **Implement Earnings Trendlines**:
+   - Adapt the `earnings-composite-chart` component for the main app context
+   - Ensure weekly and monthly views of earnings trends
+   - Success criteria: Charts display accurate earnings trends over time
+
+5. **Create Earnings Table**:
+   - Adapt the `earnings-table` component for the main app context
+   - Include filters for date ranges, status, etc.
+   - Success criteria: Table displays detailed earning entries with filtering options
+
+6. **Implement Payouts Table**:
+   - Adapt the payout table components for the main app context
+   - Include appropriate columns and filtering options
+   - Success criteria: Table shows historical and pending payouts with proper status indicators
+
+## Project Status Board
+
+- [x] Create Earnings Dashboard Page Structure
+  - [x] Create route and basic page layout
+  - [x] Set up navigation and access controls
+  - [x] Create page container and layout components
+
+- [x] Implement Wallet Module
+  - [x] Create wallet UI component
+  - [x] Add mock data for testing
+  - [x] Display available balance, pending earnings, and monthly total
+  - [x] Add withdraw button UI
+
+- [x] Implement Earnings Withdraw Functionality  
+  - [x] Implement withdrawal modal UI
+  - [x] Add mock functionality for testing
+  - [x] Add validation and confirmation flow
+  - [ ] Create withdrawal API endpoint (TODO)
+
+- [x] Implement Earnings Trendlines
+  - [x] Adapt earnings-composite-chart component for main app
+  - [x] Create mock data for testing
+  - [x] Add appropriate filters and controls
+  - [ ] Connect to real earnings data API (TODO)
+
+- [x] Create Earnings Table
+  - [x] Adapt earnings-table component for main app
+  - [x] Add mock data for testing
+  - [x] Implement filters and sorting
+  - [ ] Connect to real earnings data API (TODO)
+
+- [x] Implement Payouts Table
+  - [x] Create payout table component
+  - [x] Add mock data for testing
+  - [x] Add status indicators and payout details view
+  - [ ] Connect to real payouts data API (TODO)
+
+## Executor's Feedback or Assistance Requests
+
+I have implemented the initial UI structure for the earnings dashboard with all the main components:
+
+1. Created the base earnings dashboard page at `/app.thereflist.com/(dashboard)/[slug]/earnings` following the pattern of other dashboard pages like analytics.
+
+2. Implemented the wallet module that displays available balance, pending earnings, and monthly earnings with a withdraw button.
+
+3. Created a withdrawal modal that allows users to initiate a withdrawal with confirmation flow.
+
+4. Implemented an earnings chart based on the partners portal earnings-composite-chart component, with mock data for testing.
+
+5. Created an earnings table based on the partners portal earnings-table component, with mock data and full filtering/sorting functionality.
+
+6. Implemented a payouts table that shows payout history with status indicators and a details view.
+
+7. Added an "Earnings" navigation item to the sidebar menu, using the CircleDollar icon, which will allow users to easily access the earnings dashboard.
+
+All components currently use mock data for testing the UI. The next steps will be:
+
+1. Create the backend API endpoints for retrieving real earnings and payouts data
+2. Implement the actual withdrawal functionality
+3. Connect the frontend components to the real data sources
+
+The dashboard UI is fully functional with mock data and matches the design patterns and styles of the rest of the application.
+
+## Lessons
+
+Not applicable yet.
+
+# Admin Portal Authentication Debug Plan
+
+## Background and Motivation
+
+We've created an admin user account, but when trying to log into the admin portal with either Google auth or direct login, it redirects back to the standard portal. We've already tried direct login, modifying local hosts, and checked for environment variables. The session doesn't transfer across subdomains. We need a systematic approach to debug this issue and identify why the admin access isn't working properly in the local development environment.
+
+## Key Challenges and Analysis
+
+1. **Authentication Flow**: The authentication flow might not be preserving subdomain context or might be forcing redirects to the main application.
+
+2. **Middleware Logic**: The middleware handling admin subdomain access might have specific logic that's not being satisfied.
+
+3. **Session Management**: Sessions might not be properly configured to work across subdomains in development.
+
+4. **Admin Detection**: The admin detection logic might be working differently than we expect.
+
+## High-level Task Breakdown
+
+1. **Review Middleware Code**:
+   - Examine the admin middleware code to understand the authentication logic
+   - Look for any conditions that would trigger a redirect away from admin portal
+   - Success criteria: Understand the exact conditions for admin portal access
+
+2. **Check Authentication Configuration**:
+   - Review NextAuth or authentication configuration
+   - Check how sessions are managed across subdomains
+   - Success criteria: Identify any subdomain-specific session handling
+
+3. **Debug Admin Status Check**:
+   - Add logging in middleware to verify the user is correctly identified as admin
+   - Check if `isDubAdmin` function returns expected results
+   - Success criteria: Confirm the admin detection logic works with our user
+
+4. **Trace Request Flow**:
+   - Add tracing/logging to follow request flow through middleware
+   - Identify where the redirect happens
+   - Success criteria: Pinpoint the exact point where redirect occurs
+
+5. **Test Alternative Access Methods**:
+   - Try alternative routes or direct API access to admin functionality
+   - Check if admin API endpoints work with our admin user
+   - Success criteria: Determine if the issue is UI-specific or applies to all admin access
+
+## Project Status Board
+
+- [ ] Review Middleware Code
+  - [ ] Examine `apps/web/lib/middleware/admin.ts`
+  - [ ] Review `apps/web/middleware.ts` for subdomain handling
+  - [ ] Look for any environment-specific conditions
+
+- [ ] Check Authentication Configuration
+  - [ ] Review NextAuth configuration for subdomain handling
+  - [ ] Check session cookie settings for domain restrictions
+  - [ ] Review callback URL configurations
+
+- [ ] Debug Admin Status Check
+  - [ ] Add console logging to `isDubAdmin` function
+  - [ ] Verify admin workspace membership in database
+  - [ ] Check if middleware correctly identifies admin status
+
+- [ ] Trace Request Flow
+  - [ ] Add logging at each step in the middleware and auth process
+  - [ ] Trace the HTTP headers and redirect chains
+  - [ ] Identify the exact redirect trigger point
+
+- [ ] Test Alternative Access Methods
+  - [ ] Try accessing admin API endpoints directly
+  - [ ] Check if admin APIs recognize admin privileges
+  - [ ] Test different browsers/incognito mode
+
+## Proposed Solutions to Test
+
+1. **Modify Middleware**: Temporarily modify the admin middleware to bypass certain checks or add debug logging
+
+2. **Direct Database Verification**: Query the database to confirm admin status is correctly set up
+
+3. **Local Environment Override**: Add development-specific environment variables to bypass certain checks
+
+4. **Alternative Authentication Method**: Try a different authentication method if available
+
+5. **Force Admin Session**: Create a script to directly set admin session cookies
+
+## Executor's Feedback or Assistance Requests
+
+Not applicable yet.
+
+## Lessons
+
+Not applicable yet. 
