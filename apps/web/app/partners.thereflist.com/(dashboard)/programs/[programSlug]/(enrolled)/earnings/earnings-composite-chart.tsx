@@ -76,7 +76,7 @@ export function EarningsCompositeChart() {
       data?.map(({ start, earnings, data }) => ({
         date: new Date(start),
         values: { ...data, total: earnings },
-      })),
+      })) || [],
       data
         ? [...new Set<string>(data.flatMap(({ data }) => Object.keys(data)))]
             // Sort by total earnings for the period
@@ -94,10 +94,15 @@ export function EarningsCompositeChart() {
               valueAccessor: (d) => (d.values[item] || 0) / 100,
               colorClassName:
                 groupBy === "type"
-                  ? EVENT_TYPE_LINE_COLORS[item]
+                  ? EVENT_TYPE_LINE_COLORS[item] || LINE_COLORS[idx % LINE_COLORS.length]
                   : LINE_COLORS[idx % LINE_COLORS.length],
             }))
-        : [],
+        : [{
+            id: 'total',
+            isActive: true,
+            valueAccessor: (d) => (d.values.total || 0) / 100,
+            colorClassName: LINE_COLORS[0],
+          }],
     ],
     [data],
   );
@@ -117,7 +122,7 @@ export function EarningsCompositeChart() {
                   format={{
                     style: "currency",
                     currency: "USD",
-                    // @ts-ignore – trailingZeroDisplay is a valid option but TS is outdated
+                    // @ts-ignore – trailingZeroDisplay is a valid option but TS is outdated
                     trailingZeroDisplay: "stripIfInteger",
                   }}
                 />
@@ -163,8 +168,8 @@ export function EarningsCompositeChart() {
         <div className="mt-5 h-80">
           {chartData && chartData.length > 0 ? (
             <TimeSeriesChart
-              data={chartData}
-              series={series}
+              data={chartData || []}
+              series={series || []}
               tooltipClassName="p-0"
               tooltipContent={(d) => {
                 return (
@@ -185,7 +190,7 @@ export function EarningsCompositeChart() {
                       </p>
                     </div>
                     <div className="grid max-w-64 grid-cols-[minmax(0,1fr),min-content] gap-x-6 gap-y-2 px-4 py-3 text-xs">
-                      {series.map(({ id, colorClassName, valueAccessor }) => {
+                      {(series || []).filter(s => s && s.id).map(({ id, colorClassName, valueAccessor }) => {
                         const link = links?.find((link) => link.id === id);
                         return (
                           <Fragment key={id}>
@@ -216,7 +221,13 @@ export function EarningsCompositeChart() {
                 );
               }}
             >
-              <Areas />
+              <Areas 
+                seriesStyles={series.map(s => ({
+                  id: s.id,
+                  gradientClassName: s.colorClassName,
+                  lineClassName: s.colorClassName
+                }))}
+              />
               <XAxis
                 tickFormat={(d) =>
                   formatDateTooltip(d, {

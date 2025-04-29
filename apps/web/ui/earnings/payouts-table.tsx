@@ -1,5 +1,6 @@
 "use client";
 
+import { PayoutResponse, useWorkspacePayouts } from "@/lib/swr/use-workspace-payouts";
 import { PayoutStatus } from "@dub/prisma/client";
 import { PayoutStatusBadges } from "@/ui/partners/payout-status-badges";
 import { AnimatedEmptyState } from "@/ui/shared/animated-empty-state";
@@ -13,10 +14,9 @@ import {
 import { CircleDollar } from "@dub/ui/icons";
 import { currencyFormatter, formatPeriod } from "@dub/utils";
 import { useMemo, useState } from "react";
-import { PayoutDetailsSheet } from "./payout-details-sheet";
 
-// Mock types - will be replaced with actual types
-type PayoutResponse = {
+// Interface for processed payouts with Date objects
+interface ProcessedPayout {
   id: string;
   amount: number;
   currency: string;
@@ -25,54 +25,75 @@ type PayoutResponse = {
   periodEnd: Date | null;
   createdAt: Date;
   paidAt: Date | null;
-};
+  description?: string;
+}
+
+interface PayoutDetailsSheetProps {
+  payout: ProcessedPayout;
+  setIsOpen: (open: boolean) => void;
+}
+
+// Temporary placeholder for the PayoutDetailsSheet
+// This component can be fully implemented later
+function PayoutDetailsSheet({ payout, setIsOpen }: PayoutDetailsSheetProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setIsOpen(false)}>
+      <div className="w-full max-w-lg rounded-lg bg-white p-6" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-medium">Payout Details</h3>
+        <p className="mt-2 text-sm text-neutral-500">
+          Period: {formatPeriod({
+            periodStart: payout.periodStart,
+            periodEnd: payout.periodEnd,
+          })}
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          Amount: {currencyFormatter(payout.amount / 100)}
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
+          Status: {PayoutStatusBadges[payout.status]?.label || payout.status}
+        </p>
+        <button 
+          className="mt-4 rounded-md bg-neutral-800 px-4 py-2 text-sm text-white"
+          onClick={() => setIsOpen(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function PayoutsTable() {
   const { queryParams, searchParamsObj } = useRouterStuff();
-  const [selectedPayout, setSelectedPayout] = useState<PayoutResponse | null>(null);
+  const [selectedPayout, setSelectedPayout] = useState<ProcessedPayout | null>(null);
   
   const { sortBy = "createdAt", sortOrder = "desc" } = searchParamsObj as {
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   };
 
-  // Mock data
-  const mockData = useMemo(() => {
-    return Array.from({ length: 5 }, (_, i) => {
-      const createdAt = new Date(Date.now() - i * 30 * 86400000);
-      const periodStart = new Date(createdAt);
-      periodStart.setDate(1);
-      const periodEnd = new Date(periodStart);
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-      periodEnd.setDate(0);
-      
-      return {
-        id: `pyt_${i}`,
-        amount: Math.floor(Math.random() * 200000) + 50000,
-        currency: "USD",
-        status: i === 0 
-          ? PayoutStatus.pending 
-          : i === 1 
-            ? PayoutStatus.processing 
-            : i === 4 
-              ? PayoutStatus.failed 
-              : PayoutStatus.completed,
-        periodStart,
-        periodEnd,
-        createdAt,
-        paidAt: i > 1 && i !== 4 ? new Date(createdAt.getTime() + 2 * 86400000) : null,
-      } as PayoutResponse;
-    });
-  }, []);
+  // Get payout data from the API
+  const { payouts, count, isLoading, error } = useWorkspacePayouts();
 
-  const isLoading = false;
-  const totalCount = 5; // Mock total count
+  // Process payouts data to handle dates
+  const processedPayouts = useMemo<ProcessedPayout[]>(() => {
+    if (!payouts?.length) return [];
+    
+    return payouts.map(payout => ({
+      ...payout,
+      createdAt: new Date(payout.createdAt),
+      periodStart: payout.periodStart ? new Date(payout.periodStart) : null,
+      periodEnd: payout.periodEnd ? new Date(payout.periodEnd) : null,
+      paidAt: payout.paidAt ? new Date(payout.paidAt) : null,
+    }));
+  }, [payouts]);
 
   const { pagination, setPagination } = usePagination();
 
   const table = useTable({
-    data: mockData,
+    data: processedPayouts,
     loading: isLoading,
+    error: error ? "Failed to fetch payouts." : undefined,
     columns: [
       {
         id: "periodStart",
@@ -88,7 +109,9 @@ export function PayoutsTable() {
         accessorFn: (d) => d.createdAt.toLocaleDateString(),
       },
       {
+        id: "status",
         header: "Status",
+        accessorKey: "status",
         cell: ({ row }) => {
           const badge = PayoutStatusBadges[row.original.status];
           return badge ? (
@@ -128,11 +151,11 @@ export function PayoutsTable() {
     thClassName: "border-l-0",
     tdClassName: "border-l-0",
     resourceName: (p) => `payout${p ? "s" : ""}`,
-    rowCount: totalCount,
+    rowCount: count,
     emptyState: (
       <AnimatedEmptyState
         title="No payouts found"
-        description="No payouts have been processed yet."
+        description="No payouts have been made yet."
         cardContent={() => (
           <>
             <CircleDollar className="size-4 text-neutral-700" />
@@ -149,10 +172,23 @@ export function PayoutsTable() {
         <h2 className="text-lg font-medium text-neutral-900">Payout History</h2>
       </div>
       
-      <Table
-        {...table}
-        containerClassName="border-neutral-200"
-      />
+      {isLoading || (processedPayouts.length > 0) ? (
+        <Table
+          {...table}
+          containerClassName="border-neutral-200"
+        />
+      ) : (
+        <AnimatedEmptyState
+          title="No payouts found"
+          description="No payouts have been made yet."
+          cardContent={() => (
+            <>
+              <CircleDollar className="size-4 text-neutral-700" />
+              <div className="h-2.5 w-24 min-w-0 rounded-sm bg-neutral-200" />
+            </>
+          )}
+        />
+      )}
       
       {selectedPayout && (
         <PayoutDetailsSheet

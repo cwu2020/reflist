@@ -307,8 +307,8 @@ function LinkEventsChart({
   return (
     <div className="relative size-full">
       <TimeSeriesChart
-        data={data}
-        series={[series]}
+        data={data || []}
+        series={series ? [series] : []}
         tooltipClassName="p-0"
         tooltipContent={(d) => {
           return (
@@ -337,7 +337,14 @@ function LinkEventsChart({
         }}
       >
         <XAxis showAxisLine={false} highlightLast={false} maxTicks={2} />
-        <Areas showLatestValueCircle={false} />
+        <Areas 
+          showLatestValueCircle={false} 
+          seriesStyles={[{
+            id: series.id,
+            gradientClassName: series.colorClassName,
+            lineClassName: series.colorClassName
+          }]} 
+        />
       </TimeSeriesChart>
     </div>
   );

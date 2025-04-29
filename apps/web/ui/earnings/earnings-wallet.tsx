@@ -1,5 +1,6 @@
 "use client";
 
+import { useWorkspaceEarningsCount } from "@/lib/swr/use-workspace-earnings-count";
 import { Button, LoadingSpinner } from "@dub/ui";
 import { CircleDollar } from "@dub/ui/icons";
 import { currencyFormatter } from "@dub/utils";
@@ -9,11 +10,19 @@ import { WithdrawModal } from ".";
 export function EarningsWallet() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   
-  // Mock data - will be replaced with actual API calls
-  const isLoading = false;
-  const availableBalance = 120000; // $1,200.00
-  const pendingEarnings = 50000; // $500.00
-  const monthlyEarnings = 80000; // $800.00
+    // // Mock data - will be replaced with actual API calls
+    // const isLoading = false;
+    // const availableBalance = 120000; // $1,200.00
+    // const pendingEarnings = 50000; // $500.00
+    // const monthlyEarnings = 80000; // $800.00
+  // Get earnings data from the API
+  const { 
+    availableBalance, 
+    pendingEarnings, 
+    monthlyEarnings, 
+    isLoading,
+    error
+  } = useWorkspaceEarningsCount();
 
   return (
     <div className="w-full rounded-lg border border-neutral-200 bg-white p-6">

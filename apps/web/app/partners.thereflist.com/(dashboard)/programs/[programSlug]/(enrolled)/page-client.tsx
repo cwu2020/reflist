@@ -385,7 +385,7 @@ function BrandedChart({
   const { start, end, interval, color } = useContext(ProgramOverviewContext);
 
   const data = useMemo(() => {
-    return dataProp.map((d) => ({
+    return (dataProp || []).map((d) => ({
       date: new Date(d.date),
       values: { main: d.value },
     }));
@@ -397,7 +397,7 @@ function BrandedChart({
       style={{ "--color": color || "#DA2778" } as CSSProperties}
     >
       <TimeSeriesChart
-        data={data}
+        data={data || []}
         series={[
           {
             id: "main",

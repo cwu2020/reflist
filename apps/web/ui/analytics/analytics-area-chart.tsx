@@ -112,8 +112,8 @@ export default function AnalyticsAreaChart({
       {chartData ? (
         <TimeSeriesChart
           key={queryString}
-          data={chartData}
-          series={series}
+          data={chartData || []}
+          series={series || []}
           defaultTooltipIndex={demo ? DEMO_DATA.length - 2 : undefined}
           tooltipClassName="p-0"
           tooltipContent={(d) => {
@@ -151,7 +151,13 @@ export default function AnalyticsAreaChart({
             );
           }}
         >
-          <Areas />
+          <Areas 
+            seriesStyles={series.filter(s => s && s.isActive).map(s => ({
+              id: s.id,
+              gradientClassName: s.colorClassName,
+              lineClassName: s.colorClassName
+            }))}
+          />
           <XAxis
             tickFormat={(d) =>
               formatDateTooltip(d, {

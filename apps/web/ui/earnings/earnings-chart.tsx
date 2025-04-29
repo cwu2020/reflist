@@ -3,13 +3,14 @@
 import { DUB_PARTNERS_ANALYTICS_INTERVAL, intervals } from "@/lib/analytics/constants";
 import { formatDateTooltip } from "@/lib/analytics/format-date-tooltip";
 import { IntervalOptions } from "@/lib/analytics/types";
+import { EarningsTimeseriesItem, useWorkspaceEarningsTimeseries } from "@/lib/swr/use-workspace-earnings-timeseries";
 import SimpleDateRangePicker from "@/ui/shared/simple-date-range-picker";
 import { Filter, LoadingSpinner, ToggleGroup, useRouterStuff } from "@dub/ui";
 import { Areas, TimeSeriesChart, XAxis, YAxis } from "@dub/ui/charts";
 import { Hyperlink, Sliders } from "@dub/ui/icons";
 import { cn, currencyFormatter } from "@dub/utils";
 import { endOfDay, startOfDay } from "date-fns";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 
 const LINE_COLORS = [
   "text-teal-500",
@@ -24,6 +25,23 @@ const EVENT_TYPE_LINE_COLORS = {
   lead: "text-purple-500",
   click: "text-blue-500",
 };
+
+// Interface for chart data point
+interface ChartDataPoint {
+  date: Date;
+  values: {
+    total: number;
+    [key: string]: number;
+  };
+}
+
+// Interface for chart series
+interface ChartSeries {
+  id: string;
+  isActive: boolean;
+  valueAccessor: (d: ChartDataPoint) => number;
+  colorClassName: string;
+}
 
 export function EarningsChart() {
   const { queryParams, searchParamsObj } = useRouterStuff();
@@ -40,47 +58,74 @@ export function EarningsChart() {
     groupBy?: "linkId" | "type";
   };
 
-  // Mock data for earnings chart
-  const mockData = useMemo(() => {
-    const now = new Date();
-    const dates = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date(now);
-      date.setDate(date.getDate() - (29 - i));
-      return date;
-    });
+  // Get real earnings data from the API
+  const { data, isLoading, error } = useWorkspaceEarningsTimeseries({
+    interval,
+    groupBy,
+    start: start ? startOfDay(new Date(start)) : undefined,
+    end: end ? endOfDay(new Date(end)) : undefined,
+  });
 
-    return dates.map((date) => ({
-      date,
+  // Process data for the chart
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    if (!data) return [];
+    return data.map(item => ({
+      date: new Date(item.start),
       values: {
-        total: Math.floor(Math.random() * 10000),
-        linkId1: Math.floor(Math.random() * 5000),
-        linkId2: Math.floor(Math.random() * 3000),
+        total: item.earnings,
+        ...(item.data || {})
       },
     }));
-  }, []);
+  }, [data]);
 
-  const mockSeries = useMemo(
-    () => [
-      {
-        id: "linkId1",
+  // Create series for the chart
+  const series = useMemo<ChartSeries[]>(() => {
+    if (!data || data.length === 0 || !data[0]?.data) {
+      // Add a default series to prevent the error
+      return [{
+        id: 'total',
         isActive: true,
-        valueAccessor: (d) => (d.values.linkId1 || 0) / 100,
+        valueAccessor: (d: ChartDataPoint) => ((d.values.total || 0) / 100),
         colorClassName: LINE_COLORS[0],
-      },
-      {
-        id: "linkId2",
+      }];
+    }
+    
+    // Get unique keys from all data points (excluding 'earnings' which is the total)
+    const keys = new Set<string>();
+    data.forEach(item => {
+      if (item.data) {
+        Object.keys(item.data).forEach(key => {
+          if (key !== 'earnings') keys.add(key);
+        });
+      }
+    });
+    
+    // If no keys were found, use a fallback
+    if (keys.size === 0) {
+      return [{
+        id: 'total',
         isActive: true,
-        valueAccessor: (d) => (d.values.linkId2 || 0) / 100,
-        colorClassName: LINE_COLORS[1],
-      },
-    ],
-    [],
-  );
+        valueAccessor: (d: ChartDataPoint) => ((d.values.total || 0) / 100),
+        colorClassName: LINE_COLORS[0],
+      }];
+    }
+    
+    // Create series for each key
+    return Array.from(keys).map((key, index) => ({
+      id: key,
+      isActive: true,
+      valueAccessor: (d: ChartDataPoint) => ((d.values[key] || 0) / 100),
+      colorClassName: groupBy === "type" 
+        ? EVENT_TYPE_LINE_COLORS[key as keyof typeof EVENT_TYPE_LINE_COLORS] || LINE_COLORS[index % LINE_COLORS.length]
+        : LINE_COLORS[index % LINE_COLORS.length],
+    }));
+  }, [data, groupBy]);
 
-  // Mock total
+  // Calculate total earnings
   const total = useMemo(() => {
-    return mockData.reduce((acc, { values }) => acc + values.total, 0);
-  }, [mockData]);
+    if (!data || data.length === 0) return 0;
+    return data.reduce((acc, item) => acc + item.earnings, 0);
+  }, [data]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,9 +135,13 @@ export function EarningsChart() {
           <div className="flex flex-col gap-1">
             <span className="text-sm text-neutral-500">Total Earnings</span>
             <div className="mt-1">
-              <span className="text-lg font-medium leading-none text-neutral-800">
-                {currencyFormatter(total / 100)}
-              </span>
+              {isLoading ? (
+                <div className="h-7 w-24 animate-pulse rounded-md bg-neutral-200" />
+              ) : (
+                <span className="text-lg font-medium leading-none text-neutral-800">
+                  {currencyFormatter(total / 100)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -130,64 +179,84 @@ export function EarningsChart() {
           />
         </div>
         <div className="mt-5 h-80">
-          <TimeSeriesChart
-            data={mockData}
-            series={mockSeries}
-            tooltipClassName="p-0"
-            tooltipContent={(d) => {
-              return (
-                <>
-                  <div className="flex justify-between border-b border-neutral-200 p-3 text-xs">
-                    <p className="font-medium leading-none text-neutral-900">
-                      {formatDateTooltip(d.date, {
-                        interval,
-                        start,
-                        end,
-                      })}
-                    </p>
-                    <p className="text-right leading-none text-neutral-500">
-                      {currencyFormatter((d.values.total || 0) / 100)}
-                    </p>
-                  </div>
-                  <div className="grid max-w-64 grid-cols-[minmax(0,1fr),min-content] gap-x-6 gap-y-2 px-4 py-3 text-xs">
-                    {mockSeries.map(({ id, colorClassName, valueAccessor }) => (
-                      <Fragment key={id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              colorClassName,
-                              "size-2 shrink-0 rounded-sm bg-current opacity-50 shadow-[inset_0_0_0_1px_#0003]",
-                            )}
-                          />
-                          <span className="min-w-0 truncate font-medium text-neutral-700">
-                            {id === "linkId1" ? "Product Link 1" : "Product Link 2"}
-                          </span>
-                        </div>
-                        <p className="text-right text-neutral-500">
-                          {currencyFormatter(valueAccessor(d))}
-                        </p>
-                      </Fragment>
-                    ))}
-                  </div>
-                </>
-              );
-            }}
-          >
-            <Areas />
-            <XAxis
-              tickFormat={(d) =>
-                formatDateTooltip(d, {
-                  interval,
-                  start,
-                  end,
-                })
-              }
-            />
-            <YAxis
-              showGridLines
-              tickFormat={(v) => `${currencyFormatter(v)}`}
-            />
-          </TimeSeriesChart>
+          {isLoading ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <LoadingSpinner />
+            </div>
+          ) : error ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <p className="text-sm text-neutral-500">Failed to load earnings data.</p>
+            </div>
+          ) : chartData.length ? (
+            <TimeSeriesChart
+              data={chartData || []}
+              series={series || []}
+              tooltipClassName="p-0"
+              tooltipContent={(d) => {
+                return (
+                  <>
+                    <div className="flex justify-between border-b border-neutral-200 p-3 text-xs">
+                      <p className="font-medium leading-none text-neutral-900">
+                        {formatDateTooltip(d.date, {
+                          interval,
+                          start,
+                          end,
+                        })}
+                      </p>
+                      <p className="text-right leading-none text-neutral-500">
+                        {currencyFormatter((d.values.total || 0) / 100)}
+                      </p>
+                    </div>
+                    <div className="grid max-w-64 grid-cols-[minmax(0,1fr),min-content] gap-x-6 gap-y-2 px-4 py-3 text-xs">
+                      {(series || []).filter(s => s && s.id).map(({ id, colorClassName, valueAccessor }) => (
+                        <Fragment key={id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={cn(
+                                colorClassName,
+                                "size-2 shrink-0 rounded-sm bg-current opacity-50 shadow-[inset_0_0_0_1px_#0003]",
+                              )}
+                            />
+                            <span className="min-w-0 truncate font-medium text-neutral-700">
+                              {id}
+                            </span>
+                          </div>
+                          <p className="text-right text-neutral-500">
+                            {currencyFormatter(valueAccessor(d))}
+                          </p>
+                        </Fragment>
+                      ))}
+                    </div>
+                  </>
+                );
+              }}
+            >
+              <Areas
+                seriesStyles={series.map(s => ({
+                  id: s.id,
+                  gradientClassName: s.colorClassName,
+                  lineClassName: s.colorClassName
+                }))}
+              />
+              <XAxis
+                tickFormat={(d) =>
+                  formatDateTooltip(d, {
+                    interval,
+                    start,
+                    end,
+                  })
+                }
+              />
+              <YAxis
+                showGridLines
+                tickFormat={(v) => `${currencyFormatter(v)}`}
+              />
+            </TimeSeriesChart>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <p className="text-sm text-neutral-500">No earnings data available.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

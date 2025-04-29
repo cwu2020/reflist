@@ -183,7 +183,7 @@ export function OverviewChart() {
             <Areas
               seriesStyles={[
                 {
-                  id: "saleAmount",
+                  id: "amount",
                   areaFill: `url(#${id}-color-gradient)`,
                   lineStroke: `url(#${id}-color-gradient)`,
                   lineClassName: "text-violet-500",

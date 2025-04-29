@@ -769,4 +769,104 @@ Not applicable yet.
 
 ## Lessons
 
-Not applicable yet. 
+Not applicable yet.
+
+# Earnings Dashboard Implementation Plan
+
+## Current State Assessment
+
+The earnings dashboard UI has been fully implemented with the following components:
+
+1. **EarningsWallet** - Shows available balance, pending earnings, and monthly earnings
+2. **EarningsChart** - Shows earnings trends over time
+3. **EarningsTable** - Shows detailed earnings entries
+4. **PayoutsTable** - Shows payout history
+5. **WithdrawModal** - Interface for withdrawing available balance
+
+All these components are currently using mock data. To make the dashboard fully functional with real data, we need to implement API endpoints and SWR hooks.
+
+## Required API Endpoints
+
+Based on the existing patterns in the codebase, we need to create the following API endpoints:
+
+1. **`/api/workspace/[slug]/earnings`** - Get earnings data for a workspace
+   - Similar to `/api/partner-profile/programs/[programId]/earnings`
+   - Will fetch Commission records related to the workspace
+
+2. **`/api/workspace/[slug]/earnings/count`** - Get aggregated earnings counts and totals
+   - Similar to `/api/partner-profile/programs/[programId]/earnings/count`
+   - Will provide summary data for the wallet component
+
+3. **`/api/workspace/[slug]/earnings/timeseries`** - Get time-series earnings data
+   - Similar to `/api/partner-profile/programs/[programId]/earnings/timeseries`
+   - Will provide data for the earnings chart
+
+4. **`/api/workspace/[slug]/payouts`** - Get payout data for a workspace
+   - Similar to `/api/partner-profile/payouts`
+   - Will provide data for the payouts table
+
+5. **`/api/workspace/[slug]/withdraw`** - Create a withdrawal request
+   - Will handle the withdrawal functionality
+   - Will create a new Payout record with status "pending"
+
+## Required SWR Hooks
+
+To fetch the data from these endpoints, we need to create the following SWR hooks:
+
+1. **`useWorkspaceEarnings`** - Fetch earnings data for the earnings table
+   - Similar to `usePartnerEarnings`
+
+2. **`useWorkspaceEarningsCount`** - Fetch earnings counts and totals for the wallet
+   - Similar to `usePartnerEarningsCount`
+
+3. **`useWorkspaceEarningsTimeseries`** - Fetch time-series data for the chart
+   - Similar to `usePartnerEarningsTimeseries`
+
+4. **`useWorkspacePayouts`** - Fetch payout data for the payouts table
+   - Similar to `usePartnerPayouts`
+
+## Implementation Steps
+
+1. **Create API Endpoints**:
+   - Implement the 5 endpoints described above
+   - Ensure proper authorization via withWorkspace middleware
+   - Implement data aggregation and filtering similar to partner endpoints
+
+2. **Create SWR Hooks**:
+   - Implement the 4 hooks described above
+   - Ensure they handle caching, pagination, and filtering appropriately
+
+3. **Connect UI Components**:
+   - Update EarningsWallet to use useWorkspaceEarningsCount
+   - Update EarningsChart to use useWorkspaceEarningsTimeseries
+   - Update EarningsTable to use useWorkspaceEarnings
+   - Update PayoutsTable to use useWorkspacePayouts
+   - Update WithdrawModal to use the withdraw API endpoint
+
+4. **Implement Error Handling**:
+   - Add proper error states to all components
+   - Handle loading states appropriately
+
+5. **Testing**:
+   - Test the endpoints with real data
+   - Verify that the UI components display data correctly
+   - Test filtering, pagination, and sorting
+
+## Data Model Considerations
+
+The existing Commission model has all the fields we need:
+- `earnings` - Amount earned from a commission
+- `status` - Status of the commission (pending, processed, paid, refunded)
+- `type` - Type of commission (click, lead, sale)
+- `linkId` - Link associated with the commission
+- `customerId` - Customer associated with the commission
+- `createdAt` - When the commission was created
+
+Similarly, the Payout model has all the fields needed for payouts:
+- `amount` - Amount of the payout
+- `status` - Status of the payout (pending, processing, completed, failed)
+- `periodStart` and `periodEnd` - Period covered by the payout
+- `createdAt` - When the payout was created
+- `paidAt` - When the payout was completed
+
+No additional schema changes should be needed to implement this functionality. 

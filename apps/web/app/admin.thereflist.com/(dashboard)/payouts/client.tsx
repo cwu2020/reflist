@@ -246,7 +246,7 @@ export default function PayoutsPageClient() {
             {chartData ? (
               chartData.length > 0 ? (
                 <TimeSeriesChart
-                  data={chartData}
+                  data={chartData || []}
                   series={[
                     {
                       id: "value",
@@ -286,7 +286,13 @@ export default function PayoutsPageClient() {
                     </>
                   )}
                 >
-                  <Areas />
+                  <Areas 
+                    seriesStyles={[{
+                      id: "value",
+                      gradientClassName: tab.colorClassName,
+                      lineClassName: tab.colorClassName
+                    }]}
+                  />
                   <XAxis maxTicks={5} tickFormat={dateFormatter} />
                   <YAxis
                     showGridLines

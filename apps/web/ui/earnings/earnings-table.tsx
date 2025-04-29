@@ -1,5 +1,6 @@
 "use client";
 
+import { EarningsResponse, useWorkspaceEarnings } from "@/lib/swr/use-workspace-earnings";
 import { CommissionStatusBadges } from "@/ui/partners/commission-status-badges";
 import { CommissionTypeBadge } from "@/ui/partners/commission-type-badge";
 import { AnimatedEmptyState } from "@/ui/shared/animated-empty-state";
@@ -24,25 +25,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 
-// Mock types for now - will be replaced with actual types
-type EarningsResponse = {
-  id: string;
-  createdAt: Date;
-  type: "click" | "lead" | "sale";
-  link: {
-    id: string;
-    shortLink: string;
-    url: string;
-  };
-  customer?: {
-    id: string;
-    email: string;
-  };
-  amount: number;
-  earnings: number;
-  status: "pending" | "processed" | "paid" | "refunded";
-};
-
 export function EarningsTable() {
   const { slug } = useParams();
   const { queryParams, searchParamsObj } = useRouterStuff();
@@ -52,42 +34,28 @@ export function EarningsTable() {
     sortOrder?: "asc" | "desc";
   };
 
-  // Mock data
-  const mockData = useMemo(() => {
-    return Array.from({ length: 10 }, (_, i) => ({
-      id: `cm_${i}`,
-      createdAt: new Date(Date.now() - i * 86400000),
-      type: i % 3 === 0 ? "click" : i % 3 === 1 ? "lead" : "sale",
-      link: {
-        id: `link_${i}`,
-        shortLink: `dub.sh/${i}`,
-        url: `https://example.com/product-${i}`,
-      },
-      customer: i % 3 === 0 ? undefined : {
-        id: `cust_${i}`,
-        email: `customer${i}@example.com`,
-      },
-      amount: i % 3 === 2 ? Math.floor(Math.random() * 10000) + 1000 : 0,
-      earnings: Math.floor(Math.random() * 5000) + 500,
-      status: i % 4 === 0 ? "pending" : i % 4 === 1 ? "processed" : i % 4 === 2 ? "paid" : "refunded",
-    } as EarningsResponse));
-  }, []);
-
-  const isLoading = false;
-  const error = undefined;
-  const totalCount = 53; // Mock total count
+  // Get earnings data from the API
+  const { earnings, isLoading, error } = useWorkspaceEarnings();
 
   const { pagination, setPagination } = usePagination();
 
+  // Process earnings data to handle dates
+  const processedEarnings = useMemo(() => {
+    return earnings.map(earning => ({
+      ...earning,
+      createdAt: new Date(earning.createdAt),
+    }));
+  }, [earnings]);
+
   const { table, ...tableProps } = useTable({
-    data: mockData,
+    data: processedEarnings,
     loading: isLoading,
     error: error ? "Failed to fetch earnings." : undefined,
     columns: [
       {
         id: "createdAt",
         header: "Date",
-        accessorKey: "timestamp",
+        accessorKey: "createdAt",
         minSize: 140,
         cell: ({ row }) => (
           <p title={formatDateTime(row.original.createdAt)}>
@@ -162,7 +130,9 @@ export function EarningsTable() {
           currencyFormatter(row.original.earnings / 100),
       },
       {
+        id: "status",
         header: "Status",
+        accessorKey: "status",
         cell: ({ row }) => {
           const badge = CommissionStatusBadges[row.original.status];
 
@@ -197,7 +167,7 @@ export function EarningsTable() {
         scroll: false,
       }),
     enableColumnResizing: true,
-    rowCount: totalCount,
+    rowCount: processedEarnings?.length || 0,
     tdClassName: (columnId) => (columnId === "customer" ? "p-0" : ""),
     emptyState: (
       <AnimatedEmptyState
@@ -214,22 +184,30 @@ export function EarningsTable() {
     resourceName: (plural) => `earning${plural ? "s" : ""}`,
   });
 
-  return isLoading || mockData.length ? (
-    <Table
-      {...tableProps}
-      table={table}
-      containerClassName="border-neutral-200"
-    />
-  ) : (
-    <AnimatedEmptyState
-      title="No earnings found"
-      description="No earnings have been made yet."
-      cardContent={() => (
-        <>
-          <CircleDollar className="size-4 text-neutral-700" />
-          <div className="h-2.5 w-24 min-w-0 rounded-sm bg-neutral-200" />
-        </>
+  return (
+    <div className="mt-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-medium text-neutral-900">Earnings History</h2>
+      </div>
+
+      {isLoading || processedEarnings.length ? (
+        <Table
+          {...tableProps}
+          table={table}
+          containerClassName="border-neutral-200"
+        />
+      ) : (
+        <AnimatedEmptyState
+          title="No earnings found"
+          description="No earnings have been made yet."
+          cardContent={() => (
+            <>
+              <CircleDollar className="size-4 text-neutral-700" />
+              <div className="h-2.5 w-24 min-w-0 rounded-sm bg-neutral-200" />
+            </>
+          )}
+        />
       )}
-    />
+    </div>
   );
 } 
