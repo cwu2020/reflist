@@ -1,5 +1,5 @@
 import useWorkspace from "@/lib/swr/use-workspace";
-import { LinkFormData } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import {
   CrownSmall,
   FlaskSmall,

@@ -1,4 +1,4 @@
-import { LinkFormData } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import { useLocalStorage } from "@dub/ui";
 import { subDays } from "date-fns";
 import { useCallback, useLayoutEffect, useMemo } from "react";

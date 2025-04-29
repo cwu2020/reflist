@@ -1,6 +1,6 @@
 import { FolderDropdown } from "@/ui/folders/folder-dropdown";
 import { useFormContext, useWatch } from "react-hook-form";
-import { LinkFormData } from "../link-builder-provider";
+import { LinkFormData } from "../link-form-data";
 
 export function LinkBuilderFolderSelector() {
   const { setValue } = useFormContext<LinkFormData>();

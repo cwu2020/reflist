@@ -1,4 +1,4 @@
-import { LinkFormData } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import { getABTestingLabel } from "@/ui/modals/link-builder/ab-testing-modal";
 import { getExpirationLabel } from "@/ui/modals/link-builder/expiration-modal";
 import { getPasswordLabel } from "@/ui/modals/link-builder/password-modal";

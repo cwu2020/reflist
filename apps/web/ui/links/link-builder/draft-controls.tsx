@@ -1,5 +1,5 @@
 import { ExpandedLinkProps } from "@/lib/types";
-import { LinkFormData } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import {
   LinkDraft,
   useLinkDrafts,

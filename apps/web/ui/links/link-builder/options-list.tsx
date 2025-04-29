@@ -2,7 +2,7 @@ import {
   MOBILE_MORE_ITEMS,
   MORE_ITEMS,
 } from "@/ui/links/link-builder/constants";
-import { LinkFormData } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import { AlertCircleFill, CheckCircleFill, X } from "@/ui/shared/icons";
 import { SimpleTooltipContent, Tooltip, useMediaQuery } from "@dub/ui";
 import { LoadingSpinner } from "@dub/ui/icons";
