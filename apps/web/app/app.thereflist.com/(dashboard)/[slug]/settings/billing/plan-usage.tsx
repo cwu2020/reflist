@@ -148,7 +148,6 @@ export default function PlanUsage() {
               usage={salesUsage}
               limit={salesLimit}
               unit="$"
-              requiresUpgrade={plan === "free" || plan === "pro"}
             />
           </div>
           <div className="w-full px-2 pb-8 md:px-8">
@@ -233,7 +232,6 @@ function UsageTabCard({
   usage: usageProp,
   limit: limitProp,
   unit,
-  requiresUpgrade,
 }: {
   id: string;
   icon: Icon;
@@ -241,7 +239,6 @@ function UsageTabCard({
   usage?: number;
   limit?: number;
   unit?: string;
-  requiresUpgrade?: boolean;
 }) {
   const { searchParams, queryParams } = useRouterStuff();
   const { slug } = useWorkspace();
@@ -268,37 +265,13 @@ function UsageTabCard({
         "rounded-lg border border-neutral-300 bg-white px-4 py-3 text-left transition-colors duration-75",
         "outline-none focus-visible:border-blue-600 focus-visible:ring-1 focus-visible:ring-blue-600",
         isActive && "border-neutral-900 ring-1 ring-neutral-900",
-        requiresUpgrade
-          ? "border-neutral-100 bg-neutral-100 hover:bg-neutral-100"
-          : "hover:bg-neutral-50 lg:px-5 lg:py-4",
       )}
       aria-selected={isActive}
-      onClick={() => !requiresUpgrade && queryParams({ set: { tab: id } })}
-      disabled={requiresUpgrade}
+      onClick={() => queryParams({ set: { tab: id } })}
     >
       <Icon className="size-4 text-neutral-600" />
       <div className="mt-1.5 flex items-center gap-2 text-sm text-neutral-600">
         {title}
-        {requiresUpgrade && (
-          <Tooltip
-            content={
-              <div className="max-w-xs px-4 py-2 text-center text-sm text-neutral-600">
-                Upgrade to Business to unlock conversion tracking.{" "}
-                <Link
-                  href={`/${slug}/upgrade`}
-                  className="underline underline-offset-2 hover:text-neutral-800"
-                >
-                  View pricing plans
-                </Link>
-              </div>
-            }
-          >
-            <span className="flex items-center gap-1 rounded-full border border-neutral-300 px-2 py-0.5 text-xs text-neutral-500">
-              <CrownSmall className="size-" />
-              Business
-            </span>
-          </Tooltip>
-        )}
       </div>
       <div className="mt-2">
         {!loading ? (
@@ -337,9 +310,7 @@ function UsageTabCard({
               <div
                 className={cn(
                   "size-full rounded-full",
-                  requiresUpgrade
-                    ? "bg-neutral-900/10"
-                    : "bg-gradient-to-r from-blue-500/80 to-blue-600",
+                  "bg-gradient-to-r from-blue-500/80 to-blue-600",
                   warning && "from-neutral-900/10 via-red-500 to-red-600",
                 )}
                 style={{

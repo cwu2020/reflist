@@ -864,17 +864,8 @@ export default function Toggle({
         });
       }}
       presets={INTERVAL_DISPLAYS.map(({ display, value, shortcut }) => {
-        const requiresUpgrade =
-          partnerPage ||
-          DUB_DEMO_LINKS.find((l) => l.domain === domain && l.key === key)
-            ? false
-            : !validDateRangeForPlan({
-                plan: plan || dashboardProps?.workspacePlan,
-                dataAvailableFrom: createdAt,
-                interval: value,
-                start,
-                end,
-              });
+        // Always allow all date ranges for all users
+        const requiresUpgrade = false;
 
         const { startDate, endDate } = getStartEndDates({
           interval: value,
@@ -889,9 +880,7 @@ export default function Toggle({
             to: endDate,
           },
           requiresUpgrade,
-          tooltipContent: requiresUpgrade ? (
-            <UpgradeTooltip rangeLabel={display} plan={plan} />
-          ) : undefined,
+          tooltipContent: undefined, // Remove upgrade tooltip
           shortcut,
         };
       })}

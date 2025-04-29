@@ -8,50 +8,48 @@ import {
   useFormState,
   useWatch,
 } from "react-hook-form";
-import { DestinationUrlInput } from "../../destination-url-input";
-import { useAvailableDomains } from "../../use-available-domains";
+import { ProductUrlInput } from "../../product-url-input";
 
 /**
- * Wraps the DestinationUrlInput component with link-builder-specific context & logic
- * @see DestinationUrlInput
+ * Wraps the ProductUrlInput component with link-builder-specific context & logic
  */
-export const LinkBuilderDestinationUrlInput = memo(
+export const LinkBuilderProductUrlInput = memo(
   forwardRef<HTMLInputElement>((_, ref) => {
     const { control, setValue, clearErrors } = useFormContext<LinkFormData>();
 
-    const { errors } = useFormState({ control, name: ["url"] });
-    const [domain, key, url] = useWatch({
+    const { errors } = useFormState({ control, name: ["productUrl"] });
+    const [productUrl] = useWatch({
       control,
-      name: ["domain", "key", "url"],
-    });
-
-    const { domains } = useAvailableDomains({
-      currentDomain: domain,
+      name: ["productUrl"],
     });
 
     return (
       <Controller
-        name="url"
+        name="productUrl"
         control={control}
         render={({ field }) => (
-          <DestinationUrlInput
+          <ProductUrlInput
             ref={ref}
-            domain={domain}
-            _key={key}
             value={field.value}
-            domains={domains}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              clearErrors("url");
+              clearErrors("productUrl");
               field.onChange(e.target.value);
             }}
-            required={key !== "_root"}
-            error={errors.url?.message || undefined}
+            required={true}
+            error={errors.productUrl?.message || undefined}
             right={
               <div className="-mb-1 h-6">
-                {isValidUrl(url) && (
+                {isValidUrl(productUrl) && (
                   <UTMTemplatesButton
                     onLoad={(params) => {
-                      setValue("url", constructURLFromUTMParams(url || '', params), {
+                      const newUrl = constructURLFromUTMParams(productUrl || '', params);
+                      setValue("productUrl", newUrl, {
+                        shouldDirty: true,
+                      });
+                      setValue("url", newUrl, {
+                        shouldDirty: true,
+                      });
+                      setValue("originalUrl" as any, newUrl, {
                         shouldDirty: true,
                       });
                     }}
@@ -64,6 +62,4 @@ export const LinkBuilderDestinationUrlInput = memo(
       />
     );
   }),
-);
-
-LinkBuilderDestinationUrlInput.displayName = "LinkBuilderDestinationUrlInput";
+); 

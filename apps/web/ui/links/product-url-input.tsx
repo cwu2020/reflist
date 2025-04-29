@@ -5,36 +5,27 @@ import {
   InfoTooltip,
   SimpleTooltipContent,
   useMediaQuery,
-  UTM_PARAMETERS,
 } from "@dub/ui";
-import { getParamsFromURL } from "@dub/utils";
 import { forwardRef, HTMLProps, ReactNode, useId } from "react";
 import { useFormContext } from "react-hook-form";
 import { AlertCircleFill } from "../shared/icons";
-import { ProBadgeTooltip } from "../shared/pro-badge-tooltip";
 import { LinkFormData } from "./link-builder/link-form-data";
 
-type DestinationUrlInputProps = {
-  _key?: string;
-  domain?: string;
-  domains: DomainProps[];
+type ProductUrlInputProps = {
   error?: string;
   right?: ReactNode;
 } & HTMLProps<HTMLInputElement>;
 
-export const DestinationUrlInput = forwardRef<
+export const ProductUrlInput = forwardRef<
   HTMLInputElement,
-  DestinationUrlInputProps
+  ProductUrlInputProps
 >(
   (
     {
-      _key: key,
-      domain,
-      domains,
       error,
       right,
       ...inputProps
-    }: DestinationUrlInputProps,
+    }: ProductUrlInputProps,
     ref,
   ) => {
     const inputId = useId();
@@ -50,42 +41,27 @@ export const DestinationUrlInput = forwardRef<
               htmlFor={inputId}
               className="block text-sm font-medium text-neutral-700"
             >
-              Destination URL
+              Product URL
             </label>
-            {key === "_root" ? (
-              <ProBadgeTooltip
-                content={
-                  <SimpleTooltipContent
-                    title="The URL your users will get redirected to when they visit your root domain link."
-                    cta="Learn more."
-                    href="https://dub.co/help/article/how-to-redirect-root-domain"
-                  />
-                }
-              />
-            ) : (
-              <InfoTooltip
-                content={
-                  <SimpleTooltipContent
-                    title="The URL users will be redirected to when they visit your short link. For ShopMy-eligible URLs, this will be the affiliate link."
-                    cta="Learn more."
-                    href="https://dub.co/help/article/how-to-create-link"
-                  />
-                }
-              />
-            )}
+            <InfoTooltip
+              content={
+                <SimpleTooltipContent
+                  title="The original product URL you want to share. For eligible products, we'll automatically generate an affiliate link as the destination URL."
+                  cta="Learn more."
+                  href="https://dub.co/help/article/how-to-create-link"
+                />
+              }
+            />
           </div>
           {right}
         </div>
         <div className="relative mt-2 flex rounded-md shadow-sm">
           <input
             ref={ref}
-            name="url"
+            name="productUrl"
             id={inputId}
-            placeholder={
-              domains?.find(({ slug }) => slug === domain)?.placeholder ||
-              "https://dub.co/help/article/what-is-dub"
-            }
-            autoFocus={!key && !isMobile}
+            placeholder="https://example.com/product"
+            autoFocus={!isMobile}
             autoComplete="off"
             className={`${
               error
@@ -96,16 +72,12 @@ export const DestinationUrlInput = forwardRef<
             {...inputProps}
             {...(formContext && {
               onChange: (e) => {
-                const url = e.target.value;
-                formContext.setValue("url", url);
+                const productUrl = e.target.value;
                 
-                const parentParams = getParamsFromURL(url);
-
-                UTM_PARAMETERS.filter((p) => p.key !== "ref").forEach((p) =>
-                  formContext.setValue(p.key as any, parentParams?.[p.key], {
-                    shouldDirty: true,
-                  }),
-                );
+                // Set both the productUrl and url fields initially
+                formContext.setValue("productUrl", productUrl);
+                formContext.setValue("url", productUrl); // Initially set url to productUrl, will be replaced by ShopMy URL if eligible
+                formContext.setValue("originalUrl", productUrl); // Store product URL in originalUrl for database storage
               },
             })}
           />
@@ -126,4 +98,4 @@ export const DestinationUrlInput = forwardRef<
       </div>
     );
   },
-);
+); 

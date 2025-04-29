@@ -5,7 +5,6 @@ import usePartner from "@/lib/swr/use-partner";
 import useWorkspace from "@/lib/swr/use-workspace";
 import { ExpandedLinkProps } from "@/lib/types";
 import { LinkAnalyticsBadge } from "@/ui/links/link-analytics-badge";
-import { LinkBuilderDestinationUrlInput } from "@/ui/links/link-builder/controls/link-builder-destination-url-input";
 import { LinkBuilderFolderSelector } from "@/ui/links/link-builder/controls/link-builder-folder-selector";
 import { LinkBuilderShortLinkInput } from "@/ui/links/link-builder/controls/link-builder-short-link-input";
 import { LinkCommentsInput } from "@/ui/links/link-builder/controls/link-comments-input";
@@ -18,8 +17,8 @@ import { LinkActionBar } from "@/ui/links/link-builder/link-action-bar";
 import { LinkBuilderHeader } from "@/ui/links/link-builder/link-builder-header";
 import {
   LinkBuilderProvider,
-  LinkFormData,
 } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import { LinkFeatureButtons } from "@/ui/links/link-builder/link-feature-buttons";
 import { LinkPartnerDetails } from "@/ui/links/link-builder/link-partner-details";
 import { LinkPreview } from "@/ui/links/link-builder/link-preview";
@@ -29,6 +28,7 @@ import { TagSelect } from "@/ui/links/link-builder/tag-select";
 import { useLinkBuilderSubmit } from "@/ui/links/link-builder/use-link-builder-submit";
 import { useMetatags } from "@/ui/links/link-builder/use-metatags";
 import { LinkControls } from "@/ui/links/link-controls";
+import { LinkUrlFields } from "@/ui/links/link-builder/link-url-fields";
 import {
   Button,
   Check,
@@ -217,7 +217,7 @@ function LinkBuilder({ link }: { link: ExpandedLinkProps }) {
       >
         <div className="relative flex min-h-full flex-col px-4 md:px-6">
           <div className="relative mx-auto flex w-full max-w-xl flex-col gap-7 pb-4 pt-10 lg:pb-10">
-            <LinkBuilderDestinationUrlInput />
+            <LinkUrlFields />
 
             <LinkBuilderShortLinkInput />
 

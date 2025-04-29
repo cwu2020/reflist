@@ -67,9 +67,7 @@ export default function Main() {
 
   const tab = tabs.find(({ id }) => id === selectedTab) ?? tabs[0];
 
-  const showPaywall =
-    (tab.conversions || view === "funnel") &&
-    (plan === "free" || plan === "pro");
+  const showPaywall = false;
 
   return (
     <div className="w-full overflow-hidden bg-white">
@@ -136,7 +134,7 @@ export default function Main() {
                             ? {
                                 style: "currency",
                                 currency: "USD",
-                                // @ts-ignore – trailingZeroDisplay is a valid option but TS is outdated
+                                // @ts-ignore – trailingZeroDisplay is a valid option but TS is outdated
                                 trailingZeroDisplay: "stripIfInteger",
                               }
                             : {
@@ -227,50 +225,7 @@ export default function Main() {
 }
 
 function ConversionTrackingPaywall() {
-  const { slug } = useWorkspace();
-
-  return (
-    <div className="animate-slide-up-fade pointer-events-none absolute inset-0 flex items-center justify-center pt-24">
-      <div className="pointer-events-auto flex flex-col items-center">
-        <Link
-          href="https://d.to/conversions"
-          target="_blank"
-          className="group relative flex aspect-video w-full max-w-80 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100"
-        >
-          <BlurImage
-            src="https://assets.dub.co/blog/conversion-analytics.png"
-            alt="thumbnail"
-            fill
-            className="object-cover"
-          />
-          <div className="relative flex size-10 items-center justify-center rounded-full bg-neutral-900 ring-[6px] ring-black/5 transition-all duration-75 group-hover:ring-[8px] group-active:ring-[7px]">
-            <Play className="size-4 fill-current text-white" />
-          </div>
-        </Link>
-        <h2 className="mt-7 text-base font-semibold text-neutral-700">
-          Conversion Tracking
-        </h2>
-        <p className="mt-4 max-w-sm text-center text-sm text-neutral-500">
-          Want to see how your clicks are converting to revenue? Upgrade to our
-          Business Plan and start tracking conversion events with Dub.{" "}
-          <Link
-            href="https://d.to/conversions"
-            target="_blank"
-            className="underline transition-colors duration-75 hover:text-neutral-700"
-          >
-            Learn more
-          </Link>
-        </p>
-        <Link
-          href={`/${slug}/upgrade`}
-          className={cn(
-            buttonVariants({ variant: "primary" }),
-            "mt-4 flex h-8 items-center justify-center whitespace-nowrap rounded-lg border px-3 text-sm",
-          )}
-        >
-          Upgrade to Business
-        </Link>
-      </div>
-    </div>
-  );
+  // Since conversion tracking is available for all plans, this paywall is no longer needed
+  // Return nothing
+  return null;
 }

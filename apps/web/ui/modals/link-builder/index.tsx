@@ -2,7 +2,6 @@
 
 import useWorkspace from "@/lib/swr/use-workspace";
 import { ExpandedLinkProps } from "@/lib/types";
-import { LinkBuilderDestinationUrlInput } from "@/ui/links/link-builder/controls/link-builder-destination-url-input";
 import { LinkBuilderFolderSelector } from "@/ui/links/link-builder/controls/link-builder-folder-selector";
 import { LinkBuilderShortLinkInput } from "@/ui/links/link-builder/controls/link-builder-short-link-input";
 import { LinkCommentsInput } from "@/ui/links/link-builder/controls/link-comments-input";
@@ -15,9 +14,9 @@ import { LinkBuilderHeader } from "@/ui/links/link-builder/link-builder-header";
 import {
   LinkBuilderProps,
   LinkBuilderProvider,
-  LinkFormData,
   useLinkBuilderContext,
 } from "@/ui/links/link-builder/link-builder-provider";
+import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import { LinkFeatureButtons } from "@/ui/links/link-builder/link-feature-buttons";
 import { LinkPreview } from "@/ui/links/link-builder/link-preview";
 import { OptionsList } from "@/ui/links/link-builder/options-list";
@@ -26,6 +25,7 @@ import { TagSelect } from "@/ui/links/link-builder/tag-select";
 import { useLinkBuilderSubmit } from "@/ui/links/link-builder/use-link-builder-submit";
 import { useMetatags } from "@/ui/links/link-builder/use-metatags";
 import { useAvailableDomains } from "@/ui/links/use-available-domains";
+import { LinkUrlFields } from "@/ui/links/link-builder/link-url-fields";
 import {
   ArrowTurnLeft,
   Button,
@@ -198,7 +198,7 @@ function LinkBuilderInner({
           >
             <div className="scrollbar-hide px-6 md:overflow-auto">
               <div className="flex min-h-full flex-col gap-6 py-4">
-                <LinkBuilderDestinationUrlInput />
+                <LinkUrlFields />
 
                 <LinkBuilderShortLinkInput />
 

@@ -49,16 +49,9 @@ export const proFeaturesCheck = (payload: NewLinkProps) => {
 export const businessFeaturesCheck = (payload: NewLinkProps) => {
   const { testVariants, trackConversion } = payload;
 
-  if (testVariants || trackConversion) {
-    const businessFeaturesString = combineWords(
-      [
-        testVariants && "A/B testing",
-        trackConversion && "conversion tracking",
-      ].filter(Boolean) as string[],
-    );
-
+  if (testVariants) {
     throw new Error(
-      `You can only use ${businessFeaturesString} on a Business plan and above. Upgrade to Business to use these features.`,
+      `You can only use A/B testing on a Business plan and above. Upgrade to Business to use this feature.`,
     );
   }
 };

@@ -100,24 +100,23 @@ export async function createLink(link: ProcessedLinkProps) {
     testVariants,
     testStartedAt,
     testCompletedAt,
+    originalUrl: initialProductUrl,
   } = link;
 
   // Handle ShopMy integration if metadata is present
   const shopmyMetadata = link.shopmyMetadata as ShopMyMerchantData | undefined;
-  let originalUrl = link.originalUrl;
+  
+  // Store the product URL in originalUrl
+  // If originalUrl isn't set but we have ShopMy metadata, use the current url as product URL
+  const productUrl = initialProductUrl || (shopmyMetadata ? url : null);
+  
+  // At this point, url is the destination URL - it might be modified by ShopMy
+  let destinationUrl = url;
   
   // Create a pin when shopmy metadata is present
-  if (shopmyMetadata) {
+  if (shopmyMetadata && productUrl) {
     try {
-      // Keep track of the original URL if not already set
-      if (!originalUrl) {
-        originalUrl = url;
-      }
-      
-      // The URL to use for creating the pin should be the original URL, not a potentially abbreviated one
-      const pinSourceUrl = originalUrl || url;
-      
-      console.log(`ShopMy: Creating pin for URL: ${pinSourceUrl}`);
+      console.log(`ShopMy: Creating pin for product URL: ${productUrl}`);
       
       // Try to create a pin with the ShopMy API, first via client-side API, then directly
       let pinResult;
@@ -128,7 +127,7 @@ export async function createLink(link: ProcessedLinkProps) {
           title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
           description: description || '',
           image: shopmyMetadata.logo || image || '',
-          link: pinSourceUrl,
+          link: productUrl || '', // Ensure a valid string
         });
       } catch (clientError) {
         console.error("Error in client-side ShopMy pin creation:", clientError);
@@ -139,25 +138,28 @@ export async function createLink(link: ProcessedLinkProps) {
           title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
           description: description || '',
           image: shopmyMetadata.logo || image || '',
-          link: pinSourceUrl,
+          link: productUrl || '', // Ensure a valid string
         });
       }
       
       if (pinResult && pinResult.shortUrl) {
-        // Replace the URL with the ShopMy URL
-        url = pinResult.shortUrl;
-        console.log(`ShopMy: Using shortURL: ${pinResult.shortUrl}`);
+        // Set the destination URL to the ShopMy shortURL
+        destinationUrl = pinResult.shortUrl;
+        console.log(`ShopMy: Using shortURL as destination: ${pinResult.shortUrl}`);
+      } else {
+        // If ShopMy pin creation failed, keep using the original destination URL
+        console.log(`ShopMy: Pin creation failed, using original destination URL: ${destinationUrl}`);
       }
     } catch (error) {
       console.error("Error creating ShopMy pin:", error);
-      // Continue with the original URL if there's an error
+      console.log(`ShopMy: Error in pin creation, keeping original destination URL: ${destinationUrl}`);
     }
   }
 
   const combinedTagIds = combineTagIds(link);
 
   const { utm_source, utm_medium, utm_campaign, utm_term, utm_content } =
-    getParamsFromURL(url);
+    getParamsFromURL(destinationUrl);
 
   const { tagId, tagIds, tagNames, webhookIds, ...rest } = link;
 
@@ -171,8 +173,8 @@ export async function createLink(link: ProcessedLinkProps) {
       ...rest,
       id: createId({ prefix: "link_" }),
       key,
-      url,
-      originalUrl,
+      url: destinationUrl, // Use the destination URL (either original URL or ShopMy URL)
+      originalUrl: productUrl, // Store product URL as originalUrl
       shortLink: linkConstructorSimple({ domain: link.domain, key }),
       title: truncate(title, 120),
       description: truncate(description, 240),

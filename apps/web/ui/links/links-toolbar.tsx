@@ -128,14 +128,7 @@ export const LinksToolbar = memo(
           label: "Conversion",
           icon: CircleDollar,
           action: () => setShowLinkConversionTrackingModal(true),
-          disabledTooltip: conversionsEnabled ? undefined : (
-            <TooltipContent
-              title="Conversion tracking is only available on Business plans and above."
-              cta="Upgrade to Business"
-              href={slug ? `/${slug}/upgrade` : "https://thereflist.com/pricing"}
-              target="_blank"
-            />
-          ),
+          disabledTooltip: undefined,
           keyboardShortcut: "c",
         },
         {

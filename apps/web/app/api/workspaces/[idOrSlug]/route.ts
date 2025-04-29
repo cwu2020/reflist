@@ -16,7 +16,7 @@ import { nanoid, R2_URL } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 
-// GET /api/workspaces/[idOrSlug] – get a specific workspace by id or slug
+// GET /api/workspaces/[idOrSlug] – get a specific workspace by id or slug
 export const GET = withWorkspace(
   async ({ workspace, headers }) => {
     const domains = await prisma.domain.findMany({
@@ -55,18 +55,11 @@ export const GET = withWorkspace(
   },
 );
 
-// PATCH /api/workspaces/[idOrSlug] – update a specific workspace by id or slug
+// PATCH /api/workspaces/[idOrSlug] – update a specific workspace by id or slug
 export const PATCH = withWorkspace(
   async ({ req, workspace }) => {
     const { name, slug, logo, conversionEnabled, allowedHostnames } =
       await updateWorkspaceSchema.parseAsync(await parseRequestBody(req));
-
-    if (["free", "pro"].includes(workspace.plan) && conversionEnabled) {
-      throw new DubApiError({
-        code: "forbidden",
-        message: "Conversion tracking is not available on free or pro plans.",
-      });
-    }
 
     const validHostnames = allowedHostnames
       ? validateAllowedHostnames(allowedHostnames)
@@ -144,7 +137,7 @@ export const PATCH = withWorkspace(
 
 export const PUT = PATCH;
 
-// DELETE /api/workspaces/[idOrSlug] – delete a specific project
+// DELETE /api/workspaces/[idOrSlug] – delete a specific project
 export const DELETE = withWorkspace(
   async ({ workspace }) => {
     await deleteWorkspace(workspace);

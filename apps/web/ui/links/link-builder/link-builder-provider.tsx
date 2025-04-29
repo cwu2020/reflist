@@ -9,8 +9,7 @@ import {
   useState,
 } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-
-export type LinkFormData = ExpandedLinkProps;
+import { LinkFormData } from "./link-form-data";
 
 export type LinkBuilderProps = {
   props?: ExpandedLinkProps;
@@ -53,14 +52,21 @@ export function LinkBuilderProvider({
     Boolean(rest.props),
   );
 
+  // Get initial values from props or defaults
+  const initialValues = rest.props || rest.duplicateProps || {
+    ...DEFAULT_LINK_PROPS,
+    trackConversion: conversionEnabled || false,
+  };
+
+  // Initialize productUrl with originalUrl if available, otherwise use url
+  // This is important for edit mode where we want to show the original product URL
+  const defaultValues = {
+    ...initialValues,
+    productUrl: initialValues.originalUrl || initialValues.url || '', // First try originalUrl (product URL), then fall back to url
+  };
+
   const form = useForm<LinkFormData>({
-    defaultValues: rest.props ||
-      rest.duplicateProps || {
-        ...DEFAULT_LINK_PROPS,
-        trackConversion:
-          (plan && plan !== "free" && plan !== "pro" && conversionEnabled) ||
-          false,
-      },
+    defaultValues,
   });
 
   return (

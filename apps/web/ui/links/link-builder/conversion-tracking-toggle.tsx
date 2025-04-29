@@ -20,7 +20,8 @@ export const ConversionTrackingToggle = memo(() => {
   const { slug, plan } = useWorkspace();
   const { control, setValue } = useFormContext<LinkFormData>();
 
-  const conversionsEnabled = !!plan && plan !== "free" && plan !== "pro";
+  // Enable conversions for all plans
+  const conversionsEnabled = true;
 
   const [trackConversion, testVariants] = useWatch({
     control,
@@ -64,23 +65,16 @@ export const ConversionTrackingToggle = memo(() => {
         disabledTooltip={
           trackConversion && testVariants ? (
             <TooltipContent title="Conversion tracking must be enabled to use A/B testing." />
-          ) : conversionsEnabled ? undefined : (
-            <TooltipContent
-              title="Conversion tracking is only available on Business plans and above."
-              cta="Upgrade to Business"
-              href={slug ? `/${slug}/upgrade` : "https://thereflist.com/pricing"}
-              target="_blank"
-            />
-          )
+          ) : undefined
         }
         thumbIcon={
           trackConversion && testVariants ? (
             <span className="flex size-full items-center justify-center">
               <FlaskSmall className="size-2 text-blue-500" />
             </span>
-          ) : conversionsEnabled ? undefined : (
+          ) : plan === "free" || plan === "pro" ? (
             <CrownSmall className="size-full text-neutral-500" />
-          )
+          ) : undefined
         }
       />
     </label>

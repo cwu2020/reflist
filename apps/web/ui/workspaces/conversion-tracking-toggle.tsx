@@ -58,17 +58,7 @@ export function ConversionTrackingToggleSwitch(
   return (
     <Switch
       disabled={isSubmitting}
-      disabledTooltip={
-        plan === "free" || plan === "pro" ? (
-          <TooltipContent
-            title="You can only enable conversion tracking on Business plans and above."
-            cta="Upgrade to Business"
-            href={`/${workspaceSlug}/upgrade`}
-          />
-        ) : (
-          permissionsError
-        )
-      }
+      disabledTooltip={permissionsError}
       checked={conversionEnabled}
       fn={(checked) => {
         const oldConversionEnabled = conversionEnabled;

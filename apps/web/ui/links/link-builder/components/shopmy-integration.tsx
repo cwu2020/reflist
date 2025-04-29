@@ -1,21 +1,21 @@
 import { fetchShopMyMerchantData, isShopMyEligible, ShopMyMerchantData } from "@/lib/shopmy";
 import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { LinkFormData } from "../link-builder-provider";
+import { LinkFormData } from "../link-form-data";
 import { LoadingCircle } from "@dub/ui/icons";
 import { Badge } from "@dub/ui";
 
 export function ShopMyIntegration() {
   const { setValue } = useFormContext<LinkFormData>();
-  const [url] = useWatch({ name: ["url"] });
+  const [productUrl] = useWatch({ name: ["productUrl"] });
   
   const [loading, setLoading] = useState(false);
   const [merchantData, setMerchantData] = useState<ShopMyMerchantData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch merchant data when URL changes
+  // Fetch merchant data when productUrl changes
   useEffect(() => {
-    if (!url || !isShopMyEligible(url)) {
+    if (!productUrl || !isShopMyEligible(productUrl)) {
       setMerchantData(null);
       setError(null);
       return;
@@ -26,13 +26,13 @@ export function ShopMyIntegration() {
       setError(null);
       
       try {
-        const data = await fetchShopMyMerchantData(url);
+        const data = await fetchShopMyMerchantData(productUrl);
         if (data) {
           setMerchantData(data);
-          // Store merchant data in form state - using type assertion to fix type issues
-          // These fields were added to the schema but the type definitions might not be updated yet
+          // Store merchant data and set the product URL in originalUrl
           setValue("shopmyMetadata" as any, data, { shouldDirty: true });
-          setValue("originalUrl" as any, url, { shouldDirty: true });
+          setValue("originalUrl" as any, productUrl, { shouldDirty: true });
+          // url remains productUrl until form submission, when it will be replaced with ShopMy URL
         } else {
           setMerchantData(null);
           setError("No merchant data found for this URL");
@@ -52,10 +52,10 @@ export function ShopMyIntegration() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [url, setValue]);
+  }, [productUrl, setValue]);
 
-  // If no URL or not eligible, don't show anything
-  if (!url || !isShopMyEligible(url)) {
+  // If no productUrl or not eligible, don't show anything
+  if (!productUrl || !isShopMyEligible(productUrl)) {
     return null;
   }
 
@@ -95,7 +95,7 @@ export function ShopMyIntegration() {
             </div>
           </div>
           <p className="mt-2 text-xs text-neutral-500">
-            This link will be automatically converted to a ShopMy affiliate link when saved.
+            This product URL will be automatically converted to a ShopMy affiliate link as the destination URL when saved.
           </p>
         </div>
       )}
