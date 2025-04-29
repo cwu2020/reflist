@@ -22,6 +22,69 @@ import { encodeKeyIfCaseSensitive } from "./case-sensitivity";
 import { includeTags } from "./include-tags";
 import { updateLinksUsage } from "./update-links-usage";
 import { transformLink } from "./utils";
+import { createShopMyPin, ShopMyMerchantData } from "@/lib/shopmy";
+import axios from "axios";
+
+// Create a ShopMy pin directly - bypassing our API for server-side usage
+async function createShopMyPinDirectly(params: {
+  title: string;
+  description?: string;
+  image?: string;
+  link: string;
+}): Promise<{ pin: any; shortUrl: string } | null> {
+  try {
+    const SHOPMY_API_URL = "https://api.shopmy.us/api/Pins";
+    const SHOPMY_TOKEN = process.env.SHOPMY_CREATOR_TOKEN;
+    const SHOPMY_USER_ID = process.env.SHOPMY_USER_ID || "104679";
+    
+    if (!SHOPMY_TOKEN) {
+      console.error("ShopMy API token not configured");
+      return null;
+    }
+    
+    // Prepare the ShopMy API request payload
+    const payload = {
+      ...params,
+      User_id: Number(SHOPMY_USER_ID)
+    };
+    
+    console.log(`ShopMy direct: Request payload: ${JSON.stringify(payload)}`);
+    
+    // Make the direct API request to ShopMy
+    const response = await axios.post(
+      SHOPMY_API_URL,
+      payload,
+      {
+        headers: {
+          "Accept": "application/json, text/plain, */*",
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          "x-apicache-bypass": "true",
+          "x-authorization-hash": SHOPMY_TOKEN,
+          "Origin": "https://shopmy.us",
+          "Referer": "https://shopmy.us/"
+        }
+      }
+    );
+    
+    console.log(`ShopMy direct: Response status: ${response.status}`);
+    
+    if (!response.data || !response.data.pin) {
+      console.error("ShopMy direct: Invalid response format", response.data);
+      return null;
+    }
+    
+    const pin = response.data.pin;
+    const shortUrl = `https://go.shopmy.us/p-${pin.id}`;
+    
+    console.log(`ShopMy direct: Created pin with ID: ${pin.id}, shortURL: ${shortUrl}`);
+    
+    return { pin, shortUrl };
+  } catch (error) {
+    console.error("ShopMy direct API error:", error);
+    return null;
+  }
+}
 
 export async function createLink(link: ProcessedLinkProps) {
   let {
@@ -38,6 +101,58 @@ export async function createLink(link: ProcessedLinkProps) {
     testStartedAt,
     testCompletedAt,
   } = link;
+
+  // Handle ShopMy integration if metadata is present
+  const shopmyMetadata = link.shopmyMetadata as ShopMyMerchantData | undefined;
+  let originalUrl = link.originalUrl;
+  
+  // Create a pin when shopmy metadata is present
+  if (shopmyMetadata) {
+    try {
+      // Keep track of the original URL if not already set
+      if (!originalUrl) {
+        originalUrl = url;
+      }
+      
+      // The URL to use for creating the pin should be the original URL, not a potentially abbreviated one
+      const pinSourceUrl = originalUrl || url;
+      
+      console.log(`ShopMy: Creating pin for URL: ${pinSourceUrl}`);
+      
+      // Try to create a pin with the ShopMy API, first via client-side API, then directly
+      let pinResult;
+      
+      try {
+        // First try to use our library, which will go through our API endpoint
+        pinResult = await createShopMyPin({
+          title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
+          description: description || '',
+          image: shopmyMetadata.logo || image || '',
+          link: pinSourceUrl,
+        });
+      } catch (clientError) {
+        console.error("Error in client-side ShopMy pin creation:", clientError);
+        
+        // If client-side pin creation fails, try creating the pin directly with the ShopMy API
+        console.log("Trying direct ShopMy API call...");
+        pinResult = await createShopMyPinDirectly({
+          title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
+          description: description || '',
+          image: shopmyMetadata.logo || image || '',
+          link: pinSourceUrl,
+        });
+      }
+      
+      if (pinResult && pinResult.shortUrl) {
+        // Replace the URL with the ShopMy URL
+        url = pinResult.shortUrl;
+        console.log(`ShopMy: Using shortURL: ${pinResult.shortUrl}`);
+      }
+    } catch (error) {
+      console.error("Error creating ShopMy pin:", error);
+      // Continue with the original URL if there's an error
+    }
+  }
 
   const combinedTagIds = combineTagIds(link);
 
@@ -56,6 +171,8 @@ export async function createLink(link: ProcessedLinkProps) {
       ...rest,
       id: createId({ prefix: "link_" }),
       key,
+      url,
+      originalUrl,
       shortLink: linkConstructorSimple({ domain: link.domain, key }),
       title: truncate(title, 120),
       description: truncate(description, 240),
@@ -68,6 +185,7 @@ export async function createLink(link: ProcessedLinkProps) {
       utm_content,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       geo: geo || Prisma.JsonNull,
+      shopmyMetadata: shopmyMetadata || Prisma.JsonNull,
 
       testVariants: testVariants || Prisma.JsonNull,
       testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,

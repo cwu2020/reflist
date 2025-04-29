@@ -427,6 +427,13 @@ export const createLinkBodySchema = z.object({
     .string()
     .nullish()
     .describe("The date and time when the tests were or will be completed."),
+  originalUrl: parseUrlSchema
+    .nullish()
+    .describe("The original URL before transformation (e.g., for ShopMy links)"),
+  shopmyMetadata: z
+    .any()
+    .nullish()
+    .describe("Metadata from ShopMy for merchant and affiliate information"),
 });
 
 export const updateLinkBodySchema = createLinkBodySchema.partial();

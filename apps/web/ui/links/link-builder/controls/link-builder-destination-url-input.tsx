@@ -10,6 +10,7 @@ import {
 } from "react-hook-form";
 import { DestinationUrlInput } from "../../destination-url-input";
 import { useAvailableDomains } from "../../use-available-domains";
+import { ShopMyIntegration } from "../components/shopmy-integration";
 
 /**
  * Wraps the DestinationUrlInput component with link-builder-specific context & logic
@@ -31,38 +32,41 @@ export const LinkBuilderDestinationUrlInput = memo(
     });
 
     return (
-      <Controller
-        name="url"
-        control={control}
-        render={({ field }) => (
-          <DestinationUrlInput
-            ref={ref}
-            domain={domain}
-            _key={key}
-            value={field.value}
-            domains={domains}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              clearErrors("url");
-              field.onChange(e.target.value);
-            }}
-            required={key !== "_root"}
-            error={errors.url?.message || undefined}
-            right={
-              <div className="-mb-1 h-6">
-                {isValidUrl(url) && (
-                  <UTMTemplatesButton
-                    onLoad={(params) => {
-                      setValue("url", constructURLFromUTMParams(url, params), {
-                        shouldDirty: true,
-                      });
-                    }}
-                  />
-                )}
-              </div>
-            }
-          />
-        )}
-      />
+      <>
+        <Controller
+          name="url"
+          control={control}
+          render={({ field }) => (
+            <DestinationUrlInput
+              ref={ref}
+              domain={domain}
+              _key={key}
+              value={field.value}
+              domains={domains}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                clearErrors("url");
+                field.onChange(e.target.value);
+              }}
+              required={key !== "_root"}
+              error={errors.url?.message || undefined}
+              right={
+                <div className="-mb-1 h-6">
+                  {isValidUrl(url) && (
+                    <UTMTemplatesButton
+                      onLoad={(params) => {
+                        setValue("url", constructURLFromUTMParams(url, params), {
+                          shouldDirty: true,
+                        });
+                      }}
+                    />
+                  )}
+                </div>
+              }
+            />
+          )}
+        />
+        <ShopMyIntegration />
+      </>
     );
   }),
 );
