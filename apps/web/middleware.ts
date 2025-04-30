@@ -21,106 +21,101 @@ import { supportedWellKnownFiles } from "./lib/well-known";
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except for:
-     * 1. /_next/ (Next.js internals)
-     * 2. /_proxy/ (proxies for third-party services)
-     * 3. Metadata files: favicon.ico, sitemap.xml, robots.txt, manifest.webmanifest
-     */
     "/((?!_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
   ],
 };
 
-// CORS headers - needs to be accessible for all responses
+// CORS headers for the specific cross-origin API route
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': 'https://app.thereflist.com',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Credentials': 'true',
+  "Access-Control-Allow-Origin": "https://app.thereflist.com",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Credentials": "true",
 };
 
 export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   try {
-    // Handle CORS preflight requests before any authentication
-    if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api/')) {
+    const { pathname } = req.nextUrl;
+
+    // 1️⃣ CORS preflight for the specific /api/shopmy/data endpoint
+    if (req.method === "OPTIONS" && pathname === "/api/shopmy/data") {
       return new Response(null, {
         status: 204,
         headers: CORS_HEADERS,
       });
     }
 
-    // Get the host header safely
+    // 2️⃣ Handle actual /api/shopmy/data requests with CORS
+    if (pathname === "/api/shopmy/data") {
+      AxiomMiddleware(req, ev);
+      const response = ApiMiddleware(req);
+      Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+
+    // 3️⃣ All other requests: existing logic
     const host = req.headers.get("host");
     if (!host) {
       console.error("No host header found in request");
       return NextResponse.next();
     }
 
-    // Parse the request
     const { domain, path, key, fullKey } = parse(req);
-
-    // Log the parsed values for debugging
     console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
 
     AxiomMiddleware(req, ev);
 
-    // For API requests, ensure CORS headers are added
-    if (req.nextUrl.pathname.startsWith('/api/')) {
-      const response = ApiMiddleware(req);
-      // Add CORS headers to the response
-      Object.entries(CORS_HEADERS).forEach(([k, v]) => {
-        response.headers.set(k, v);
-      });
-      return response;
-    }
-
-    // for App
+    // Application routes
     if (APP_HOSTNAMES.has(domain)) {
       return AppMiddleware(req);
     }
 
-    // for API
+    // Domain-based API routes (non-cross-origin)
     if (API_HOSTNAMES.has(domain)) {
       return ApiMiddleware(req);
     }
 
-    // for public stats pages (e.g. d.to/stats/try)
+    // Public stats pages
     if (path.startsWith("/stats/")) {
       return NextResponse.rewrite(new URL(`/${domain}${path}`, req.url));
     }
 
-    // for .well-known routes
+    // .well-known routes
     if (path.startsWith("/.well-known/")) {
       const file = path.split("/.well-known/").pop();
       if (file && supportedWellKnownFiles.includes(file)) {
         return NextResponse.rewrite(
-          new URL(`/wellknown/${domain}/${file}`, req.url),
+          new URL(`/wellknown/${domain}/${file}`, req.url)
         );
       }
     }
 
-    // default redirects for dub.sh
+    // Default redirects for dub.sh
     if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
       return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
     }
 
-    // for Admin
+    // Admin panel
     if (ADMIN_HOSTNAMES.has(domain)) {
       return AdminMiddleware(req);
     }
 
+    // Partners routes
     if (PARTNERS_HOSTNAMES.has(domain)) {
       return PartnersMiddleware(req);
     }
 
+    // Create new link if URL is valid
     if (isValidUrl(fullKey)) {
       return CreateLinkMiddleware(req);
     }
 
+    // Default link redirect handler
     return LinkMiddleware(req, ev);
   } catch (error) {
     console.error("Middleware error:", error);
-    // Return a 500 error response with appropriate headers
     return NextResponse.rewrite(new URL("/error", req.url), {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
