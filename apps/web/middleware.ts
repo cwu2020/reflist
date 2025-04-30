@@ -23,17 +23,32 @@ export const config = {
   matcher: [
     /*
      * Match all paths except for:
-     * 1. /api/ routes
-     * 2. /_next/ (Next.js internals)
-     * 3. /_proxy/ (proxies for third-party services)
-     * 4. Metadata files: favicon.ico, sitemap.xml, robots.txt, manifest.webmanifest
+     * 1. /_next/ (Next.js internals)
+     * 2. /_proxy/ (proxies for third-party services)
+     * 3. Metadata files: favicon.ico, sitemap.xml, robots.txt, manifest.webmanifest
      */
-    "/((?!api/|_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
+    "/((?!_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
   ],
+};
+
+// CORS headers - needs to be accessible for all responses
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://app.thereflist.com',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   try {
+    // Handle CORS preflight requests before any authentication
+    if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api/')) {
+      return new Response(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+      });
+    }
+
     // Get the host header safely
     const host = req.headers.get("host");
     if (!host) {
@@ -48,6 +63,16 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
 
     AxiomMiddleware(req, ev);
+
+    // For API requests, ensure CORS headers are added
+    if (req.nextUrl.pathname.startsWith('/api/')) {
+      const response = ApiMiddleware(req);
+      // Add CORS headers to the response
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => {
+        response.headers.set(k, v);
+      });
+      return response;
+    }
 
     // for App
     if (APP_HOSTNAMES.has(domain)) {
