@@ -128,7 +128,7 @@ export function Footer({
               ))}
             </div>
           </div>
-          <div className="mt-16 grid grid-cols-2 gap-4 xl:col-span-2 xl:mt-0">
+          {/* <div className="mt-16 grid grid-cols-2 gap-4 xl:col-span-2 xl:mt-0">
             <div className="md:grid md:grid-cols-2">
               <div className="grid gap-8">
                 <div>
@@ -271,7 +271,7 @@ export function Footer({
                 </ul>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Bottom row (status, SOC2, copyright) */}

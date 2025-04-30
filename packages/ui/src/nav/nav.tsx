@@ -24,16 +24,21 @@ export const NavContext = createContext<{ theme: NavTheme }>({
 
 export const navItems = [
   {
-    name: "Product",
+    name: "For Everyone",
     content: ProductContent,
     childItems: FEATURES_LIST,
     segments: ["/home", "/analytics", "/features", "/compare"],
   },
+  // {
+  //   name: "Solutions",
+  //   content: SolutionsContent,
+  //   childItems: SOLUTIONS,
+  //   segments: ["/solutions"],
+  // },
   {
-    name: "Solutions",
-    content: SolutionsContent,
-    childItems: SOLUTIONS,
-    segments: ["/solutions"],
+    name: "For Brands",
+    href: "/enterprise",
+    segments: ["/enterprise"],
   },
   {
     name: "Resources",
@@ -42,14 +47,9 @@ export const navItems = [
     segments: ["/docs", "/help", "/brand", "/blog", "/changelog", "/customers"],
   },
   {
-    name: "Enterprise",
-    href: "/enterprise",
-    segments: ["/enterprise"],
-  },
-  {
-    name: "Pricing",
-    href: "/pricing",
-    segments: ["/pricing"],
+    name: "Contact",
+    href: "/contact",
+    segments: ["/contact"],
   },
 ];
 
