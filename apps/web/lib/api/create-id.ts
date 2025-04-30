@@ -1,5 +1,4 @@
 import baseX from "base-x";
-import crypto from "crypto";
 
 const prefixes = [
   "ws_",
@@ -44,8 +43,16 @@ function createULIDBuffer(): Uint8Array {
   buf[4] = Number((timestamp >> BigInt(8)) & BigInt(255));
   buf[5] = Number(timestamp & BigInt(255));
 
-  // Randomness (80 bits = 10 bytes)
-  crypto.getRandomValues(buf.subarray(6));
+  // Randomness (80 bits = 10 bytes) - use Web Crypto API instead of Node's crypto
+  // This works in both Node.js and Edge Runtime
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(buf.subarray(6));
+  } else {
+    // Fallback for environments without crypto.getRandomValues
+    for (let i = 6; i < 16; i++) {
+      buf[i] = Math.floor(Math.random() * 256);
+    }
+  }
 
   return buf;
 }

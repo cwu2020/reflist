@@ -18,7 +18,7 @@ export function Hero({ children }: PropsWithChildren) {
       />
       <div className="absolute -inset-x-10 bottom-0 h-[60%] opacity-40 blur-[100px] [transform:translate3d(0,0,0)]">
         <div
-          className="size-full -scale-y-100 [mask-image:radial-gradient(closest-side,black_100%,transparent_100%)]"
+          className="size-full -scale-y-100 [mask-image:radial-gradient(closest-side_at_center,black_100%,transparent_100%)]"
           style={{ backgroundImage: HERO_GRADIENT }}
         />
       </div>

@@ -54,7 +54,7 @@ function Select({
 }
 
 // Simple Dialog component
-function Dialog({ 
+const Dialog = ({ 
   children, 
   open, 
   setOpen 
@@ -62,7 +62,7 @@ function Dialog({
   children: React.ReactNode; 
   open: boolean; 
   setOpen: (open: boolean) => void;
-}) {
+}) => {
   if (!open) return null;
   
   return (
@@ -72,20 +72,29 @@ function Dialog({
       </div>
     </div>
   );
-}
+};
 
-// Dialog components
-Dialog.Content = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-Dialog.Header = ({ children }: { children: React.ReactNode }) => <div className="mb-4">{children}</div>;
-Dialog.Title = ({ children }: { children: React.ReactNode }) => <h3 className="text-lg font-medium">{children}</h3>;
-Dialog.Description = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-neutral-500">{children}</p>;
-Dialog.Footer = ({ children }: { children: React.ReactNode }) => <div className="mt-6 flex justify-end gap-2">{children}</div>;
-Dialog.Cancel = ({ children }: { children: React.ReactNode }) => <button className="rounded-md bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-300">{children}</button>;
-Dialog.Action = ({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) => (
+// Dialog subcomponents
+const DialogContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
+const DialogHeader = ({ children }: { children: React.ReactNode }) => <div className="mb-4">{children}</div>;
+const DialogTitle = ({ children }: { children: React.ReactNode }) => <h3 className="text-lg font-medium">{children}</h3>;
+const DialogDescription = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-neutral-500">{children}</p>;
+const DialogFooter = ({ children }: { children: React.ReactNode }) => <div className="mt-6 flex justify-end gap-2">{children}</div>;
+const DialogCancel = ({ children }: { children: React.ReactNode }) => <button className="rounded-md bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-300">{children}</button>;
+const DialogAction = ({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) => (
   <button onClick={onClick} className={`rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 ${className}`}>
     {children}
   </button>
 );
+
+// Attach the subcomponents to Dialog
+Dialog.Content = DialogContent;
+Dialog.Header = DialogHeader;
+Dialog.Title = DialogTitle;
+Dialog.Description = DialogDescription;
+Dialog.Footer = DialogFooter;
+Dialog.Cancel = DialogCancel;
+Dialog.Action = DialogAction;
 
 // Simple hook to replace useDialogState
 function useDialogState() {

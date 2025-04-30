@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-export default async function ConfirmEmailChangePageClient() {
+export default function ConfirmEmailChangePageClient() {
   const router = useRouter();
   const { update, status } = useSession();
   const hasUpdatedSession = useRef(false);
@@ -24,7 +24,7 @@ export default async function ConfirmEmailChangePageClient() {
     }
 
     updateSession();
-  }, [status, update]);
+  }, [status, update, router]);
 
   return (
     <EmptyState

@@ -301,6 +301,7 @@ const Controls = memo(({ link }: { link: ExpandedLinkProps }) => {
     </div>
   );
 });
+Controls.displayName = "Controls";
 
 function LoadingSkeleton() {
   return (
