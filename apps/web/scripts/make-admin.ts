@@ -1,3 +1,6 @@
+// HOW TO RUN:
+// DATABASE_URL="INSERT_YOUR_PRODUCTION_DATABASE_URL_HERE" npx tsx apps/web/scripts/make-admin.ts your-email@example.com
+
 import { prisma } from "@dub/prisma";
 import { DUB_WORKSPACE_ID } from "@dub/utils";
 
