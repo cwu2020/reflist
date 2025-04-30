@@ -49,7 +49,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     // 2️⃣ Handle actual /api/shopmy/data requests with CORS
     if (pathname === "/api/shopmy/data") {
       AxiomMiddleware(req, ev);
-      const response = ApiMiddleware(req);
+      const response = NextResponse.next();
       Object.entries(CORS_HEADERS).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
