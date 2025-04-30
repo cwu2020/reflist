@@ -21,6 +21,7 @@ import { supportedWellKnownFiles } from "./lib/well-known";
 
 export const config = {
   matcher: [
+    // Run on all paths except Next internals and static assets
     "/((?!_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
   ],
 };
@@ -37,7 +38,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   try {
     const { pathname } = req.nextUrl;
 
-    // 1️⃣ CORS preflight for the specific /api/shopmy/data endpoint
+    // 1️⃣ CORS preflight for only /api/shopmy/data
     if (req.method === "OPTIONS" && pathname === "/api/shopmy/data") {
       return new Response(null, {
         status: 204,
@@ -55,24 +56,28 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       return response;
     }
 
-    // 3️⃣ All other requests: existing logic
+    // 3️⃣ Let Next.js built-in API routes handle all other /api/* paths
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.next();
+    }
+
+    // 4️⃣ All other requests: existing domain-based routing
     const host = req.headers.get("host");
     if (!host) {
       console.error("No host header found in request");
       return NextResponse.next();
     }
 
+    AxiomMiddleware(req, ev);
     const { domain, path, key, fullKey } = parse(req);
     console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
 
-    AxiomMiddleware(req, ev);
-
-    // Application routes
+    // App routes
     if (APP_HOSTNAMES.has(domain)) {
       return AppMiddleware(req);
     }
 
-    // Domain-based API routes (non-cross-origin)
+    // Non-built-in API on custom domain
     if (API_HOSTNAMES.has(domain)) {
       return ApiMiddleware(req);
     }
@@ -92,10 +97,10 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       }
     }
 
-    // Default redirects for dub.sh
-    if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
-      return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
-    }
+    // // Default redirects for dub.sh
+    // if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
+    //   return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
+    // }
 
     // Admin panel
     if (ADMIN_HOSTNAMES.has(domain)) {
@@ -107,7 +112,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       return PartnersMiddleware(req);
     }
 
-    // Create new link if URL is valid
+    // Create new link if valid URL
     if (isValidUrl(fullKey)) {
       return CreateLinkMiddleware(req);
     }
