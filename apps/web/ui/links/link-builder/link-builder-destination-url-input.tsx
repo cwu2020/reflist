@@ -8,9 +8,11 @@ import {
   useFormState,
   useWatch,
 } from "react-hook-form";
-import { DestinationUrlInput } from "../../destination-url-input";
-import { useAvailableDomains } from "../../use-available-domains";
-import { ShopMyIntegration } from "../components/shopmy-integration";
+
+// Import from correct paths found in the codebase
+import { DestinationUrlInput } from "../../links/destination-url-input";
+import { useAvailableDomains } from "../../links/use-available-domains";
+import { ShopMyIntegration } from "./components/shopmy-integration";
 
 /**
  * Wraps the DestinationUrlInput component with link-builder-specific context & logic
@@ -23,8 +25,11 @@ export const LinkBuilderDestinationUrlInput = memo(
     const { errors } = useFormState({ control, name: ["productUrl"] });
     const [domain, key, productUrl] = useWatch({
       control,
-      name: ["domain", "key", "productUrl", "title", "description"],
+      name: ["domain", "key", "productUrl"],
     });
+
+    // Ensure productUrl is a string for isValidUrl check
+    const safeProductUrl = productUrl || '';
 
     const { domains } = useAvailableDomains({
       currentDomain: domain,
@@ -50,10 +55,10 @@ export const LinkBuilderDestinationUrlInput = memo(
               error={errors.productUrl?.message || undefined}
               right={
                 <div className="-mb-1 h-6">
-                  {isValidUrl(productUrl) && (
+                  {isValidUrl(safeProductUrl) && (
                     <UTMTemplatesButton
                       onLoad={(params) => {
-                        const newUrl = constructURLFromUTMParams(productUrl, params);
+                        const newUrl = constructURLFromUTMParams(safeProductUrl, params);
                         setValue("productUrl", newUrl, {
                           shouldDirty: true,
                         });

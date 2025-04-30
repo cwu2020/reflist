@@ -23,6 +23,9 @@ export const LinkBuilderProductUrlInput = memo(
       name: ["productUrl"],
     });
 
+    // Ensure productUrl is a string for isValidUrl check
+    const safeProductUrl = productUrl || '';
+
     return (
       <Controller
         name="productUrl"
@@ -39,10 +42,10 @@ export const LinkBuilderProductUrlInput = memo(
             error={errors.productUrl?.message || undefined}
             right={
               <div className="-mb-1 h-6">
-                {isValidUrl(productUrl) && (
+                {isValidUrl(safeProductUrl) && (
                   <UTMTemplatesButton
                     onLoad={(params) => {
-                      const newUrl = constructURLFromUTMParams(productUrl || '', params);
+                      const newUrl = constructURLFromUTMParams(safeProductUrl, params);
                       setValue("productUrl", newUrl, {
                         shouldDirty: true,
                       });

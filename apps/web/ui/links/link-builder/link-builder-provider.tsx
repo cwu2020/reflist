@@ -11,6 +11,9 @@ import {
 import { FormProvider, useForm } from "react-hook-form";
 import { LinkFormData } from "./link-form-data";
 
+// Re-export the LinkFormData interface
+export type { LinkFormData } from "./link-form-data";
+
 export type LinkBuilderProps = {
   props?: ExpandedLinkProps;
   duplicateProps?: ExpandedLinkProps;

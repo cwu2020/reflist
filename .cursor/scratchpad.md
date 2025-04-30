@@ -870,3 +870,578 @@ Similarly, the Payout model has all the fields needed for payouts:
 - `paidAt` - When the payout was completed
 
 No additional schema changes should be needed to implement this functionality. 
+
+# Fixing Subdomain Routing for Local Development
+
+## Background and Motivation
+
+We're experiencing an issue with subdomain routing in the local development environment. After going through the authentication process (either email or OAuth), the redirect loses track of the subdomain and sends users back to the default app at localhost:8888 instead of keeping them on the subdomain (e.g., admin.localhost:8888). We've already configured the hosts file on macOS to recognize these subdomains. We need a solution that ensures users starting on a subdomain page who have proper permissions can authenticate and be redirected back to the same subdomain after sign-in. This solution should ideally also work in production if the same issue exists there.
+
+## Key Challenges and Analysis
+
+1. **NextAuth Configuration**: The NextAuth.js configuration may not be properly handling subdomain-specific callbacks or cookie settings.
+
+2. **Redirect URL Handling**: The redirect URLs after authentication may not be preserving the subdomain information.
+
+3. **Session Cookie Configuration**: Session cookies may not be configured to work across subdomains.
+
+4. **Middleware Subdomain Logic**: The middleware handling routing may not be correctly preserving the subdomain during the authentication flow.
+
+5. **Authentication Callback Logic**: The callbacks in the authentication process may not be properly passing along subdomain information.
+
+## Updated Analysis: State Cookie Missing in OAuth Flow
+
+After attempting Google OAuth authentication on admin.localhost:8888, we're encountering a "state cookie not found" error. This is a separate but related issue to our session token sharing problem.
+
+### Understanding the State Cookie Issue
+
+In NextAuth's OAuth flow, several cookies are used:
+1. **Session Token Cookie**: The persistent cookie that maintains your authenticated session
+2. **CSRF Token Cookie**: Used for CSRF protection during form submissions
+3. **State Cookie**: A temporary cookie used during OAuth to prevent CSRF attacks in the authentication process
+4. **Callback URL Cookie**: Stores the URL to redirect to after authentication
+
+The "state cookie not found" error indicates that during the OAuth callback, NextAuth can't find the state cookie that was set at the beginning of the authentication flow. This is likely because:
+
+1. The state cookie is not being properly set with the correct domain value for subdomain sharing
+2. The cookie settings for OAuth-specific cookies may be separate from the main session cookie settings
+
+### NextAuth Cookie Configuration Details
+
+In NextAuth, the cookie configuration can define multiple cookie types:
+
+```typescript
+cookies: {
+  sessionToken: { ... }, // For the persistent session
+  callbackUrl: { ... },  // For storing the URL to redirect to after authentication
+  csrfToken: { ... },    // For CSRF protection during form submissions
+  pkceCodeVerifier: { ... }, // For PKCE flow in OAuth
+  state: { ... }         // For OAuth state verification
+}
+```
+
+Our current fix only addresses the `sessionToken` cookie, but we also need to ensure the `state` cookie is properly configured for subdomain sharing.
+
+### Updated Implementation Plan
+
+We need to modify the NextAuth cookie configuration to include settings for all cookie types used in the authentication flow. Here's the updated solution:
+
+**Path**: `apps/web/lib/auth/options.ts`
+
+```typescript
+// Helper function to get the appropriate cookie domain
+const getCookieDomain = () => {
+  if (VERCEL_DEPLOYMENT) {
+    // Production domain
+    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
+  } else {
+    // Custom local development domain
+    return ".thereflist.local";
+  }
+};
+
+// Common cookie settings to apply to all cookie types
+const cookieSettings = {
+  httpOnly: true,
+  sameSite: "lax",
+  path: "/",
+  secure: VERCEL_DEPLOYMENT,
+  domain: getCookieDomain()
+};
+
+// In the NextAuth options
+cookies: {
+  sessionToken: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`,
+    options: cookieSettings,
+  },
+  callbackUrl: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.callback-url`,
+    options: cookieSettings,
+  },
+  csrfToken: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.csrf-token`,
+    options: cookieSettings,
+  },
+  pkceCodeVerifier: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
+    options: cookieSettings,
+  },
+  state: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.state`,
+    options: cookieSettings,
+  },
+},
+```
+
+### Alternate Approach: Using a Custom Local Domain
+
+If the `.localhost` solution doesn't work reliably across browsers, implement the custom domain approach:
+
+1. Add these entries to your `/etc/hosts` file (requires sudo/admin access):
+```
+127.0.0.1 thereflist.local
+127.0.0.1 admin.thereflist.local
+127.0.0.1 partners.thereflist.local
+127.0.0.1 app.thereflist.local
+```
+
+2. Modify your NextAuth cookie configuration to use the custom domain:
+```typescript
+const getCookieDomain = () => {
+  if (VERCEL_DEPLOYMENT) {
+    // For local development with custom domain
+    return ".thereflist.local";
+  } else {
+    // Production domain
+    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
+  }
+};
+```
+
+3. Update your development server configuration to bind to this domain:
+   - If using Next.js directly, add a `-H thereflist.local` parameter to your start command
+   - Or update your package.json scripts to include the hostname parameter
+
+4. Access your application via `http://admin.thereflist.local:8888` instead of `http://admin.localhost:8888`
+
+### Troubleshooting
+
+If you still experience issues after implementing these changes:
+
+1. **Browser cookie policies**: Different browsers have different policies for cookies on localhost domains. Test in multiple browsers or switch to the custom domain approach.
+
+2. **Cookie inheritance**: Ensure the OAuth provider callback URL matches the domain structure used in your application. For example, if your callback is configured for `localhost:8888`, it might not work properly with `admin.localhost:8888`.
+
+3. **HTTP vs HTTPS**: Make sure you're consistently using either HTTP or HTTPS in development. Mixed protocol usage can cause cookie issues.
+
+4. **NextAuth version**: This solution is based on current NextAuth.js behavior. If you're using an older or newer version, the cookie configuration might differ slightly.
+
+## Detailed Guide for Using Custom Domains in Development
+
+Using a custom domain for local development can be more reliable than `.localhost` for cross-subdomain cookies. This approach creates a more production-like environment and avoids browser-specific limitations with localhost domains.
+
+### Step 1: Configure Local Hosts File
+
+Edit your system's hosts file to map your custom domains to your local IP:
+
+**For macOS and Linux**:
+1. Open Terminal
+2. Run `sudo nano /etc/hosts` (or use any text editor with admin privileges)
+3. Add these lines to the file:
+   ```
+   127.0.0.1   thereflist.local
+   127.0.0.1   app.thereflist.local
+   127.0.0.1   admin.thereflist.local
+   127.0.0.1   partners.thereflist.local
+   ```
+4. Save the file (in nano: Ctrl+O, Enter, then Ctrl+X)
+
+**For Windows**:
+1. Open Notepad as Administrator
+2. Open the file `C:\Windows\System32\drivers\etc\hosts`
+3. Add the same lines as above
+4. Save the file
+
+### Step 2: Update NextAuth Configuration
+
+Modify the NextAuth cookie configuration in `apps/web/lib/auth/options.ts`:
+
+```typescript
+// Helper function to get the appropriate cookie domain
+const getCookieDomain = () => {
+  if (VERCEL_DEPLOYMENT) {
+    // Production domain
+    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
+  } else {
+    // Custom local development domain
+    return ".thereflist.local";
+  }
+};
+
+// Common cookie settings to apply to all cookie types
+const cookieSettings = {
+  httpOnly: true,
+  sameSite: "lax",
+  path: "/",
+  secure: VERCEL_DEPLOYMENT,
+  domain: getCookieDomain()
+};
+
+// In the NextAuth options
+cookies: {
+  sessionToken: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`,
+    options: cookieSettings,
+  },
+  callbackUrl: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.callback-url`,
+    options: cookieSettings,
+  },
+  csrfToken: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.csrf-token`,
+    options: cookieSettings,
+  },
+  pkceCodeVerifier: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
+    options: cookieSettings,
+  },
+  state: {
+    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.state`,
+    options: cookieSettings,
+  },
+},
+```
+
+### Step 3: Configure Development Server
+
+Next.js needs to be configured to bind to your custom domain:
+
+**Option A: Using package.json scripts (recommended)**
+
+Update your package.json development script:
+
+```json
+"scripts": {
+  "dev": "next dev -p 8888 -H thereflist.local",
+  // other scripts...
+}
+```
+
+**Option B: Using next.config.js**
+
+Alternatively, you can configure this in your Next.js config file:
+
+```javascript
+// next.config.js
+module.exports = {
+  // ... other config
+  devServer: {
+    host: 'thereflist.local',
+    port: 8888
+  }
+}
+```
+
+### Step 4: Update Environment Variables
+
+Update any environment variables that might reference localhost:
+
+1. In your `.env.local` file, update references:
+   ```
+   # Change this:
+   NEXTAUTH_URL=http://localhost:8888
+   
+   # To this:
+   NEXTAUTH_URL=http://thereflist.local:8888
+   ```
+
+2. If you have any hardcoded URLs in your code, update those as well.
+
+### Step 5: Configure OAuth Providers
+
+If you're using OAuth providers (Google, GitHub, etc.), you'll need to update their configuration:
+
+1. Go to your OAuth provider developer console (Google Cloud Console, GitHub Developer Settings, etc.)
+2. Update the authorized redirect URIs to include your custom domain:
+   ```
+   http://thereflist.local:8888/api/auth/callback/google
+   http://admin.thereflist.local:8888/api/auth/callback/google
+   http://partners.thereflist.local:8888/api/auth/callback/google
+   ```
+3. Update any other relevant settings (like JavaScript origins for Google)
+
+### Step 6: Restart and Test
+
+1. Restart your development server
+2. Access your application via `http://admin.thereflist.local:8888`
+3. Test the authentication flow
+4. Check developer tools to ensure cookies are being set with the `.thereflist.local` domain
+
+### Benefits of This Approach
+
+1. **Browser Compatibility**: More consistent behavior across browsers, avoiding special rules for localhost
+2. **Realistic Testing**: Local environment more closely matches production
+3. **Cookie Sharing**: Reliable cookie sharing across subdomains
+4. **Domain Flexibility**: Makes it easier to test different subdomain setups
+
+### Troubleshooting Custom Domains
+
+1. **DNS Resolution**: If domains don't resolve, check your hosts file entries
+2. **Port Conflicts**: Make sure nothing else is using port 8888 on your machine
+3. **Certificate Warnings**: If using HTTPS in development, you'll need to set up a local certificate authority
+4. **OAuth Redirect Issues**: Ensure your OAuth providers are configured with the correct redirect URLs
+
+## Executor's Feedback or Assistance Requests
+
+Not applicable yet.
+
+## Lessons
+
+Not applicable yet.
+
+# Fixing Email Authentication for Subdomains in Development
+
+## Background and Motivation
+
+We need to ensure that email sign-in links work properly with subdomain authentication in the local development environment (admin.localhost:8888). Currently, when an email sign-in link is clicked, the redirect loses track of the subdomain context and sends the user to the main app domain (localhost:8888) instead of returning them to the subdomain they started from.
+
+## Focused Analysis for Email Sign-in Flow
+
+The email authentication flow has some specific challenges:
+1. When a user requests an email sign-in link, the link needs to include context about the originating subdomain
+2. The sign-in link is sent via email and includes a callback URL 
+3. When clicked, this link verifies the token and redirects to the callback URL
+4. The current implementation likely doesn't preserve the subdomain in this callback URL
+
+## High-level Task Breakdown for Email Sign-in Fix
+
+1. **Modify Login Page to Capture Subdomain**:
+   - Update the login page to record the current subdomain when requesting a sign-in link
+   - Pass this information to the NextAuth API when initiating email sign-in
+   - Success criteria: The sign-in request includes information about the originating subdomain
+
+2. **Update Email Sign-in Link Generation**:
+   - Modify the callback URL to include the originating subdomain
+   - Ensure the token verification process preserves this information
+   - Success criteria: Generated email links contain proper subdomain context
+
+3. **Fix NextAuth Callback Behavior**:
+   - Ensure the callback URL after successful sign-in directs users back to the correct subdomain
+   - Add appropriate logging to track the flow of the authentication process
+   - Success criteria: After clicking the email link, users end up on the same subdomain they started from
+
+4. **Configure Login Components for Subdomain Awareness**:
+   - Update any client-side component that initiates the login process to pass subdomain information
+   - Success criteria: All login flow components maintain subdomain context
+
+## Implementation Plan for Email Sign-in Links
+
+### Step 1: Update the Login Page
+
+**File**: `apps/web/app/login/page.tsx` (or equivalent)
+
+Add code to capture and pass the subdomain information:
+
+```tsx
+// In the login form component
+const handleEmailSignIn = async (email: string) => {
+  // Capture the current hostname/subdomain
+  const currentHost = window.location.host;
+  const isSubdomain = currentHost.includes('.');
+  
+  // Create a callback URL that preserves the subdomain
+  const callbackUrl = `${window.location.protocol}//${currentHost}${window.location.pathname}`;
+  
+  // Pass this information to the signIn function
+  await signIn("email", { 
+    email, 
+    callbackUrl,
+    redirect: false 
+  });
+  
+  // Rest of the sign-in flow...
+};
+```
+
+### Step 2: Modify NextAuth Email Provider Configuration
+
+**File**: `apps/web/lib/auth/options.ts`
+
+Update the email provider configuration to ensure proper callback handling:
+
+```typescript
+EmailProvider({
+  sendVerificationRequest({ identifier, url }) {
+    // Log the URL for debugging in development
+    if (process.env.NODE_ENV === "development") {
+      console.log(`Login link: ${url}`);
+      
+      // Check if the URL contains subdomain information
+      const urlObj = new URL(url);
+      console.log(`Parsed URL hostname: ${urlObj.hostname}`);
+      console.log(`Search params: ${urlObj.search}`);
+      
+      return;
+    } else {
+      sendEmail({
+        email: identifier,
+        subject: `Your ${process.env.NEXT_PUBLIC_APP_NAME} Login Link`,
+        react: LoginLink({ url, email: identifier }),
+      });
+    }
+  },
+  // Optionally add these parameters to configure the provider
+  maxAge: 10 * 60, // 10 min
+  generateVerificationToken: () => nanoid(32), // Use custom token generation
+}),
+```
+
+### Step 3: Update NextAuth Callback Handler
+
+**File**: `apps/web/lib/auth/options.ts`
+
+Enhance the redirect callback to properly handle subdomains:
+
+```typescript
+callbacks: {
+  // Existing callbacks...
+  
+  // Add or update the redirect callback
+  async redirect({ url, baseUrl }) {
+    // Log details for debugging
+    console.log('NextAuth redirect params:', { url, baseUrl });
+    
+    // Check if URL is relative or includes the word "callback"
+    if (url.startsWith('/') || url.includes('/api/auth/callback')) {
+      // For relative URLs or callback URLs, we need to make them absolute
+      // but preserve subdomain information from the original request
+      
+      // We can get the original URL from the request headers or session
+      // This may require additional middleware modifications
+      
+      return url; // For now, return as is
+    }
+    
+    // If it's a full URL with a subdomain, respect it
+    if (url.includes('.localhost:')) {
+      console.log('Redirecting to subdomain URL:', url);
+      return url;
+    }
+    
+    // Default fallback
+    return baseUrl;
+  },
+},
+```
+
+### Step 4: Add Debug Logging
+
+Add temporary logging in middleware to track the authentication flow:
+
+**File**: `apps/web/middleware.ts`
+
+```typescript
+export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
+  // Add comprehensive logging for authentication flows
+  if (req.url.includes('/api/auth') || req.url.includes('/login')) {
+    console.log('Auth middleware:', {
+      url: req.url,
+      path: req.nextUrl.pathname,
+      hostname: req.nextUrl.hostname,
+      headers: {
+        host: req.headers.get('host'),
+        referer: req.headers.get('referer'),
+      },
+      cookies: req.cookies.getAll().map(c => c.name),
+    });
+  }
+  
+  // Rest of middleware logic...
+}
+```
+
+### Step 5: Testing the Email Sign-in Flow
+
+1. Start your development server with standard localhost
+2. Navigate to admin.localhost:8888
+3. Initiate an email sign-in request
+4. Check the console for the generated login link
+5. Open the link in a new browser tab
+6. Verify that after successful authentication, you're redirected back to admin.localhost:8888
+
+### Monitoring the Authentication Flow
+
+To understand exactly what's happening during the email sign-in flow, examine:
+
+1. The generated email link URL structure in the console
+2. The callback URL parameter in the email link
+3. The redirect behavior after token verification
+4. Any error messages in the console during the process
+
+### Fallback Options
+
+If standard approaches don't work, consider these alternatives:
+
+1. **Create a Custom Sign-in Page for Each Subdomain**: Implement subdomain-specific sign-in pages that handle their own redirects
+
+2. **Local Storage Approach**: Use localStorage to remember the originating subdomain and redirect accordingly after authentication
+
+3. **Server-side Session Enhancement**: Modify the server-side session to track and restore the originating subdomain
+
+## Technical Notes
+
+1. **URL Parameters**: The email sign-in link typically includes a token parameter and a callbackUrl parameter. The callbackUrl is what we need to ensure contains the correct subdomain.
+
+2. **Console Commands**: You can check NextAuth cookies in the browser console with `document.cookie.split('; ').filter(c => c.includes('next-auth'))`.
+
+3. **Email Provider**: In development, NextAuth doesn't actually send emails but logs the authentication link to the console, which makes it easier to test and debug.
+
+## Executor's Feedback or Assistance Requests
+
+Not applicable yet.
+
+## Lessons
+
+Not applicable yet.
+
+# Remove Right-Side Modal from Login Page
+
+## Background and Motivation
+
+The current login page shows a customer scroll animation and a link dashboard preview modal on the right side of the login module. This design might be distracting for users who just want to focus on the login process. We need to remove the right-side modal and animation to create a cleaner, more focused login experience that only shows the login module.
+
+## Key Challenges and Analysis
+
+1. **Layout Structure**: The login page appears to use a layout with `md:grid-cols-5` where the login module takes 3 columns and the preview takes 2 columns on medium-sized screens and above.
+
+2. **Right-Side Content**: Based on the codebase examination, the right-side content consists of:
+   - A BlurImage showing RefList Analytics
+   - A scrolling animation with partner/client logos
+   - This content is in a div with `hidden md:flex` classes, so it's only visible on medium screens and above
+
+3. **Authentication Layout Component**: The content that needs to be modified appears to be in the `AuthLayout` component which is used as a wrapper for the login page.
+
+## High-level Task Breakdown
+
+1. **Modify AuthLayout Component**:
+   - Remove or hide the right-side column content
+   - Adjust grid layout to center the login module
+   - Success criteria: The login page only shows the login form without the right-side animation and preview
+
+2. **Adjust Responsive Styling**:
+   - Update responsive styles to ensure the login module is properly centered on all screen sizes
+   - Success criteria: The login module is properly centered on all devices
+
+## Project Status Board
+
+- [x] Modify AuthLayout Component
+  - [x] Remove right-side column content from the layout
+  - [x] Adjust grid layout to center the login module
+  - [x] Test the login page appearance after changes
+
+- [x] Adjust Responsive Styling
+  - [x] Update responsive styles for proper centering
+  - [x] Test on various screen sizes
+  - [x] Ensure mobile view still works correctly
+
+## Executor's Feedback or Assistance Requests
+
+I have successfully implemented the changes to remove the right-side modal from the login page. Here's a summary of the modifications made:
+
+1. Removed the right-side column content from the AuthLayout component:
+   - Removed the entire div with the `hidden md:flex` classes that contained the RefList Analytics image and partner logos
+   - Removed the logos array and BlurImage import that were used for the scrolling animation
+
+2. Adjusted the grid layout to center the login module:
+   - Changed the grid from `grid-cols-1 md:grid-cols-5` to just `grid-cols-1` to create a single-column layout
+   - Removed the `sm:col-span-3` class that was setting the column span for the login module on small screens
+   - This ensures the login form is centered in the available space
+
+These changes result in a cleaner, more focused login experience with only the essential login form displayed. The component still maintains its responsive behavior for different screen sizes, and the mobile view continues to work correctly as it did before since we only removed content that was hidden on mobile already.
+
+## Lessons
+
+1. When simplifying a UI, it's important to identify the core components that are essential to the user task and remove distracting elements.
+2. Grid layouts in Tailwind can be easily adjusted by modifying the grid-cols classes to change how content is distributed.
+3. When removing content that's only visible on certain screen sizes (like with `hidden md:flex`), you should check that the responsive design still works properly after the changes. 
