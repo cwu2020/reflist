@@ -170,7 +170,7 @@ export const authOptions: NextAuthOptions = {
       version: "2.0",
       checks: ["pkce", "state"],
       authorization: {
-        url: `${process.env.NEXTAUTH_URL}/api/auth/saml/authorize`,
+        url: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/authorize`,
         params: {
           scope: "",
           response_type: "code",
@@ -178,10 +178,10 @@ export const authOptions: NextAuthOptions = {
         },
       },
       token: {
-        url: `${process.env.NEXTAUTH_URL}/api/auth/saml/token`,
+        url: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/token`,
         params: { grant_type: "authorization_code" },
       },
-      userinfo: `${process.env.NEXTAUTH_URL}/api/auth/saml/userinfo`,
+      userinfo: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/userinfo`,
       profile: async (profile) => {
         let existingUser = await prisma.user.findUnique({
           where: { email: profile.email },
@@ -238,7 +238,7 @@ export const authOptions: NextAuthOptions = {
         const { access_token } = await oauthController.token({
           code,
           grant_type: "authorization_code",
-          redirect_uri: process.env.NEXTAUTH_URL as string,
+          redirect_uri: process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com',
           client_id: "dummy",
           client_secret: process.env.NEXTAUTH_SECRET as string,
         });
