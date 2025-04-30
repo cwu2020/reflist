@@ -17,7 +17,11 @@
     "publish-ui": "turbo build --filter='@dub/ui' && cd packages/ui && npm publish && cd ../../",
     "publish-utils": "turbo build --filter='@dub/utils' && cd packages/utils && npm publish && cd ../../",
     "script": "echo 'Run this script in apps/web'",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "db:check": "node scripts/check-schema-sync.js",
+    "db:sync": "cd packages/prisma && pnpm run push",
+    "db:cleanup": "node cleanup-direct.js",
+    "pre-deploy": "node scripts/pre-deploy-check.js"
   },
   "devDependencies": {
     "@dub/tailwind-config": "workspace:*",
@@ -33,5 +37,9 @@
     "@radix-ui/react-dialog": "1.0.5",
     "@radix-ui/react-popover": "1.0.7"
   },
-  "packageManager": "pnpm@8.6.10"
+  "packageManager": "pnpm@8.6.10",
+  "dependencies": {
+    "@planetscale/database": "^1.18.0",
+    "dotenv": "^16.5.0"
+  }
 }

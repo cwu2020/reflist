@@ -45,3 +45,30 @@ packages/stripe-app/.build/*
 *.csv
 *.ndjson
 .vitest
+
+# Prisma
+packages/prisma/introspection.prisma
+
+# Credentials file
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database cleanup script with credentials
+cleanup-direct.js
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

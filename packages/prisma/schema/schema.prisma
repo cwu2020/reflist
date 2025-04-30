@@ -1,64 +1,54 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters", "fullTextIndex", "fullTextSearch", "prismaSchemaFolder", "omitApi"]
+}
+
 datasource db {
   provider     = "mysql"
   url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
-generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi", "prismaSchemaFolder"]
-}
-
-// Models from workspace.prisma
 model Project {
-  id         String  @id @default(cuid())
-  name       String
-  slug       String  @unique
-  logo       String?
-  inviteCode String? @unique
-
-  plan              String    @default("free")
-  stripeId          String?   @unique // Stripe subscription ID
-  billingCycleStart Int // day of the month when the billing cycle starts
-  paymentFailedAt   DateTime?
-  invoicePrefix     String?   @unique // prefix used to generate unique invoice numbers (for Dub Payouts)
-
-  stripeConnectId String? @unique // for Stripe Integration
-  shopifyStoreId  String? @unique // for Shopify Integration
-
-  totalLinks  Int @default(0) // Total number of links in the workspace
-  totalClicks Int @default(0) // Total number of clicks in the workspace
-
-  usage        Int @default(0)
-  usageLimit   Int @default(1000)
-  linksUsage   Int @default(0)
-  linksLimit   Int @default(25)
-  salesUsage   Int @default(0)
-  salesLimit   Int @default(0)
-  domainsLimit Int @default(3)
-  tagsLimit    Int @default(5)
-  foldersUsage Int @default(0)
-  foldersLimit Int @default(0)
-  usersLimit   Int @default(1)
-  aiUsage      Int @default(0)
-  aiLimit      Int @default(10)
-
-  referralLinkId  String? @unique
-  referredSignups Int     @default(0)
-
-  store            Json? // General key-value store for things like persisting toggles, dismissing popups, etc.
-  allowedHostnames Json?
-
-  conversionEnabled Boolean @default(false) // Whether to enable conversion tracking for links by default
-  webhookEnabled    Boolean @default(false)
-  partnersEnabled   Boolean @default(false)
-  ssoEnabled        Boolean @default(false)
-  dotLinkClaimed    Boolean @default(false)
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  usageLastChecked DateTime @default(now())
-
+  id                    String                 @id @default(cuid())
+  name                  String
+  slug                  String                 @unique
+  logo                  String?
+  inviteCode            String?                @unique
+  plan                  String                 @default("free")
+  stripeId              String?                @unique
+  billingCycleStart     Int
+  paymentFailedAt       DateTime?
+  invoicePrefix         String?                @unique
+  stripeConnectId       String?                @unique
+  shopifyStoreId        String?                @unique
+  totalLinks            Int                    @default(0)
+  totalClicks           Int                    @default(0)
+  usage                 Int                    @default(0)
+  usageLimit            Int                    @default(1000)
+  linksUsage            Int                    @default(0)
+  linksLimit            Int                    @default(25)
+  salesUsage            Int                    @default(0)
+  salesLimit            Int                    @default(0)
+  domainsLimit          Int                    @default(3)
+  tagsLimit             Int                    @default(5)
+  foldersUsage          Int                    @default(0)
+  foldersLimit          Int                    @default(0)
+  usersLimit            Int                    @default(1)
+  aiUsage               Int                    @default(0)
+  aiLimit               Int                    @default(10)
+  referralLinkId        String?                @unique
+  referredSignups       Int                    @default(0)
+  store                 Json?
+  allowedHostnames      Json?
+  conversionEnabled     Boolean                @default(false)
+  webhookEnabled        Boolean                @default(false)
+  partnersEnabled       Boolean                @default(false)
+  ssoEnabled            Boolean                @default(false)
+  dotLinkClaimed        Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  usageLastChecked      DateTime               @default(now())
   users                 ProjectUsers[]
   invites               ProjectInvite[]
   sentEmails            SentEmail[]
@@ -71,8 +61,8 @@ model Project {
   defaultDomains        DefaultDomains[]
   restrictedTokens      RestrictedToken[]
   oAuthCodes            OAuthCode[]
-  integrations          Integration[] // Integrations workspace published
-  installedIntegrations InstalledIntegration[] // Integrations workspace installed
+  integrations          Integration[]
+  installedIntegrations InstalledIntegration[]
   webhooks              Webhook[]
   folders               Folder[]
   registeredDomains     RegisteredDomain[]
@@ -80,21 +70,16 @@ model Project {
   utmTemplates          UtmTemplate[]
   yearInReviews         YearInReview[]
 
-  @@index(usageLastChecked(sort: Asc))
-}
-
-enum Role {
-  owner
-  member
+  @@index([usageLastChecked])
 }
 
 model ProjectInvite {
   email     String
   expires   DateTime
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String
   role      Role     @default(member)
   createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([email, projectId])
   @@index([projectId])
@@ -105,14 +90,13 @@ model ProjectUsers {
   role                   Role                    @default(member)
   userId                 String
   projectId              String
-  notificationPreference NotificationPreference?
   workspacePreferences   Json?
   defaultFolderId        String?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  notificationPreference NotificationPreference?
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project                Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
   @@index([projectId])
@@ -122,49 +106,45 @@ model SentEmail {
   id        String   @id @default(cuid())
   type      String
   createdAt DateTime @default(now())
-  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
 }
 
 model NotificationPreference {
-  id                         String  @id @default(cuid())
-  projectUserId              String  @unique
-  linkUsageSummary           Boolean @default(true)
-  domainConfigurationUpdates Boolean @default(true)
-  newPartnerSale             Boolean @default(true)
-  newPartnerApplication      Boolean @default(true)
-
-  projectUser ProjectUsers @relation(fields: [projectUserId], references: [id], onDelete: Cascade)
+  id                         String       @id @default(cuid())
+  projectUserId              String       @unique
+  linkUsageSummary           Boolean      @default(true)
+  domainConfigurationUpdates Boolean      @default(true)
+  newPartnerSale             Boolean      @default(true)
+  newPartnerApplication      Boolean      @default(true)
+  projectUser                ProjectUsers @relation(fields: [projectUserId], references: [id], onDelete: Cascade)
 }
 
-// Models from domain.prisma
 model Domain {
   id                      String            @id @default(cuid())
   slug                    String            @unique
   verified                Boolean           @default(false)
   placeholder             String?
-  expiredUrl              String?           @db.LongText // URL to redirect to for expired links
-  notFoundUrl             String?           @db.LongText // URL to redirect to for links that don't exist
+  expiredUrl              String?           @db.LongText
+  notFoundUrl             String?           @db.LongText
   primary                 Boolean           @default(false)
   archived                Boolean           @default(false)
   lastChecked             DateTime          @default(now())
   logo                    String?
   appleAppSiteAssociation Json?
   assetLinks              Json?
+  projectId               String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
   links                   Link[]
   project                 Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId               String?
   registeredDomain        RegisteredDomain?
   programs                Program[]
 
-  // these attributes will exist on both Link and Domain models
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index(projectId)
-  @@index(lastChecked(sort: Asc))
+  @@index([projectId])
+  @@index([lastChecked])
 }
 
 model RegisteredDomain {
@@ -173,40 +153,29 @@ model RegisteredDomain {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   expiresAt DateTime
-
-  project   Project @relation(fields: [projectId], references: [id])
   projectId String
-  domain    Domain? @relation(fields: [domainId], references: [id], onDelete: SetNull)
-  domainId  String? @unique
+  domainId  String?  @unique
+  project   Project  @relation(fields: [projectId], references: [id])
+  domain    Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
 
-  @@index(projectId)
-  @@index(expiresAt(sort: Asc))
-}
-
-// Models from webhook.prisma
-enum WebhookReceiver {
-  user
-  zapier
-  make
-  slack
-  segment
+  @@index([projectId])
+  @@index([expiresAt])
 }
 
 model Webhook {
-  id                  String          @id @default(cuid())
-  projectId           String
-  installationId      String?         @unique // indicates which integration installation added the webhook
-  receiver            WebhookReceiver @default(user)
-  name                String
-  url                 String          @db.LongText
-  secret              String
-  triggers            Json
-  consecutiveFailures Int             @default(0)
-  lastFailedAt        DateTime?
-  disabledAt          DateTime?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-
+  id                   String                @id @default(cuid())
+  projectId            String
+  installationId       String?               @unique
+  receiver             WebhookReceiver       @default(user)
+  name                 String
+  url                  String                @db.LongText
+  secret               String
+  triggers             Json
+  consecutiveFailures  Int                   @default(0)
+  lastFailedAt         DateTime?
+  disabledAt           DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
   project              Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   installedIntegration InstalledIntegration? @relation(fields: [installationId], references: [id], onDelete: Cascade)
   links                LinkWebhook[]
@@ -215,37 +184,31 @@ model Webhook {
 }
 
 model LinkWebhook {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   linkId    String
   webhookId String
-
-  link    Link    @relation(fields: [linkId], references: [id], onUpdate: Cascade, onDelete: Cascade)
-  webhook Webhook @relation(fields: [webhookId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  link      Link    @relation(fields: [linkId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  webhook   Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([linkId, webhookId])
-  @@index(webhookId)
+  @@index([webhookId])
 }
 
-// Original models from schema.prisma
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  isMachine     Boolean   @default(false)
-
-  // password data
-  passwordHash         String?
-  invalidLoginAttempts Int       @default(0)
-  lockedAt             DateTime?
-
+  id                    String                 @id @default(cuid())
+  name                  String?
+  email                 String?                @unique
+  emailVerified         DateTime?
+  image                 String?
+  isMachine             Boolean                @default(false)
+  passwordHash          String?
+  invalidLoginAttempts  Int                    @default(0)
+  lockedAt              DateTime?
   createdAt             DateTime               @default(now())
-  subscribed            Boolean                @default(true) // email subscription
-  source                String? // where the user came from
-  defaultWorkspace      String? // slug of the user's default workspace
-  defaultPartnerId      String? // the user's default partner ID
-  // relational data
+  subscribed            Boolean                @default(true)
+  source                String?
+  defaultWorkspace      String?
+  defaultPartnerId      String?
   accounts              Account[]
   sessions              Session[]
   projects              ProjectUsers[]
@@ -255,15 +218,15 @@ model User {
   tokens                Token[]
   restrictedTokens      RestrictedToken[]
   oAuthCodes            OAuthCode[]
-  integrations          Integration[] // Integrations user created in their workspace
-  installedIntegrations InstalledIntegration[] // Integrations user installed in their workspace
+  integrations          Integration[]
+  installedIntegrations InstalledIntegration[]
   folders               FolderUser[]
   folderAccessRequests  FolderAccessRequest[]
   utmTemplates          UtmTemplate[]
   payouts               Payout[]
 
-  @@index(source)
-  @@index(defaultWorkspace)
+  @@index([source])
+  @@index([defaultWorkspace])
 }
 
 model Account {
@@ -280,8 +243,7 @@ model Account {
   scope                    String?
   id_token                 String? @db.Text
   session_state            String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -298,9 +260,22 @@ model Session {
 }
 
 model DefaultDomains {
-  id          String  @id @default(cuid())
-  reflist     Boolean @default(true)
-  dublink     Boolean @default(false)
-  projectId   String  @unique
-  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  projectId String  @unique
+  reflist   Boolean @default(true)
+  dublink   Boolean @default(false)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  owner
+  member
+}
+
+enum WebhookReceiver {
+  user
+  zapier
+  make
+  slack
+  segment
 }

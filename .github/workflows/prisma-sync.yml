@@ -1,0 +1,138 @@
+name: Prisma Database Sync
+
+on:
+  # Run on push to main branch
+  push:
+    branches:
+      - main
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  prisma-sync:
+    name: Sync Prisma Schema with Database
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.10
+
+      - name: Install dependencies
+        run: pnpm install
+        
+      - name: Generate Prisma Client
+        working-directory: packages/prisma
+        run: pnpm run generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          
+      - name: Apply Database Migrations
+        working-directory: packages/prisma
+        run: pnpm run push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          
+      # Optional: Run script to clean up any orphaned records
+      - name: Clean up orphaned records
+        run: |
+          cat > cleanup-orphaned-records.js << 'EOL'
+          const { connect } = require('@planetscale/database');
+
+          // Configure the database connection
+          const config = {
+            host: process.env.DB_HOST || 'aws.connect.psdb.cloud',
+            username: process.env.DATABASE_USERNAME,
+            password: process.env.DATABASE_PASSWORD,
+            database: process.env.DB_NAME || 'reflist'
+          };
+
+          async function cleanupOrphanedRecords() {
+            // Create a connection to PlanetScale
+            const conn = connect(config);
+            
+            try {
+              console.log('Starting cleanup of orphaned records...');
+              
+              // Delete orphaned accounts
+              console.log('Cleaning up orphaned Account records...');
+              const accountsResult = await conn.execute(
+                'DELETE a FROM Account a LEFT JOIN User u ON a.userId = u.id WHERE u.id IS NULL'
+              );
+              console.log(`Deleted ${accountsResult.rowsAffected} orphaned Account records`);
+              
+              // Delete orphaned sessions
+              console.log('Cleaning up orphaned Session records...');
+              const sessionsResult = await conn.execute(
+                'DELETE s FROM Session s LEFT JOIN User u ON s.userId = u.id WHERE u.id IS NULL'
+              );
+              console.log(`Deleted ${sessionsResult.rowsAffected} orphaned Session records`);
+              
+              // Delete orphaned ProjectUsers
+              console.log('Cleaning up orphaned ProjectUsers records...');
+              const projectUsersResult = await conn.execute(
+                'DELETE pu FROM ProjectUsers pu LEFT JOIN User u ON pu.userId = u.id WHERE u.id IS NULL'
+              );
+              console.log(`Deleted ${projectUsersResult.rowsAffected} orphaned ProjectUsers records`);
+              
+              // Delete orphaned Link records
+              console.log('Cleaning up orphaned Link records...');
+              const linkResult = await conn.execute(
+                'DELETE l FROM Link l LEFT JOIN User u ON l.userId = u.id WHERE l.userId IS NOT NULL AND u.id IS NULL'
+              );
+              console.log(`Deleted ${linkResult.rowsAffected} orphaned Link records`);
+              
+              // Delete orphaned Dashboard records
+              console.log('Cleaning up orphaned Dashboard records...');
+              const dashboardResult = await conn.execute(
+                'DELETE d FROM Dashboard d LEFT JOIN User u ON d.userId = u.id WHERE d.userId IS NOT NULL AND u.id IS NULL'
+              );
+              console.log(`Deleted ${dashboardResult.rowsAffected} orphaned Dashboard records`);
+              
+              // Delete orphaned PartnerUser records
+              console.log('Cleaning up orphaned PartnerUser records...');
+              const partnerUserResult = await conn.execute(
+                'DELETE pu FROM PartnerUser pu LEFT JOIN User u ON pu.userId = u.id WHERE u.id IS NULL'
+              );
+              console.log(`Deleted ${partnerUserResult.rowsAffected} orphaned PartnerUser records`);
+              
+              // Delete orphaned RestrictedToken records
+              console.log('Cleaning up orphaned RestrictedToken records...');
+              const restrictedTokenResult = await conn.execute(
+                'DELETE rt FROM RestrictedToken rt LEFT JOIN User u ON rt.userId = u.id WHERE rt.userId IS NOT NULL AND u.id IS NULL'
+              );
+              console.log(`Deleted ${restrictedTokenResult.rowsAffected} orphaned RestrictedToken records`);
+              
+              console.log('Cleanup completed successfully');
+            } catch (error) {
+              console.error('Error during cleanup:', error);
+              process.exit(1);
+            }
+          }
+
+          cleanupOrphanedRecords();
+          EOL
+          
+          node cleanup-orphaned-records.js
+        env:
+          DATABASE_USERNAME: ${{ secrets.DB_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        
+      - name: Notify on Success
+        if: success()
+        run: echo "✅ Prisma schema has been successfully synchronized with the database!"
+        
+      - name: Notify on Failure
+        if: failure()
+        run: echo "❌ Failed to synchronize Prisma schema with the database. Please check the logs for details." 

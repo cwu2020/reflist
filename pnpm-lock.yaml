@@ -11,6 +11,13 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@planetscale/database':
+        specifier: ^1.18.0
+        version: 1.18.0
+      dotenv:
+        specifier: ^16.5.0
+        version: 16.5.0
     devDependencies:
       '@dub/tailwind-config':
         specifier: workspace:*
