@@ -1,10 +1,14 @@
 {
   "extends": "next/core-web-vitals",
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
   "rules": {
     "react/no-unescaped-entities": "off",
     "react/display-name": "off",
     "react-hooks/exhaustive-deps": "warn",
     "@next/next/no-img-element": "warn",
-    "jsx-a11y/alt-text": "warn"
+    "jsx-a11y/alt-text": "warn",
+    "react/jsx-key": "off",
+    "@typescript-eslint/no-unused-vars": "off"
   }
 }

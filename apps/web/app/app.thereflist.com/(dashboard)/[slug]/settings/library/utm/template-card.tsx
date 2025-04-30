@@ -101,8 +101,8 @@ export function TemplateCard({
           }
         >
           <div className="xs:flex hidden shrink-0 items-center gap-1 px-2 text-neutral-500">
-            {includedParams.map(({ icon: Icon }) => (
-              <Icon className="size-3.5" />
+            {includedParams.map(({ icon: Icon, key }) => (
+              <Icon key={key} className="size-3.5" />
             ))}
           </div>
         </Tooltip>
