@@ -11,12 +11,16 @@ import {
   usePagination,
   useRouterStuff,
   useTable,
+  Button
 } from "@dub/ui";
 import { Areas, TimeSeriesChart, XAxis, YAxis } from "@dub/ui/charts";
 import { cn, currencyFormatter, fetcher, formatDateTime } from "@dub/utils";
 import NumberFlow from "@number-flow/react";
 import { Fragment, useMemo, useState } from "react";
 import useSWR from "swr";
+import { PendingCommissionsTable } from "./pending-commissions-table";
+import { PayoutDetailsSheet } from "./payout-details-sheet";
+import { PayoutActions } from "./payout-actions";
 
 interface TimeseriesData {
   date: Date;
@@ -26,6 +30,7 @@ interface TimeseriesData {
 }
 
 interface InvoiceData {
+  id: string;
   date: Date;
   programName: string;
   programLogo: string;
@@ -45,7 +50,7 @@ export default function PayoutsPageClient() {
   const { queryParams, getQueryString, searchParamsObj } = useRouterStuff();
   const { interval, start, end } = searchParamsObj;
 
-  const { data: { invoices, timeseriesData } = {}, isLoading } = useSWR<{
+  const { data: { invoices, timeseriesData } = {}, isLoading, mutate } = useSWR<{
     invoices: InvoiceData[];
     timeseriesData: TimeseriesData[];
   }>(
@@ -107,6 +112,8 @@ export default function PayoutsPageClient() {
   }, [timeseriesData]);
 
   const { pagination, setPagination } = usePagination();
+
+  const [selectedPayoutId, setSelectedPayoutId] = useState<string | null>(null);
 
   const { table, ...tableProps } = useTable({
     data: invoices ?? [],
@@ -179,6 +186,24 @@ export default function PayoutsPageClient() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           }),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="h-8 px-2 py-0 text-sm"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent row click
+                setSelectedPayoutId(row.original.id);
+              }}
+            >
+              View Details
+            </Button>
+          </div>
+        ),
       },
     ],
     pagination,
@@ -311,9 +336,26 @@ export default function PayoutsPageClient() {
         </div>
       </div>
 
+      {/* Add the Pending Commissions Table here */}
+      <div className="rounded-lg border border-neutral-200 bg-white p-6">
+        <PendingCommissionsTable />
+      </div>
+
       <div className="w-full">
         <Table {...tableProps} table={table} />
       </div>
+      
+      {/* Add the Payout Details Sheet */}
+      {selectedPayoutId && (
+        <PayoutDetailsSheet
+          payoutId={selectedPayoutId}
+          open={!!selectedPayoutId}
+          onOpenChange={(open) => {
+            if (!open) setSelectedPayoutId(null);
+          }}
+          onStatusChange={() => mutate()}
+        />
+      )}
     </div>
   );
 }

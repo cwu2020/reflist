@@ -15,6 +15,10 @@ const tabs = [
     label: "Analytics",
   },
   {
+    href: "/sales",
+    label: "Sales",
+  },
+  {
     href: "/payouts",
     label: "Payouts",
   },

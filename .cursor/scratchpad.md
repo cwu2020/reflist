@@ -6,88 +6,276 @@ We need to integrate with the ShopMy API to enable users to create affiliate lin
 
 The ShopMy API integration requires creating proxy endpoints on our server to make secure API calls to ShopMy, obtaining merchant data based on product URLs, and generating affiliate pins that result in trackable short links.
 
+# Admin Manual Sales Tracking
+
+## Background and Motivation
+
+We need to create a feature that allows admins to manually track and submit sales for reflist links. The system should allow admins to record a commission sale corresponding to a specific reflist link, which will appear in the user's dashboard as a pending payout. Later, the admin should be able to mark that payout as cleared, and when the user withdraws, the payout gets transferred from the admin stripe or paypal account to the user's stripe or paypal account.
+
+This feature is essential for manually recording sales that might not be automatically tracked through the existing conversion tracking system. The feature will rely on the existing Commission and Payout data models already implemented in the system.
+
 ## Key Challenges and Analysis
 
-1. **Authentication & Security**: We need to securely store and use the ShopMy creator token without exposing it to clients.
-2. **Proxy Implementation**: We need to create server-side proxy endpoints to handle communication with ShopMy API.
-3. **Schema Update**: We need to store ShopMy merchant metadata and original URLs with links in our database.
-4. **UI Integration**: We need to surface ShopMy merchant data in the UI when users enter a URL.
-5. **Link Processing**: We need to modify the link creation process to generate and store ShopMy links.
+1. **Admin Interface**: Create a user-friendly admin interface for recording manual sales, including form fields for link details, commission amounts, and status.
+
+2. **Data Flow**: Ensure proper creation of Commission records with appropriate status and association with the correct Link and User.
+
+3. **Payout Status Management**: Enable admins to change the status of payouts from pending to cleared, triggering payment processing.
+
+4. **User Dashboard Integration**: Ensure manually tracked sales appear in the user's earnings dashboard alongside automatically tracked sales.
+
+5. **Authentication & Authorization**: Ensure only admin users can access the manual sales tracking features.
+
+6. **Payment Processing Integration**: Leverage existing Stripe integration and potentially add PayPal support for processing payments to users.
+
+## Stripe and PayPal Integration Analysis
+
+### Existing Stripe Infrastructure
+
+Based on the codebase exploration, we have identified the following Stripe components already implemented:
+
+1. **Stripe Client SDK Setup**:
+   - `apps/web/lib/stripe/client.ts` - Sets up the Stripe client with API keys
+   - `apps/web/lib/stripe/index.ts` - Provides the Stripe server instance
+
+2. **Stripe Payment Methods**:
+   - `apps/web/lib/swr/use-payment-methods.ts` - Hook to fetch payment methods
+   - `apps/web/app/api/workspaces/[idOrSlug]/billing/payment-methods/route.ts` - API to manage payment methods
+
+3. **Stripe Connected Accounts**:
+   - `apps/web/lib/stripe/create-connected-account.ts` - Creates Stripe connect accounts for partners
+   - `apps/web/lib/actions/partners/create-account-link.ts` - Creates account links for onboarding
+
+4. **Stripe Transfers and Payouts**:
+   - `apps/web/app/api/stripe/webhook/charge-succeeded.ts` - Handles creating transfers to connected accounts
+   - `apps/web/app/api/cron/trigger-withdrawal/route.ts` - Triggers Stripe payouts to bank accounts
+
+5. **Commission and Payout Models**:
+   - `packages/prisma/schema/commission.prisma` - Commission model for tracking earnings
+   - `packages/prisma/schema/payout.prisma` - Payout model for tracking transfers
+   - `apps/web/lib/actions/partners/confirm-payouts.ts` - Confirms and processes payouts
+
+### PayPal Integration Status
+
+The codebase has limited PayPal integration, primarily UI components:
+   - `packages/ui/src/icons/payout-platforms/paypal.tsx` - PayPal icon for UI
+   - No actual PayPal API integration code was found
+
+### Integration Strategy
+
+For manual sales tracking and payout processing, we will:
+
+1. **Leverage Existing Stripe Components**:
+   - Use the Stripe SDK for payment processing
+   - Utilize the existing Commission and Payout models
+   - Adapt the existing payout confirmation and transfer flow for admin-initiated sales
+
+2. **Extend the Admin Interface**:
+   - Create a form for recording manual sales that generates Commission records
+   - Add UI for managing payout statuses and initiating transfers
+   - Ensure proper visualization of commission earnings for both admins and users
+
+3. **For PayPal Integration** (if needed):
+   - Add PayPal API client setup
+   - Implement PayPal webhook handling for transfers
+   - Add UI components for users to provide PayPal account details
 
 ## High-level Task Breakdown
 
-1. **Create ShopMy API Environment Configuration**:
-   - Add SHOPMY_CREATOR_TOKEN to environment variables
-   - Success criteria: Environment variable is configured and accessible in the API routes
+1. **Create Admin Manual Sales Page**:
+   - Create a new page at `/admin.thereflist.com/(dashboard)/sales` for admin manual sales tracking
+   - Implement a form to search for links by ID or URL
+   - Implement fields for commission amount, currency, and notes
+   - Add submit button to record the sale
+   - Success criteria: Admin can access a dedicated page for recording manual sales
 
-2. **Create Server-Side Proxy Endpoints**:
-   - Implement `/api/shopmy/data` endpoint to fetch merchant data
-   - Implement `/api/shopmy/pins` endpoint to create ShopMy pins
-   - Success criteria: Both endpoints successfully communicate with ShopMy API and return appropriate responses
+2. **Implement Backend Sales Recording API**:
+   - Create a new API endpoint for recording manual sales
+   - Connect to the existing Commission model for data storage
+   - Implement validation for required fields
+   - Success criteria: API successfully creates Commission records for manual sales
 
-3. **Update Prisma Schema for ShopMy Metadata**:
-   - Add `shopmyMetadata` JSON field to Link model to store merchant data
-   - Add `originalUrl` field to Link model to store user-entered URL
-   - Success criteria: Schema is updated and migrations are applied without errors
+3. **Create Admin Payout Management Interface**:
+   - Enhance the existing payouts interface to show pending sales commissions
+   - Add functionality to mark payouts as cleared
+   - Add functionality to initiate payouts to users
+   - Add filtering and sorting for payouts
+   - Success criteria: Admin can manage payout statuses and initiate payments
 
-4. **Implement Link Creation Flow**:
-   - Modify link creation to fetch ShopMy data when a URL is entered
-   - Process ShopMy data and save it with the link
-   - Generate ShopMy pin and replace the destination URL with ShopMy URL
-   - Success criteria: Links are created with ShopMy URLs and metadata is stored correctly
+4. **Implement User Dashboard Integration**:
+   - Ensure manually recorded sales appear in the user's earnings dashboard
+   - Display appropriate status indicators for pending and cleared sales
+   - Success criteria: Users can see manually recorded sales in their dashboard
 
-5. **Update UI Components**:
-   - Add UI elements to display ShopMy merchant data
-   - Success criteria: Merchant data is properly displayed in the UI during link creation
+5. **Implement Stripe Payout Processing**:
+   - Adapt existing Stripe functions for admin payouts
+   - Create server-side function to process transfers
+   - Implement proper webhook handling
+   - Add error handling and notifications
+   - Success criteria: Payments can be successfully processed through Stripe
+
+6. **Add PayPal Integration (Optional/Future)**:
+   - Implement PayPal API client 
+   - Create PayPal account management UI
+   - Add PayPal payout options to admin interface
+   - Implement webhook handling for PayPal
+
+7. **Test End-to-End Flow**:
+   - Test admin manual sale recording
+   - Test status changes for payouts
+   - Test user dashboard display
+   - Test the payout process through Stripe
+   - Test the payout process through PayPal (if implemented)
+   - Success criteria: Complete flow works from manual sale recording to user payout
 
 ## Project Status Board
 
-- [x] Create ShopMy API Environment Configuration
-  - [x] Add SHOPMY_CREATOR_TOKEN to environment variables
-  - [x] Add validation for the token
+- [x] Create Admin Manual Sales Page
+  - [x] Create page route and layout
+  - [x] Implement link search functionality
+  - [x] Create sales recording form
+  - [x] Add validation and submission logic
+  - [x] Add confirmation UI
 
-- [x] Create Server-Side Proxy Endpoints
-  - [x] Implement `/api/shopmy/data` endpoint
-  - [x] Implement `/api/shopmy/pins` endpoint
+- [x] Implement Backend Sales Recording API
+  - [x] Create API endpoint for recording manual sales
+  - [x] Implement validation logic
+  - [x] Connect to Commission model
   - [x] Add error handling
-  - [x] Add rate limiting
+  - [x] Add logging for admin actions
 
-- [x] Update Prisma Schema for ShopMy Metadata
-  - [x] Add `shopmyMetadata` JSON field to Link model
-  - [x] Add `originalUrl` field to Link model
-  - [x] Run migrations
+- [x] Create Admin Payout Management Interface
+  - [x] Enhance existing payouts page to show pending sales
+  - [x] Add functionality to change payout status
+  - [x] Implement payout initiation process
+  - [x] Add filtering and sorting for payouts
 
-- [x] Implement Link Creation Flow
-  - [x] Create utility functions to handle ShopMy integration
-  - [x] Update createLink function to handle ShopMy integration
-  - [x] Add logic to replace URL with ShopMy URL
+- [ ] Implement User Dashboard Integration
+  - [ ] Ensure manual sales appear in user earnings dashboard
+  - [ ] Add status indicators for pending/cleared sales
+  - [ ] Update earnings calculations to include manual sales
+  - [ ] Enhance withdraw functionality to process cleared sales
 
-- [x] Update UI Components
-  - [x] Create ShopMyIntegration component 
-  - [x] Add component to link creation form
-  - [x] Implement loading states while fetching data
+- [ ] Implement Stripe Payout Processing
+  - [x] Adapt existing Stripe functions for admin payouts
+  - [x] Create server-side function to process transfers
+  - [x] Implement proper webhook handling
+  - [x] Add error handling and notifications
+  - [ ] Create admin UI for payment method selection
+
+- [ ] Add PayPal Integration (Optional/Future)
+  - [ ] Implement PayPal API client 
+  - [ ] Create PayPal account management UI
+  - [ ] Add PayPal payout options to admin interface
+  - [ ] Implement webhook handling for PayPal
+
+- [ ] Test End-to-End Flow
+  - [x] Test admin recording of manual sales
+  - [x] Test status changes for payouts
+  - [ ] Test user dashboard display
+  - [ ] Test Stripe payout processing
+  - [ ] Test PayPal payout processing (if implemented)
+  - [ ] Verify all calculations are correct
+
+## Technical Implementation Details
+
+### Commission Record Creation
+
+When an admin manually records a sale, the system will:
+
+1. Create a `Commission` record with:
+   - `type: "sale"`
+   - `status: "pending"`
+   - Associated with the specific `linkId` and `partnerId`
+   - Include the `amount` and calculated `earnings`
+
+2. This will appear in the user's earnings dashboard like any other commission, but with a special indicator showing it was manually recorded.
+
+### Payout Processing Flow
+
+When an admin marks payouts as ready for processing:
+
+1. System will create a `Payout` record with:
+   - `status: "pending"`
+   - Associated with the right `partnerId` and commissions
+   - Calculated total `amount`
+
+2. Admin initiates payment through:
+   - Selecting eligible payouts
+   - Choosing payment method (Stripe, potentially PayPal in future)
+   - Confirming the transfer
+
+3. For Stripe payouts:
+   - System will use existing `stripe.transfers.create()` with the admin account as source
+   - Update payout status to "processing" then "completed" upon success
+   - Update associated commissions to "paid"
+
+4. For PayPal payouts (future):
+   - System would use PayPal API to create a payout
+   - Handle webhooks to confirm successful transfer
+   - Update status in database accordingly
+
+### Data Model Usage
+
+We'll leverage the existing models:
+
+1. `Commission`:
+   - Uses `eventId` for tracking
+   - `status` tracks progression from "pending" to "paid"
+   - `type: "sale"` for purchase commissions
+
+2. `Payout`:
+   - `status` tracks progression ("pending", "processing", "completed")
+   - `stripeTransferId` stores Stripe transfer record
+   - Associated commissions via `payoutId`
 
 ## Executor's Feedback or Assistance Requests
 
-The ShopMy API integration has been successfully implemented, but during testing we encountered an authentication issue with the API endpoints. 
+I've successfully implemented the admin manual sales tracking feature with the following components:
 
-**Issue**: When the frontend tried to call the ShopMy proxy endpoints, we received a 401 Unauthorized error with the message "Missing Authorization header". This was happening because we initially used the `withWorkspace` middleware which requires a specific authorization scheme.
+1. **Admin Sales Page**: Created a complete admin interface at `/admin.thereflist.com/(dashboard)/sales` with the following components:
+   - Link search functionality to find any link by URL, ID, or key
+   - Sales recording form with fields for amount, currency, payment processor, invoice ID, event name, and notes
+   - Confirmation UI showing success messages after recording a sale
+   - Recent sales table showing all manually recorded sales with filtering options
 
-**Solution**:
-1. Modified the API routes to use a simpler authentication approach:
-   - Removed the `withWorkspace` middleware
-   - Added direct session validation using `getServerSession`
-   - Improved error responses to be more frontend-friendly
-   
-2. Enhanced error handling in the utility functions:
-   - Added specific handling for 401 (unauthorized) and 500 (server) errors
-   - Improved error logging with more detailed messages
-   
-3. Added the SHOPMY_CREATOR_TOKEN to the environment:
-   - Created/updated the `.env.local` file with the token from the documentation
-   - Restarted the development server to apply the changes
+2. **Backend Sales Recording API**: 
+   - Created API endpoints for recording sales and updating sale status
+   - Implemented robust validation using Zod schema validation
+   - Connected to the Commission model for data storage
+   - Added proper error handling and admin action logging
+   - Integrated with the new `calculateSaleEarnings` helper function to calculate commission earnings
 
-After these changes, the API endpoints can now be accessed correctly from the frontend, and the ShopMy integration should work as expected.
+3. **Sales Calculation Helper Function**:
+   - Created a reusable helper function in `apps/web/lib/api/sales/calculate-sale-earnings.ts`
+   - Implemented support for both percentage and flat rate reward types
+   - Added handling for maximum earnings caps
+   - Created a program-specific earnings calculator that looks up program reward structures
+
+4. **Admin Payout Management Interface**:
+   - Created a `PendingCommissionsTable` component to show pending commissions grouped by partner
+   - Added functionality to mark commissions as processed, duplicate, or fraudulent
+   - Implemented a payout creation flow to create payouts for partners with pending commissions
+   - Added a detail view (sheet) for viewing and managing payout information
+   - Created payout status management with options to mark payouts as processing, completed, failed, or canceled
+   - Added support for tracking Stripe transfer IDs for completed payouts
+
+5. **Payout Management API Endpoints**:
+   - Created `/api/admin/commissions` - List commissions for payout management
+   - Created `/api/admin/commissions/[id]/status` - Update commission status
+   - Created `/api/admin/payouts` - Create payouts from pending commissions
+   - Created `/api/admin/payouts/[id]` - Get detailed payout information
+   - Created `/api/admin/payouts/[id]/status` - Update payout status
+   - Added comprehensive logging of admin actions in all endpoints
+
+The implementation now allows admins to:
+- Search for any link in the system and record manual sales
+- Mark sales as duplicate or fraudulent
+- View pending commissions grouped by partner
+- Create payouts for partners with pending commissions
+- Manage payout statuses and track Stripe transfer IDs
+
+These manual sales will appear in the user's earnings dashboard and be eligible for payouts. The next steps would be to implement the user dashboard integration to complete the full workflow.
 
 ## Lessons
 
@@ -97,6 +285,10 @@ After these changes, the API endpoints can now be accessed correctly from the fr
 4. Rate limiting is important for external API calls to prevent abuse
 5. Consider the authentication requirements when creating new API routes; the `withWorkspace` middleware may be too restrictive for some frontend-initiated calls
 6. Test API endpoints directly before integrating them with the frontend to catch auth issues early 
+7. Proper logging of admin actions is essential for security and auditing purposes, especially for financial operations
+8. Transaction operations are critical when updating related database records to ensure data consistency
+9. Using Zod schemas for validation provides robust error handling and type checking
+10. UI components need to provide clear feedback to prevent administrative errors
 
 # Enable Conversion Tracking for All Users
 
@@ -762,620 +954,6 @@ We've created an admin user account, but when trying to log into the admin porta
 4. **Alternative Authentication Method**: Try a different authentication method if available
 
 5. **Force Admin Session**: Create a script to directly set admin session cookies
-
-## Executor's Feedback or Assistance Requests
-
-Not applicable yet.
-
-## Lessons
-
-Not applicable yet.
-
-# Earnings Dashboard Implementation Plan
-
-## Current State Assessment
-
-The earnings dashboard UI has been fully implemented with the following components:
-
-1. **EarningsWallet** - Shows available balance, pending earnings, and monthly earnings
-2. **EarningsChart** - Shows earnings trends over time
-3. **EarningsTable** - Shows detailed earnings entries
-4. **PayoutsTable** - Shows payout history
-5. **WithdrawModal** - Interface for withdrawing available balance
-
-All these components are currently using mock data. To make the dashboard fully functional with real data, we need to implement API endpoints and SWR hooks.
-
-## Required API Endpoints
-
-Based on the existing patterns in the codebase, we need to create the following API endpoints:
-
-1. **`/api/workspace/[slug]/earnings`** - Get earnings data for a workspace
-   - Similar to `/api/partner-profile/programs/[programId]/earnings`
-   - Will fetch Commission records related to the workspace
-
-2. **`/api/workspace/[slug]/earnings/count`** - Get aggregated earnings counts and totals
-   - Similar to `/api/partner-profile/programs/[programId]/earnings/count`
-   - Will provide summary data for the wallet component
-
-3. **`/api/workspace/[slug]/earnings/timeseries`** - Get time-series earnings data
-   - Similar to `/api/partner-profile/programs/[programId]/earnings/timeseries`
-   - Will provide data for the earnings chart
-
-4. **`/api/workspace/[slug]/payouts`** - Get payout data for a workspace
-   - Similar to `/api/partner-profile/payouts`
-   - Will provide data for the payouts table
-
-5. **`/api/workspace/[slug]/withdraw`** - Create a withdrawal request
-   - Will handle the withdrawal functionality
-   - Will create a new Payout record with status "pending"
-
-## Required SWR Hooks
-
-To fetch the data from these endpoints, we need to create the following SWR hooks:
-
-1. **`useWorkspaceEarnings`** - Fetch earnings data for the earnings table
-   - Similar to `usePartnerEarnings`
-
-2. **`useWorkspaceEarningsCount`** - Fetch earnings counts and totals for the wallet
-   - Similar to `usePartnerEarningsCount`
-
-3. **`useWorkspaceEarningsTimeseries`** - Fetch time-series data for the chart
-   - Similar to `usePartnerEarningsTimeseries`
-
-4. **`useWorkspacePayouts`** - Fetch payout data for the payouts table
-   - Similar to `usePartnerPayouts`
-
-## Implementation Steps
-
-1. **Create API Endpoints**:
-   - Implement the 5 endpoints described above
-   - Ensure proper authorization via withWorkspace middleware
-   - Implement data aggregation and filtering similar to partner endpoints
-
-2. **Create SWR Hooks**:
-   - Implement the 4 hooks described above
-   - Ensure they handle caching, pagination, and filtering appropriately
-
-3. **Connect UI Components**:
-   - Update EarningsWallet to use useWorkspaceEarningsCount
-   - Update EarningsChart to use useWorkspaceEarningsTimeseries
-   - Update EarningsTable to use useWorkspaceEarnings
-   - Update PayoutsTable to use useWorkspacePayouts
-   - Update WithdrawModal to use the withdraw API endpoint
-
-4. **Implement Error Handling**:
-   - Add proper error states to all components
-   - Handle loading states appropriately
-
-5. **Testing**:
-   - Test the endpoints with real data
-   - Verify that the UI components display data correctly
-   - Test filtering, pagination, and sorting
-
-## Data Model Considerations
-
-The existing Commission model has all the fields we need:
-- `earnings` - Amount earned from a commission
-- `status` - Status of the commission (pending, processed, paid, refunded)
-- `type` - Type of commission (click, lead, sale)
-- `linkId` - Link associated with the commission
-- `customerId` - Customer associated with the commission
-- `createdAt` - When the commission was created
-
-Similarly, the Payout model has all the fields needed for payouts:
-- `amount` - Amount of the payout
-- `status` - Status of the payout (pending, processing, completed, failed)
-- `periodStart` and `periodEnd` - Period covered by the payout
-- `createdAt` - When the payout was created
-- `paidAt` - When the payout was completed
-
-No additional schema changes should be needed to implement this functionality. 
-
-# Fixing Subdomain Routing for Local Development
-
-## Background and Motivation
-
-We're experiencing an issue with subdomain routing in the local development environment. After going through the authentication process (either email or OAuth), the redirect loses track of the subdomain and sends users back to the default app at localhost:8888 instead of keeping them on the subdomain (e.g., admin.localhost:8888). We've already configured the hosts file on macOS to recognize these subdomains. We need a solution that ensures users starting on a subdomain page who have proper permissions can authenticate and be redirected back to the same subdomain after sign-in. This solution should ideally also work in production if the same issue exists there.
-
-## Key Challenges and Analysis
-
-1. **NextAuth Configuration**: The NextAuth.js configuration may not be properly handling subdomain-specific callbacks or cookie settings.
-
-2. **Redirect URL Handling**: The redirect URLs after authentication may not be preserving the subdomain information.
-
-3. **Session Cookie Configuration**: Session cookies may not be configured to work across subdomains.
-
-4. **Middleware Subdomain Logic**: The middleware handling routing may not be correctly preserving the subdomain during the authentication flow.
-
-5. **Authentication Callback Logic**: The callbacks in the authentication process may not be properly passing along subdomain information.
-
-## Updated Analysis: State Cookie Missing in OAuth Flow
-
-After attempting Google OAuth authentication on admin.localhost:8888, we're encountering a "state cookie not found" error. This is a separate but related issue to our session token sharing problem.
-
-### Understanding the State Cookie Issue
-
-In NextAuth's OAuth flow, several cookies are used:
-1. **Session Token Cookie**: The persistent cookie that maintains your authenticated session
-2. **CSRF Token Cookie**: Used for CSRF protection during form submissions
-3. **State Cookie**: A temporary cookie used during OAuth to prevent CSRF attacks in the authentication process
-4. **Callback URL Cookie**: Stores the URL to redirect to after authentication
-
-The "state cookie not found" error indicates that during the OAuth callback, NextAuth can't find the state cookie that was set at the beginning of the authentication flow. This is likely because:
-
-1. The state cookie is not being properly set with the correct domain value for subdomain sharing
-2. The cookie settings for OAuth-specific cookies may be separate from the main session cookie settings
-
-### NextAuth Cookie Configuration Details
-
-In NextAuth, the cookie configuration can define multiple cookie types:
-
-```typescript
-cookies: {
-  sessionToken: { ... }, // For the persistent session
-  callbackUrl: { ... },  // For storing the URL to redirect to after authentication
-  csrfToken: { ... },    // For CSRF protection during form submissions
-  pkceCodeVerifier: { ... }, // For PKCE flow in OAuth
-  state: { ... }         // For OAuth state verification
-}
-```
-
-Our current fix only addresses the `sessionToken` cookie, but we also need to ensure the `state` cookie is properly configured for subdomain sharing.
-
-### Updated Implementation Plan
-
-We need to modify the NextAuth cookie configuration to include settings for all cookie types used in the authentication flow. Here's the updated solution:
-
-**Path**: `apps/web/lib/auth/options.ts`
-
-```typescript
-// Helper function to get the appropriate cookie domain
-const getCookieDomain = () => {
-  if (VERCEL_DEPLOYMENT) {
-    // Production domain
-    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
-  } else {
-    // Custom local development domain
-    return ".thereflist.local";
-  }
-};
-
-// Common cookie settings to apply to all cookie types
-const cookieSettings = {
-  httpOnly: true,
-  sameSite: "lax",
-  path: "/",
-  secure: VERCEL_DEPLOYMENT,
-  domain: getCookieDomain()
-};
-
-// In the NextAuth options
-cookies: {
-  sessionToken: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`,
-    options: cookieSettings,
-  },
-  callbackUrl: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.callback-url`,
-    options: cookieSettings,
-  },
-  csrfToken: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.csrf-token`,
-    options: cookieSettings,
-  },
-  pkceCodeVerifier: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
-    options: cookieSettings,
-  },
-  state: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.state`,
-    options: cookieSettings,
-  },
-},
-```
-
-### Alternate Approach: Using a Custom Local Domain
-
-If the `.localhost` solution doesn't work reliably across browsers, implement the custom domain approach:
-
-1. Add these entries to your `/etc/hosts` file (requires sudo/admin access):
-```
-127.0.0.1 thereflist.local
-127.0.0.1 admin.thereflist.local
-127.0.0.1 partners.thereflist.local
-127.0.0.1 app.thereflist.local
-```
-
-2. Modify your NextAuth cookie configuration to use the custom domain:
-```typescript
-const getCookieDomain = () => {
-  if (VERCEL_DEPLOYMENT) {
-    // For local development with custom domain
-    return ".thereflist.local";
-  } else {
-    // Production domain
-    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
-  }
-};
-```
-
-3. Update your development server configuration to bind to this domain:
-   - If using Next.js directly, add a `-H thereflist.local` parameter to your start command
-   - Or update your package.json scripts to include the hostname parameter
-
-4. Access your application via `http://admin.thereflist.local:8888` instead of `http://admin.localhost:8888`
-
-### Troubleshooting
-
-If you still experience issues after implementing these changes:
-
-1. **Browser cookie policies**: Different browsers have different policies for cookies on localhost domains. Test in multiple browsers or switch to the custom domain approach.
-
-2. **Cookie inheritance**: Ensure the OAuth provider callback URL matches the domain structure used in your application. For example, if your callback is configured for `localhost:8888`, it might not work properly with `admin.localhost:8888`.
-
-3. **HTTP vs HTTPS**: Make sure you're consistently using either HTTP or HTTPS in development. Mixed protocol usage can cause cookie issues.
-
-4. **NextAuth version**: This solution is based on current NextAuth.js behavior. If you're using an older or newer version, the cookie configuration might differ slightly.
-
-## Detailed Guide for Using Custom Domains in Development
-
-Using a custom domain for local development can be more reliable than `.localhost` for cross-subdomain cookies. This approach creates a more production-like environment and avoids browser-specific limitations with localhost domains.
-
-### Step 1: Configure Local Hosts File
-
-Edit your system's hosts file to map your custom domains to your local IP:
-
-**For macOS and Linux**:
-1. Open Terminal
-2. Run `sudo nano /etc/hosts` (or use any text editor with admin privileges)
-3. Add these lines to the file:
-   ```
-   127.0.0.1   thereflist.local
-   127.0.0.1   app.thereflist.local
-   127.0.0.1   admin.thereflist.local
-   127.0.0.1   partners.thereflist.local
-   ```
-4. Save the file (in nano: Ctrl+O, Enter, then Ctrl+X)
-
-**For Windows**:
-1. Open Notepad as Administrator
-2. Open the file `C:\Windows\System32\drivers\etc\hosts`
-3. Add the same lines as above
-4. Save the file
-
-### Step 2: Update NextAuth Configuration
-
-Modify the NextAuth cookie configuration in `apps/web/lib/auth/options.ts`:
-
-```typescript
-// Helper function to get the appropriate cookie domain
-const getCookieDomain = () => {
-  if (VERCEL_DEPLOYMENT) {
-    // Production domain
-    return `.${process.env.NEXT_PUBLIC_APP_DOMAIN}`;
-  } else {
-    // Custom local development domain
-    return ".thereflist.local";
-  }
-};
-
-// Common cookie settings to apply to all cookie types
-const cookieSettings = {
-  httpOnly: true,
-  sameSite: "lax",
-  path: "/",
-  secure: VERCEL_DEPLOYMENT,
-  domain: getCookieDomain()
-};
-
-// In the NextAuth options
-cookies: {
-  sessionToken: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`,
-    options: cookieSettings,
-  },
-  callbackUrl: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.callback-url`,
-    options: cookieSettings,
-  },
-  csrfToken: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.csrf-token`,
-    options: cookieSettings,
-  },
-  pkceCodeVerifier: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.pkce.code_verifier`,
-    options: cookieSettings,
-  },
-  state: {
-    name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.state`,
-    options: cookieSettings,
-  },
-},
-```
-
-### Step 3: Configure Development Server
-
-Next.js needs to be configured to bind to your custom domain:
-
-**Option A: Using package.json scripts (recommended)**
-
-Update your package.json development script:
-
-```json
-"scripts": {
-  "dev": "next dev -p 8888 -H thereflist.local",
-  // other scripts...
-}
-```
-
-**Option B: Using next.config.js**
-
-Alternatively, you can configure this in your Next.js config file:
-
-```javascript
-// next.config.js
-module.exports = {
-  // ... other config
-  devServer: {
-    host: 'thereflist.local',
-    port: 8888
-  }
-}
-```
-
-### Step 4: Update Environment Variables
-
-Update any environment variables that might reference localhost:
-
-1. In your `.env.local` file, update references:
-   ```
-   # Change this:
-   NEXTAUTH_URL=http://localhost:8888
-   
-   # To this:
-   NEXTAUTH_URL=http://thereflist.local:8888
-   ```
-
-2. If you have any hardcoded URLs in your code, update those as well.
-
-### Step 5: Configure OAuth Providers
-
-If you're using OAuth providers (Google, GitHub, etc.), you'll need to update their configuration:
-
-1. Go to your OAuth provider developer console (Google Cloud Console, GitHub Developer Settings, etc.)
-2. Update the authorized redirect URIs to include your custom domain:
-   ```
-   http://thereflist.local:8888/api/auth/callback/google
-   http://admin.thereflist.local:8888/api/auth/callback/google
-   http://partners.thereflist.local:8888/api/auth/callback/google
-   ```
-3. Update any other relevant settings (like JavaScript origins for Google)
-
-### Step 6: Restart and Test
-
-1. Restart your development server
-2. Access your application via `http://admin.thereflist.local:8888`
-3. Test the authentication flow
-4. Check developer tools to ensure cookies are being set with the `.thereflist.local` domain
-
-### Benefits of This Approach
-
-1. **Browser Compatibility**: More consistent behavior across browsers, avoiding special rules for localhost
-2. **Realistic Testing**: Local environment more closely matches production
-3. **Cookie Sharing**: Reliable cookie sharing across subdomains
-4. **Domain Flexibility**: Makes it easier to test different subdomain setups
-
-### Troubleshooting Custom Domains
-
-1. **DNS Resolution**: If domains don't resolve, check your hosts file entries
-2. **Port Conflicts**: Make sure nothing else is using port 8888 on your machine
-3. **Certificate Warnings**: If using HTTPS in development, you'll need to set up a local certificate authority
-4. **OAuth Redirect Issues**: Ensure your OAuth providers are configured with the correct redirect URLs
-
-## Executor's Feedback or Assistance Requests
-
-Not applicable yet.
-
-## Lessons
-
-Not applicable yet.
-
-# Fixing Email Authentication for Subdomains in Development
-
-## Background and Motivation
-
-We need to ensure that email sign-in links work properly with subdomain authentication in the local development environment (admin.localhost:8888). Currently, when an email sign-in link is clicked, the redirect loses track of the subdomain context and sends the user to the main app domain (localhost:8888) instead of returning them to the subdomain they started from.
-
-## Focused Analysis for Email Sign-in Flow
-
-The email authentication flow has some specific challenges:
-1. When a user requests an email sign-in link, the link needs to include context about the originating subdomain
-2. The sign-in link is sent via email and includes a callback URL 
-3. When clicked, this link verifies the token and redirects to the callback URL
-4. The current implementation likely doesn't preserve the subdomain in this callback URL
-
-## High-level Task Breakdown for Email Sign-in Fix
-
-1. **Modify Login Page to Capture Subdomain**:
-   - Update the login page to record the current subdomain when requesting a sign-in link
-   - Pass this information to the NextAuth API when initiating email sign-in
-   - Success criteria: The sign-in request includes information about the originating subdomain
-
-2. **Update Email Sign-in Link Generation**:
-   - Modify the callback URL to include the originating subdomain
-   - Ensure the token verification process preserves this information
-   - Success criteria: Generated email links contain proper subdomain context
-
-3. **Fix NextAuth Callback Behavior**:
-   - Ensure the callback URL after successful sign-in directs users back to the correct subdomain
-   - Add appropriate logging to track the flow of the authentication process
-   - Success criteria: After clicking the email link, users end up on the same subdomain they started from
-
-4. **Configure Login Components for Subdomain Awareness**:
-   - Update any client-side component that initiates the login process to pass subdomain information
-   - Success criteria: All login flow components maintain subdomain context
-
-## Implementation Plan for Email Sign-in Links
-
-### Step 1: Update the Login Page
-
-**File**: `apps/web/app/login/page.tsx` (or equivalent)
-
-Add code to capture and pass the subdomain information:
-
-```tsx
-// In the login form component
-const handleEmailSignIn = async (email: string) => {
-  // Capture the current hostname/subdomain
-  const currentHost = window.location.host;
-  const isSubdomain = currentHost.includes('.');
-  
-  // Create a callback URL that preserves the subdomain
-  const callbackUrl = `${window.location.protocol}//${currentHost}${window.location.pathname}`;
-  
-  // Pass this information to the signIn function
-  await signIn("email", { 
-    email, 
-    callbackUrl,
-    redirect: false 
-  });
-  
-  // Rest of the sign-in flow...
-};
-```
-
-### Step 2: Modify NextAuth Email Provider Configuration
-
-**File**: `apps/web/lib/auth/options.ts`
-
-Update the email provider configuration to ensure proper callback handling:
-
-```typescript
-EmailProvider({
-  sendVerificationRequest({ identifier, url }) {
-    // Log the URL for debugging in development
-    if (process.env.NODE_ENV === "development") {
-      console.log(`Login link: ${url}`);
-      
-      // Check if the URL contains subdomain information
-      const urlObj = new URL(url);
-      console.log(`Parsed URL hostname: ${urlObj.hostname}`);
-      console.log(`Search params: ${urlObj.search}`);
-      
-      return;
-    } else {
-      sendEmail({
-        email: identifier,
-        subject: `Your ${process.env.NEXT_PUBLIC_APP_NAME} Login Link`,
-        react: LoginLink({ url, email: identifier }),
-      });
-    }
-  },
-  // Optionally add these parameters to configure the provider
-  maxAge: 10 * 60, // 10 min
-  generateVerificationToken: () => nanoid(32), // Use custom token generation
-}),
-```
-
-### Step 3: Update NextAuth Callback Handler
-
-**File**: `apps/web/lib/auth/options.ts`
-
-Enhance the redirect callback to properly handle subdomains:
-
-```typescript
-callbacks: {
-  // Existing callbacks...
-  
-  // Add or update the redirect callback
-  async redirect({ url, baseUrl }) {
-    // Log details for debugging
-    console.log('NextAuth redirect params:', { url, baseUrl });
-    
-    // Check if URL is relative or includes the word "callback"
-    if (url.startsWith('/') || url.includes('/api/auth/callback')) {
-      // For relative URLs or callback URLs, we need to make them absolute
-      // but preserve subdomain information from the original request
-      
-      // We can get the original URL from the request headers or session
-      // This may require additional middleware modifications
-      
-      return url; // For now, return as is
-    }
-    
-    // If it's a full URL with a subdomain, respect it
-    if (url.includes('.localhost:')) {
-      console.log('Redirecting to subdomain URL:', url);
-      return url;
-    }
-    
-    // Default fallback
-    return baseUrl;
-  },
-},
-```
-
-### Step 4: Add Debug Logging
-
-Add temporary logging in middleware to track the authentication flow:
-
-**File**: `apps/web/middleware.ts`
-
-```typescript
-export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
-  // Add comprehensive logging for authentication flows
-  if (req.url.includes('/api/auth') || req.url.includes('/login')) {
-    console.log('Auth middleware:', {
-      url: req.url,
-      path: req.nextUrl.pathname,
-      hostname: req.nextUrl.hostname,
-      headers: {
-        host: req.headers.get('host'),
-        referer: req.headers.get('referer'),
-      },
-      cookies: req.cookies.getAll().map(c => c.name),
-    });
-  }
-  
-  // Rest of middleware logic...
-}
-```
-
-### Step 5: Testing the Email Sign-in Flow
-
-1. Start your development server with standard localhost
-2. Navigate to admin.localhost:8888
-3. Initiate an email sign-in request
-4. Check the console for the generated login link
-5. Open the link in a new browser tab
-6. Verify that after successful authentication, you're redirected back to admin.localhost:8888
-
-### Monitoring the Authentication Flow
-
-To understand exactly what's happening during the email sign-in flow, examine:
-
-1. The generated email link URL structure in the console
-2. The callback URL parameter in the email link
-3. The redirect behavior after token verification
-4. Any error messages in the console during the process
-
-### Fallback Options
-
-If standard approaches don't work, consider these alternatives:
-
-1. **Create a Custom Sign-in Page for Each Subdomain**: Implement subdomain-specific sign-in pages that handle their own redirects
-
-2. **Local Storage Approach**: Use localStorage to remember the originating subdomain and redirect accordingly after authentication
-
-3. **Server-side Session Enhancement**: Modify the server-side session to track and restore the originating subdomain
-
-## Technical Notes
-
-1. **URL Parameters**: The email sign-in link typically includes a token parameter and a callbackUrl parameter. The callbackUrl is what we need to ensure contains the correct subdomain.
-
-2. **Console Commands**: You can check NextAuth cookies in the browser console with `document.cookie.split('; ').filter(c => c.includes('next-auth'))`.
-
-3. **Email Provider**: In development, NextAuth doesn't actually send emails but logs the authentication link to the console, which makes it easier to test and debug.
 
 ## Executor's Feedback or Assistance Requests
 
