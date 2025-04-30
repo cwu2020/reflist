@@ -3,8 +3,8 @@ import axios from "axios";
 // Get the base URL for API requests - handles both client and server environments
 function getBaseUrl(): string {
   // Use a default URL for server-side rendering
-  const baseURL = process.env.NEXT_PUBLIC_BASE_URL 
-    ? `https://${process.env.NEXT_PUBLIC_BASE_URL}`
+  const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL 
+    ? `https://${process.env.NEXT_PUBLIC_API_BASE_URL}`
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8888';
   
   return baseURL;
