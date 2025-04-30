@@ -3,8 +3,8 @@ import axios from "axios";
 // Get the base URL for API requests - handles both client and server environments
 function getBaseUrl(): string {
   // Use a default URL for server-side rendering
-  const baseURL = process.env.NEXT_PUBLIC_VERCEL_URL 
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+  const baseURL = process.env.NEXT_PUBLIC_BASE_URL 
+    ? `https://${process.env.NEXT_PUBLIC_BASE_URL}`
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8888';
   
   return baseURL;
@@ -45,7 +45,7 @@ export async function fetchShopMyMerchantData(url: string): Promise<ShopMyMercha
   try {
     // Call our internal API proxy to get merchant data with absolute URL
     const baseURL = getBaseUrl();
-    const response = await axios.post(`${baseURL}/api/shopmy/data`, { url });
+    const response = await axios.post(`${baseURL}/api/shopmy/data`, { url }, { withCredentials: true });
     return response.data.merchant;
   } catch (error) {
     // Handle different types of errors
