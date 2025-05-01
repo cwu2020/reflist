@@ -39,7 +39,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     const { pathname } = req.nextUrl;
 
     // 1️⃣ CORS preflight for only /api/shopmy/data
-    if (req.method === "OPTIONS" && pathname === "/api/shopmy/data") {
+    if (req.method === "OPTIONS" && (pathname === "/api/shopmy/data" || pathname === "/api/shopmy/pin")) {
       return new Response(null, {
         status: 204,
         headers: CORS_HEADERS,
@@ -47,7 +47,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     }
 
     // 2️⃣ Handle actual /api/shopmy/data requests with CORS
-    if (pathname === "/api/shopmy/data") {
+    if (pathname === "/api/shopmy/data" || pathname === "/api/shopmy/pin") {
       AxiomMiddleware(req, ev);
       const response = NextResponse.next();
       Object.entries(CORS_HEADERS).forEach(([key, value]) => {
