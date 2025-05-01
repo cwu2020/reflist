@@ -8,6 +8,9 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateProgramEarnings } from "@/lib/api/sales/calculate-sale-earnings";
+import { recordSaleWithTimestamp } from "@/lib/tinybird/record-sale";
+import { generateRandomName } from "@/lib/names";
+import { OG_AVATAR_URL } from "@dub/utils";
 
 // GET /api/admin/sales - Get manually recorded sales
 export async function GET(req: Request) {
@@ -87,6 +90,7 @@ const recordSaleSchema = z.object({
   eventName: z.string().default("Manual Sale"),
   invoiceId: z.string().optional(),
   notes: z.string().optional(),
+  customerId: z.string().optional(), // Optional customer ID to associate with the sale
 });
 
 // POST /api/admin/sales - Record a manual sale
@@ -137,6 +141,30 @@ export async function POST(req: Request) {
       quantity: 1
     });
 
+    // Get or create a customer record if customerId is not provided
+    let customerId = validatedData.customerId;
+    if (!customerId) {
+      // Create a placeholder customer for this manual sale
+      const placeholderName = `Manual Sale Customer ${nanoid(6)}`;
+      
+      // Make sure we have valid projectId
+      const projectId = link.project?.id;
+      if (!projectId) {
+        return NextResponse.json({ error: "Unable to determine project ID" }, { status: 500 });
+      }
+      
+      const customer = await prisma.customer.create({
+        data: {
+          id: createId({ prefix: "cus_" }),
+          name: placeholderName,
+          externalId: `manual_sale_${nanoid(8)}`,
+          projectId,
+          linkId: link.id,
+        },
+      });
+      customerId = customer.id;
+    }
+
     // Create the commission record
     const commission = await prisma.commission.create({
       data: {
@@ -144,6 +172,7 @@ export async function POST(req: Request) {
         programId: link.programId || "",
         partnerId: link.partnerId || "",
         linkId: link.id,
+        customerId: customerId, // Associate with the customer
         eventId,
         type: EventType.sale,
         amount: validatedData.amount,
@@ -183,6 +212,52 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    // Create a Tinybird event record for this manual sale
+    // This ensures it appears in the Events and Analytics pages
+    // Using the format from the seed script as reference
+    const tinyBirdEvent = {
+      timestamp: new Date().toISOString(),
+      event_id: eventId,
+      event_name: validatedData.eventName,
+      customer_id: customerId,
+      click_id: nanoid(16),
+      link_id: link.id,
+      url: link.url,
+      country: "US",
+      continent: "NA",
+      city: "San Francisco",
+      region: "CA",
+      latitude: "37.7695",
+      longitude: "-122.385",
+      device: "desktop",
+      device_vendor: "Apple",
+      device_model: "Macintosh",
+      browser: "Chrome",
+      browser_version: "124.0.0.0",
+      engine: "Blink",
+      engine_version: "124.0.0.0",
+      os: "Mac OS",
+      os_version: "10.15.7",
+      cpu_architecture: "Unknown",
+      ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      bot: 0,
+      qr: 0,
+      referer: "admin",
+      referer_url: "admin",
+      ip: "127.0.0.1",
+      invoice_id: validatedData.invoiceId || nanoid(16),
+      amount: validatedData.amount,
+      currency: validatedData.currency.toLowerCase(),
+      payment_processor: validatedData.paymentProcessor,
+      metadata: JSON.stringify({
+        manual: true,
+        admin: session.user.email,
+        notes: validatedData.notes || "",
+      }),
+    };
+    
+    await recordSaleWithTimestamp(tinyBirdEvent);
     
     return NextResponse.json({ 
       success: true, 

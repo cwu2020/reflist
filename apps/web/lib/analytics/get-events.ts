@@ -188,32 +188,35 @@ const getLinksMap = async (linkIds: string[]) => {
   );
 };
 
-const getCustomersMap = async (customerIds: string[]) => {
-  if (customerIds.length === 0) {
-    return {};
+function getCustomersMap(customerIds: string[]) {
+  // Filter out null, undefined, or 'undefined' string values
+  const validCustomerIds = customerIds.filter(id => id && id !== 'undefined');
+  
+  if (validCustomerIds.length === 0) {
+    return Promise.resolve({});
   }
 
-  const customers = await prisma.customer.findMany({
+  return prisma.customer.findMany({
     where: {
       id: {
-        in: customerIds,
+        in: validCustomerIds,
       },
     },
-  });
-
-  return customers.reduce(
-    (acc, customer) => {
-      acc[customer.id] = CustomerSchema.parse({
-        id: customer.id,
-        externalId: customer.externalId || "",
-        name: customer.name || customer.email || generateRandomName(),
-        email: customer.email || "",
-        avatar: customer.avatar || `${OG_AVATAR_URL}${customer.id}`,
-        country: customer.country || "",
-        createdAt: customer.createdAt,
-      });
-      return acc;
-    },
-    {} as Record<string, z.infer<typeof CustomerSchema>>,
+  }).then(customers => 
+    customers.reduce(
+      (acc, customer) => {
+        acc[customer.id] = CustomerSchema.parse({
+          id: customer.id,
+          externalId: customer.externalId || "",
+          name: customer.name || customer.email || generateRandomName(),
+          email: customer.email || "",
+          avatar: customer.avatar || `${OG_AVATAR_URL}${customer.id}`,
+          country: customer.country || "",
+          createdAt: customer.createdAt,
+        });
+        return acc;
+      },
+      {} as Record<string, z.infer<typeof CustomerSchema>>,
+    )
   );
-};
+}

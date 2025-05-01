@@ -16,14 +16,17 @@ export default function useCustomer<
   query,
   enabled = true,
 }: {
-  customerId: T["id"];
+  customerId?: T["id"];
   query?: z.infer<typeof partialQuerySchema>;
   enabled?: boolean;
 }) {
   const { id: workspaceId } = useWorkspace();
 
+  // Don't make the API call if customerId is undefined or not a valid string
+  const shouldFetch = enabled && workspaceId && customerId && typeof customerId === 'string' && customerId !== 'undefined';
+
   const { data, error, isLoading } = useSWR<T>(
-    enabled && workspaceId
+    shouldFetch
       ? `/api/customers/${customerId}?${new URLSearchParams({
           workspaceId: workspaceId,
           ...query,

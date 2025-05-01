@@ -34,6 +34,13 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { defaultConfig } from "swr/_internal";
 import { UpgradeRequiredToast } from "../shared/upgrade-required-toast";
+import { CustomerSchema } from "@/lib/zod/schemas/customers";
+import { z } from "zod";
+import { generateRandomName } from "@/lib/names";
+import { PrismaClient } from "@prisma/client";
+import { OG_AVATAR_URL } from "@dub/utils";
+
+const prisma = new PrismaClient();
 
 export interface AnalyticsDashboardProps {
   domain: string;
@@ -339,3 +346,36 @@ export default function AnalyticsProvider({
     </AnalyticsContext.Provider>
   );
 }
+
+const getCustomersMap = async (customerIds: string[]) => {
+  // Filter out undefined or invalid customer IDs
+  const validCustomerIds = customerIds.filter(id => id && typeof id === 'string' && id !== 'undefined');
+  
+  if (validCustomerIds.length === 0) {
+    return {};
+  }
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      id: {
+        in: validCustomerIds,
+      },
+    },
+  });
+
+  return customers.reduce(
+    (acc, customer) => {
+      acc[customer.id] = CustomerSchema.parse({
+        id: customer.id,
+        externalId: customer.externalId || "",
+        name: customer.name || customer.email || generateRandomName(),
+        email: customer.email || "",
+        avatar: customer.avatar || `${OG_AVATAR_URL}${customer.id}`,
+        country: customer.country || "",
+        createdAt: customer.createdAt,
+      });
+      return acc;
+    },
+    {} as Record<string, z.infer<typeof CustomerSchema>>,
+  );
+};

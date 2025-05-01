@@ -1023,3 +1023,116 @@ These changes result in a cleaner, more focused login experience with only the e
 1. When simplifying a UI, it's important to identify the core components that are essential to the user task and remove distracting elements.
 2. Grid layouts in Tailwind can be easily adjusted by modifying the grid-cols classes to change how content is distributed.
 3. When removing content that's only visible on certain screen sizes (like with `hidden md:flex`), you should check that the responsive design still works properly after the changes. 
+
+# Manual Sales Not Appearing in Events/Analytics Pages
+
+## Background and Motivation
+
+The admin portal supports creating manual sales records, and these sales commission records are successfully created in the database. However, there appears to be an inconsistency in how these records are displayed across the application:
+
+1. The stats widget on the links page correctly shows the manual sale
+2. The Events page does not display the manual sale
+3. The Analytics page does not display the manual sale
+
+Additionally, there's a network error when navigating to the Analytics tab:
+```
+Request URL: https://app.thereflist.com/api/customers/undefined?workspaceId=ws_1JT2J2F2XJ9G9M1F77VF7EPAT
+Status Code: 404 Not Found
+```
+
+This suggests that there might be an issue with how customer data is being fetched or how manual sales events are being propagated to different parts of the application.
+
+## Key Challenges and Analysis
+
+1. **Inconsistent Event Display**: The fact that the manual sale appears in the stats widget but not in Events or Analytics pages suggests different data fetching mechanisms or filtering logic.
+
+2. **404 API Error**: The 404 error when fetching customer data with an "undefined" ID indicates a potential issue with how customer data is being passed or retrieved.
+
+3. **Event Propagation**: The system might not be properly associating manual sales with events that should be displayed in the Events and Analytics pages.
+
+4. **Data Model Relationships**: There could be missing relationships between manual sales records and the event tracking system.
+
+## High-level Task Breakdown
+
+1. **Investigate Data Models and Relationships**:
+   - Examine how commission records relate to events
+   - Check if manual sales are properly tagged or categorized
+   - Success criteria: Understand how sales data flows to different UI components
+
+2. **Analyze Data Fetching Mechanisms**:
+   - Compare how the stats widget, Events page, and Analytics page fetch data
+   - Identify differences in API endpoints or data processing
+   - Success criteria: Understand why the stats widget shows the sale but other components don't
+
+3. **Debug Customer API Error**:
+   - Trace the request flow for the customer API
+   - Identify why the customer ID is undefined
+   - Success criteria: Understand the source of the 404 error
+
+4. **Implement Fixes**:
+   - Based on findings, implement fixes to ensure consistency
+   - Fix any issues with customer data retrieval
+   - Success criteria: Manual sales correctly appear in all relevant UI components
+
+## Project Status Board
+
+- [x] Investigate Data Models and Relationships
+  - [x] Review commission model schema
+  - [x] Examine event tracking system for sales
+  - [x] Check how stats widget retrieves sale data
+  - [x] Analyze how Events page queries for sales
+
+- [x] Analyze Data Fetching Mechanisms
+  - [x] Compare API endpoints used by different components
+  - [x] Check filtering or processing differences
+  - [x] Identify potential data transformation issues
+
+- [x] Debug Customer API Error
+  - [x] Trace source of customer ID value
+  - [x] Check how the Analytics page constructs API requests
+  - [x] Identify where "undefined" is being passed instead of a valid ID
+
+- [x] Implement Fixes
+  - [x] Fix customer ID retrieval if needed
+  - [x] Update event queries to include manual sales
+  - [x] Ensure consistent data flow across components
+
+## Executor's Feedback or Assistance Requests
+
+After investigating the issue, I've found two key problems:
+
+1. **Missing Tinybird Event Records**: When an admin creates a manual sale record, the system correctly creates a commission record in the database and updates the link statistics (which is why the stats widget shows the sale). However, it's not creating a corresponding event record in Tinybird, which is the data source used by the Events and Analytics pages.
+
+2. **Customer API Error**: The 404 error occurs because when viewing the Analytics page, it's trying to fetch customer information for a sale, but the customer ID is undefined. This happens because manual sales don't have an associated customer record in the system.
+
+### Root Causes:
+
+1. In the admin manual sales recording process (`apps/web/app/api/admin/sales/route.ts`), a commission record is created and link statistics are updated, but there's no call to the `recordSale` or `recordSaleWithTimestamp` functions that would add the event to Tinybird.
+
+2. Unlike regular sales events that come through the tracking system, manual sales don't create or associate with a customer record. The `customerId` field in the commission record is likely null for manual sales.
+
+### Implemented Solutions:
+
+1. **Updated Manual Sale Creation in admin/sales/route.ts**:
+   - Created a placeholder customer record for each manual sale if one isn't provided
+   - Added Tinybird event creation using `recordSaleWithTimestamp` 
+   - Included metadata about the sale being manually created by an admin
+
+2. **Fixed Customer API Error Handling**:
+   - Modified `useCustomer` hook to prevent API calls when customerId is undefined
+   - Updated `getCustomersMap` in `get-events.ts` to filter out undefined or invalid customer IDs
+
+These changes should ensure that:
+1. Manual sales now appear in both the Events and Analytics pages
+2. The API doesn't attempt to fetch customer data for invalid customer IDs
+3. Each manual sale is properly associated with a customer record
+
+The implementation provides a comprehensive solution that addresses both the root causes of the problem while maintaining data consistency across the application.
+
+## Lessons
+
+1. When implementing a feature that touches multiple data stores (SQL database and Tinybird in this case), ensure data consistency across all systems.
+2. Provide fallbacks for cases where data relationships might be incomplete (like missing customer associations).
+3. Include comprehensive testing for different data sources and viewing contexts to catch inconsistencies early.
+4. Always filter potentially undefined values before making API calls to prevent 404 errors.
+5. When creating records in one data store, ensure corresponding records are created in any linked systems. 
