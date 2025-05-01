@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import { shopmyClient } from "./shopmyClient";
 // Get the base URL for API requests - handles both client and server environments
 function getBaseUrl(): string {
   // For browser environment, use the current origin
@@ -9,7 +9,7 @@ function getBaseUrl(): string {
   
   // For server environment
   const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL 
-    ? `https://${process.env.NEXT_PUBLIC_API_BASE_URL.replace(/^https?:\/\//, '')}`
+    ? `https://${process.env.NEXT_PUBLIC_API_BASE_URL}`
     : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:8888';
   
   return baseURL;
@@ -49,8 +49,7 @@ export interface ShopMyPin {
 export async function fetchShopMyMerchantData(url: string): Promise<ShopMyMerchantData | null> {
   try {
     // Call our internal API proxy to get merchant data with absolute URL
-    const baseURL = getBaseUrl();
-    const response = await axios.post(`${baseURL}/api/shopmy/data`, { url }, { withCredentials: true });
+    const response = await shopmyClient.post(`/api/shopmy/data`, { url }, { withCredentials: true });
     return response.data.merchant;
   } catch (error) {
     // Handle different types of errors
@@ -89,7 +88,7 @@ export async function createShopMyPin({
     console.log(`ShopMy client: Making request to ${baseURL}/api/shopmy/pins`);
     console.log(`ShopMy client: Payload:`, { title, description, image, link });
     
-    const response = await axios.post(`${baseURL}/api/shopmy/pins`, {
+    const response = await shopmyClient.post(`/api/shopmy/pins`, {
       title,
       description,
       image,
