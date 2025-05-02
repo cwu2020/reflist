@@ -49,11 +49,23 @@ export async function processLinkWithPartner<T extends Record<string, any>>({
       // If no partnerId is specified, try to get the user's default partner
       const partnerId = link.partnerId || await getDefaultPartnerForUser(userId);
       
+      // Check for ShopMy metadata
+      const shopmyMetadata = link.shopmyMetadata || null;
+      // Check for originalUrl (from ShopMy)
+      const originalUrl = link.originalUrl || null;
+      
+      // If we have ShopMy metadata, use it to construct a complete metadata object
+      const completeShopMyData = shopmyMetadata ? {
+        ...shopmyMetadata,
+        originalUrl: originalUrl || (shopmyMetadata.originalUrl || null)
+      } : null;
+      
       // Ensure partner is enrolled in a program for this URL
       const programId = await ensurePartnerProgramEnrollment({
         url: link.url,
         workspaceId: workspace.id,
         partnerId,
+        shopmyMetadata: completeShopMyData,
       });
       
       // Return the result with updated partner and program IDs

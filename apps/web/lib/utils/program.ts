@@ -61,9 +61,14 @@ export function generateProgramId(url: string): string {
  * 
  * @param url The product URL
  * @param workspaceId The workspace ID
+ * @param shopmyMetadata Optional ShopMy merchant data passed from link creation
  * @returns Promise resolving to the program information
  */
-export async function getOrCreateProgramByUrl(url: string, workspaceId: string): Promise<{
+export async function getOrCreateProgramByUrl(
+  url: string, 
+  workspaceId: string,
+  shopmyMetadata?: any
+): Promise<{
   programId: string;
   isNewProgram: boolean;
 }> {
@@ -90,29 +95,48 @@ export async function getOrCreateProgramByUrl(url: string, workspaceId: string):
     }
     
     // Program doesn't exist, create a new one
-    // First, try to get merchant data from ShopMy
+    // Default commission data
     let commissionData = {
       type: 'percentage' as CommissionType,
-      amount: 1000, // Default 10% (stored as basis points, so 10% = 1000)
+      amount: 10, // Default 10%
     };
     
-    try {
-      const merchantData = await fetchShopMyMerchantData(url);
-      if (merchantData) {
-        // Convert commission data from ShopMy format to our format
-        if (merchantData.fullPayout && merchantData.rateType) {
-          // ShopMy provides percentage as a whole number (e.g., 15 for 15%)
-          // Convert to basis points (e.g., 15% = 1500 basis points)
-          commissionData.amount = merchantData.fullPayout * 100;
-          
-          // ShopMy uses 'percentage' or 'flat' for rateType
-          commissionData.type = merchantData.rateType === 'percentage' ? 
-            CommissionType.percentage : CommissionType.flat;
-        }
+    // Use the original URL if it exists (from ShopMy integration)
+    // This ensures we're using the merchant's actual URL, not ShopMy's tracking URL
+    const originalUrl = (shopmyMetadata && 'originalUrl' in shopmyMetadata) ? 
+      shopmyMetadata.originalUrl : 
+      (url.includes('shopmy.us') ? null : url);
+
+    // If shopmy metadata is passed, use it directly instead of making another API call
+    if (shopmyMetadata) {
+      // Convert commission data from ShopMy format to our format
+      if (shopmyMetadata.fullPayout && shopmyMetadata.rateType) {
+        // ShopMy provides percentage as a whole number (e.g., 15 for 15%)
+        commissionData.amount = shopmyMetadata.fullPayout;
+        
+        // ShopMy uses 'percentage' or 'flat' for rateType
+        commissionData.type = shopmyMetadata.rateType === 'percentage' ? 
+          CommissionType.percentage : CommissionType.flat;
       }
-    } catch (error) {
-      console.error('Error fetching ShopMy merchant data:', error);
-      // Continue with default commission data
+    } else {
+      // Fall back to API call if no metadata was passed
+      try {
+        const merchantData = await fetchShopMyMerchantData(originalUrl || url);
+        if (merchantData) {
+          // Convert commission data from ShopMy format to our format
+          if (merchantData.fullPayout && merchantData.rateType) {
+            // ShopMy provides percentage as a whole number (e.g., 15 for 15%)
+            commissionData.amount = merchantData.fullPayout;
+            
+            // ShopMy uses 'percentage' or 'flat' for rateType
+            commissionData.type = merchantData.rateType === 'percentage' ? 
+              CommissionType.percentage : CommissionType.flat;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching ShopMy merchant data:', error);
+        // Continue with default commission data
+      }
     }
     
     // Generate a unique program slug from the domain
@@ -128,7 +152,7 @@ export async function getOrCreateProgramByUrl(url: string, workspaceId: string):
           name: domain,
           slug,
           domain,
-          url,
+          url: originalUrl || url, // Use original URL if available
           workspaceId,
           cookieLength: 90, // 90 days default cookie length
           holdingPeriodDays: 30, // 30 days default holding period

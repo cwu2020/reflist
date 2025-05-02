@@ -51,6 +51,8 @@ export function calculateDefaultEarnings(amount: number): number {
   // (on the admin side remember to input the commission amount. 
   // 50% of this is the amount that will be paid out to the user. 
   // We will take the other 50% as our fee.)
+  // TODO: This is a temporary function that assumes we are putting in JUST the commission amount we earned (NOT the total amount of the sale)
+  // In production we should put in the total amount of the sale, since the reward variable we pass to calculateSaleEarnings is the shopmy commission percentage.
   const defaultCommissionRate = 0.5;
   return Math.floor(amount * defaultCommissionRate);
 }

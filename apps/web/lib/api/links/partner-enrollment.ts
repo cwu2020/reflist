@@ -12,16 +12,19 @@ import { createId } from '@/lib/api/create-id';
  * @param url The product URL 
  * @param workspaceId The workspace ID
  * @param partnerId The partner ID
+ * @param shopmyMetadata Optional ShopMy merchant data from link creation
  * @returns The programId
  */
 export async function ensurePartnerProgramEnrollment({
   url,
   workspaceId,
   partnerId,
+  shopmyMetadata,
 }: {
   url: string;
   workspaceId: string;
   partnerId: string;
+  shopmyMetadata?: any;
 }): Promise<string> {
   if (!partnerId || !workspaceId || !url) {
     throw new Error('Missing required parameters for partner program enrollment');
@@ -29,7 +32,7 @@ export async function ensurePartnerProgramEnrollment({
 
   try {
     // Get or create program for the URL
-    const { programId, isNewProgram } = await getOrCreateProgramByUrl(url, workspaceId);
+    const { programId, isNewProgram } = await getOrCreateProgramByUrl(url, workspaceId, shopmyMetadata);
     
     // Check if partner is already enrolled in this program
     const existingEnrollment = await prisma.programEnrollment.findUnique({
