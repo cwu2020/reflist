@@ -16,6 +16,7 @@ export interface SaleFormData {
   invoiceId?: string;
   eventName: string;
   notes?: string;
+  customerId?: string;
 }
 
 const PAYMENT_PROCESSORS = [
@@ -44,6 +45,7 @@ export function SalesRecordingForm({
     eventName: "Manual Sale",
     invoiceId: "",
     notes: "",
+    customerId: "",
   });
 
   const handleChange = (
@@ -174,6 +176,20 @@ export function SalesRecordingForm({
           className="block w-full rounded-md border border-neutral-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
         <p className="mt-1 text-xs text-neutral-500">Optional internal notes (not visible to the user)</p>
+      </div>
+
+      <div>
+        <label htmlFor="customerId" className="mb-2 block text-sm font-medium text-neutral-700">
+          Customer ID
+        </label>
+        <Input
+          id="customerId"
+          name="customerId"
+          placeholder="cus_..."
+          value={formData.customerId}
+          onChange={handleChange}
+        />
+        <p className="mt-1 text-xs text-neutral-500">Optional: Link this sale to an existing customer. If left blank, a new customer will be created.</p>
       </div>
 
       <div className="flex justify-end">

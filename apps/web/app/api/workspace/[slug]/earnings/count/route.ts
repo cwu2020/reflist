@@ -19,9 +19,20 @@ export const GET = withWorkspace(
         earnings: {
           gt: 0,
         },
-        program: {
-          workspaceId: workspace.id,
-        },
+        OR: [
+          // Include commissions from programs belonging to this workspace
+          {
+            program: {
+              workspaceId: workspace.id,
+            },
+          },
+          // Include commissions from links directly created in this workspace
+          {
+            link: {
+              projectId: workspace.id,
+            },
+          },
+        ],
         status,
         type,
         linkId,
@@ -88,9 +99,20 @@ export const GET = withWorkspace(
         earnings: {
           gt: 0,
         },
-        program: {
-          workspaceId: workspace.id,
-        },
+        OR: [
+          // Include commissions from programs belonging to this workspace
+          {
+            program: {
+              workspaceId: workspace.id,
+            },
+          },
+          // Include commissions from links directly created in this workspace
+          {
+            link: {
+              projectId: workspace.id,
+            },
+          },
+        ],
         status: {
           in: ["pending", "processed", "paid"],
         },
@@ -110,9 +132,20 @@ export const GET = withWorkspace(
         earnings: {
           gt: 0,
         },
-        program: {
-          workspaceId: workspace.id,
-        },
+        OR: [
+          // Include commissions from programs belonging to this workspace
+          {
+            program: {
+              workspaceId: workspace.id,
+            },
+          },
+          // Include commissions from links directly created in this workspace
+          {
+            link: {
+              projectId: workspace.id,
+            },
+          },
+        ],
         status: "processed",
         payoutId: null,
       },
@@ -127,9 +160,20 @@ export const GET = withWorkspace(
         earnings: {
           gt: 0,
         },
-        program: {
-          workspaceId: workspace.id,
-        },
+        OR: [
+          // Include commissions from programs belonging to this workspace
+          {
+            program: {
+              workspaceId: workspace.id,
+            },
+          },
+          // Include commissions from links directly created in this workspace
+          {
+            link: {
+              projectId: workspace.id,
+            },
+          },
+        ],
         status: "pending",
       },
       _sum: {

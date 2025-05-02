@@ -36,6 +36,7 @@ export default function SalesPageClient() {
           eventName: formData.eventName,
           invoiceId: formData.invoiceId,
           notes: formData.notes,
+          customerId: formData.customerId || undefined,
         }),
       });
       

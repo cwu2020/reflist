@@ -47,8 +47,11 @@ export function calculateSaleEarnings({
 
 // For admin manual sales, apply a default commission rate when no program is specified
 export function calculateDefaultEarnings(amount: number): number {
-  // Default to 10% commission for manual sales
-  const defaultCommissionRate = 0.1;
+  // Default to commission rate of 50% for manual sales 
+  // (on the admin side remember to input the commission amount. 
+  // 50% of this is the amount that will be paid out to the user. 
+  // We will take the other 50% as our fee.)
+  const defaultCommissionRate = 0.5;
   return Math.floor(amount * defaultCommissionRate);
 }
 

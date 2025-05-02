@@ -55,8 +55,13 @@ export const GET = withWorkspace(
       FROM Commission
       WHERE 
         earnings > 0
-        AND programId IN (
-          SELECT id FROM Program WHERE workspaceId = ${workspace.id}
+        AND (
+          programId IN (
+            SELECT id FROM Program WHERE workspaceId = ${workspace.id}
+          )
+          OR linkId IN (
+            SELECT id FROM Link WHERE projectId = ${workspace.id}
+          )
         )
         AND createdAt >= ${startDate}
         AND createdAt < ${endDate}

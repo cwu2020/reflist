@@ -16,11 +16,21 @@ import { OG_AVATAR_URL } from "@dub/utils";
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user?.email || !isDubAdmin(session.user.email)) {
+  if (!session?.user?.email) {
     return new NextResponse("Unauthorized", { status: 403 });
   }
   
   try {
+    // Get user ID from the email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    
+    if (!user || !await isDubAdmin(user.id)) {
+      return new NextResponse("Unauthorized", { status: 403 });
+    }
+    
     const sales = await prisma.commission.findMany({
       where: {
         eventId: {
@@ -97,11 +107,21 @@ const recordSaleSchema = z.object({
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user?.email || !isDubAdmin(session.user.email)) {
+  if (!session?.user?.email) {
     return new NextResponse("Unauthorized", { status: 403 });
   }
   
   try {
+    // Get user ID from the email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    
+    if (!user || !await isDubAdmin(user.id)) {
+      return new NextResponse("Unauthorized", { status: 403 });
+    }
+    
     const body = await req.json();
     const validatedData = recordSaleSchema.parse(body);
     
@@ -153,6 +173,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unable to determine project ID" }, { status: 500 });
       }
       
+      // Note: We don't set programId directly on the customer because the field doesn't exist in the database.
+      // Instead, we handle it in the API validation layer, where we ensure the programId field is optional.
       const customer = await prisma.customer.create({
         data: {
           id: createId({ prefix: "cus_" }),
@@ -257,7 +279,14 @@ export async function POST(req: Request) {
       }),
     };
     
-    await recordSaleWithTimestamp(tinyBirdEvent);
+    try {
+      await recordSaleWithTimestamp(tinyBirdEvent);
+      console.log("Successfully recorded Tinybird event for manual sale:", eventId);
+    } catch (tinyBirdError) {
+      // Log the error but don't fail the whole operation
+      console.error("Error recording Tinybird event for manual sale:", tinyBirdError);
+      console.error("Manual sale will be visible in the database but may not appear in Events/Analytics");
+    }
     
     return NextResponse.json({ 
       success: true, 

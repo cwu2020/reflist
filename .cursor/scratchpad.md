@@ -1136,3 +1136,82 @@ The implementation provides a comprehensive solution that addresses both the roo
 3. Include comprehensive testing for different data sources and viewing contexts to catch inconsistencies early.
 4. Always filter potentially undefined values before making API calls to prevent 404 errors.
 5. When creating records in one data store, ensure corresponding records are created in any linked systems. 
+
+# RefList Workspace Scratchpad
+
+## Background and Motivation
+
+We're working on debugging issues with manual sales in RefList. The manual sales data is appearing inconsistently across different parts of the application. We need to diagnose and fix these issues to ensure consistent display of manual sales data throughout the platform.
+
+Key reported issues:
+1. The manual sales records show up inconsistently across the application
+2. A network error when accessing the Analytics tab: `422 Unprocessable Content` for customer data
+3. A 500 error when accessing the admin sales API
+
+## Key Challenges and Analysis
+
+### Inconsistent Data Display
+- ✅ Stats widget on links page (correctly shows the manual sale)
+- ✅ Analytics page (sales appear in aggregate statistics)
+- ❌ Events page (doesn't display the manual sale as individual events)
+- ❌ Earnings page (doesn't show the manual sale)
+- ❌ Admin dashboard (shows "error loading sales data")
+
+### API Errors
+- 422 Unprocessable Content Error: `https://app.thereflist.com/api/customers?workspaceId=ws_1JT2J2F2XJ9G9M1F77VF7EPAT&search=`
+- 500 Error: `https://admin.thereflist.com/api/admin/sales`
+
+### Deleted Commission Records Issue
+- Commission records that are deleted are still being shown in the stats widget
+- This suggests the Link statistics aren't properly updated when a Commission is deleted
+
+## High-level Task Breakdown
+
+1. **Investigate 422 Unprocessable Content Error**
+   - Examine the API endpoint code for `/api/customers`
+   - Check validation logic to identify what's causing the 422 error
+   - Success criteria: Root cause of 422 error is identified
+
+2. **Fix Admin Authentication Logic**
+   - Review `isDubAdmin` function and its usage in sales API routes
+   - Fix parameter mismatch (email vs userId)
+   - Success criteria: Admin sales API returns proper data without 500 error
+
+3. **Implement Tinybird Integration Improvements**
+   - Add better error handling for Tinybird API calls
+   - Add logging to track event submission
+   - Success criteria: Manual sales events appear in Events page
+
+4. **Add Customer Record Creation**
+   - Create customer record for manual sales if one doesn't exist
+   - Fix the customer ID association logic
+   - Success criteria: No more 422 errors when loading customer data
+
+5. **Fix Deleted Commission Records Issue**
+   - Implement proper updating of Link statistics when a Commission is deleted
+   - Success criteria: Deleted commissions no longer appear in stats widget
+
+## Project Status Board
+
+- [ ] 1. Investigate 422 Unprocessable Content Error
+- [ ] 2. Fix Admin Authentication Logic
+- [ ] 3. Implement Tinybird Integration Improvements
+- [ ] 4. Add Customer Record Creation
+- [ ] 5. Fix Deleted Commission Records Issue
+
+## Current Status / Progress Tracking
+
+We have identified several interconnected issues that are causing the problems with manual sales:
+1. A 422 Unprocessable Content error when fetching customers (updated from previous 404 error)
+2. Admin authentication logic mismatch in the sales API
+3. Tinybird integration issues affecting event display
+4. Missing customer record creation for manual sales
+5. Deleted commission records still showing in stats widget
+
+## Executor's Feedback or Assistance Requests
+
+*To be filled as implementation proceeds*
+
+## Lessons
+
+*To be filled as we encounter and resolve issues* 

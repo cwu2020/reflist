@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+
 // Schema for status update
 const updateStatusSchema = z.object({
   status: z.enum([
@@ -19,6 +20,16 @@ const updateStatusSchema = z.object({
   ])
 });
 
+// Helper function to determine if a status should not count towards Link stats
+function isInvalidStatus(status: string): boolean {
+  return [
+    CommissionStatus.duplicate,
+    CommissionStatus.fraud,
+    CommissionStatus.canceled,
+    CommissionStatus.refunded
+  ].includes(status as CommissionStatus);
+}
+
 // PATCH /api/admin/commissions/[id]/status - Update commission status
 export async function PATCH(
   req: Request,
@@ -26,11 +37,21 @@ export async function PATCH(
 ) {
   const session = await getServerSession(authOptions);
   
-  if (!session?.user?.email || !isDubAdmin(session.user.email)) {
+  if (!session?.user?.email) {
     return new NextResponse("Unauthorized", { status: 403 });
   }
   
   try {
+    // Get user ID from the email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    
+    if (!user || !await isDubAdmin(user.id)) {
+      return new NextResponse("Unauthorized", { status: 403 });
+    }
+    
     const { id } = params;
     const body = await req.json();
     const { status } = updateStatusSchema.parse(body);
@@ -40,6 +61,7 @@ export async function PATCH(
       where: { id },
       include: {
         payout: true,
+        link: true,
       },
     });
     
@@ -68,20 +90,88 @@ export async function PATCH(
       });
     }
     
-    // Update the commission status
-    const updatedCommission = await prisma.commission.update({
-      where: { id },
-      data: {
-        status,
-        // If marking as duplicate or fraud, remove from any payout
-        payoutId: status !== CommissionStatus.pending ? null : commission.payoutId,
-      },
+    // Check if we need to update the link stats
+    const wasValidBefore = !isInvalidStatus(commission.status.toString());
+    const isValidNow = !isInvalidStatus(status.toString());
+    
+    // Begin transaction to ensure Link stats and Commission status are updated atomically
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the commission status
+      const updatedCommission = await tx.commission.update({
+        where: { id },
+        data: {
+          status,
+          // If marking as duplicate or fraud, remove from any payout
+          payoutId: status !== CommissionStatus.pending ? null : commission.payoutId,
+        },
+      });
+      
+      // Update link statistics if needed
+      if (commission.link && wasValidBefore !== isValidNow) {
+        if (wasValidBefore && !isValidNow) {
+          // Commission was valid but is now invalid - decrement stats
+          await tx.link.update({
+            where: { id: commission.linkId },
+            data: {
+              sales: {
+                decrement: 1,
+              },
+              saleAmount: {
+                decrement: commission.amount,
+              },
+            },
+          });
+          
+          // If available, update project stats too
+          if (commission.link.projectId) {
+            await tx.project.update({
+              where: { id: commission.link.projectId },
+              data: {
+                salesUsage: {
+                  decrement: commission.amount,
+                },
+              },
+            });
+          }
+          
+          console.log(`Decremented link stats for invalidated commission ${id}`);
+        } else if (!wasValidBefore && isValidNow) {
+          // Commission was invalid but is now valid - increment stats
+          await tx.link.update({
+            where: { id: commission.linkId },
+            data: {
+              sales: {
+                increment: 1,
+              },
+              saleAmount: {
+                increment: commission.amount,
+              },
+            },
+          });
+          
+          // If available, update project stats too
+          if (commission.link.projectId) {
+            await tx.project.update({
+              where: { id: commission.link.projectId },
+              data: {
+                salesUsage: {
+                  increment: commission.amount,
+                },
+              },
+            });
+          }
+          
+          console.log(`Incremented link stats for validated commission ${id}`);
+        }
+      }
+      
+      return updatedCommission;
     });
     
     return NextResponse.json({
       success: true,
       message: `Status updated to ${status}`,
-      commission: updatedCommission,
+      commission: result,
     });
   } catch (error) {
     console.error("Error updating commission status:", error);

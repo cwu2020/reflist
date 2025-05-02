@@ -17,172 +17,63 @@ import { Discount } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 
-// GET /api/customers/:id – Get a customer by ID
+// GET /api/customers/[id] – Get a specific customer
 export const GET = withWorkspace(
-  async ({ workspace, params, searchParams }) => {
+  async ({ params, searchParams, workspace }) => {
     const { id } = params;
-    const { includeExpandedFields } =
-      getCustomersQuerySchema.parse(searchParams);
-
-    const customer = await getCustomerOrThrow(
-      {
-        id,
-        workspaceId: workspace.id,
-      },
-      {
-        includeExpandedFields,
-      },
-    );
-
-    let discount: Discount | null = null;
-
-    if (includeExpandedFields) {
-      const firstPurchase = await prisma.commission.findFirst({
-        where: {
-          customerId: customer.id,
-          type: "sale",
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-        select: {
-          createdAt: true,
-        },
-      });
-
-      discount = determineCustomerDiscount({
-        customerLink: customer.link,
-        firstPurchase,
-      });
-    }
-
-    const responseSchema = includeExpandedFields
-      ? CustomerEnrichedSchema
-      : CustomerSchema;
-
-    return NextResponse.json(
-      responseSchema.parse(
-        transformCustomer({
-          ...customer,
-          ...(includeExpandedFields ? { discount } : {}),
-        }),
-      ),
-    );
-  },
-  {
-    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
-  },
-);
-
-// PATCH /api/customers/:id – Update a customer by ID
-export const PATCH = withWorkspace(
-  async ({ workspace, params, req, searchParams }) => {
-    const { id } = params;
-    const { includeExpandedFields } =
-      getCustomersQuerySchema.parse(searchParams);
-
-    const { name, email, avatar, externalId } = updateCustomerBodySchema.parse(
-      await parseRequestBody(req),
-    );
-
-    const customer = await getCustomerOrThrow(
-      {
-        id,
-        workspaceId: workspace.id,
-      },
-      {
-        includeExpandedFields,
-      },
-    );
-
-    const oldCustomerAvatar = customer.avatar;
-
-    // we need to persist the customer avatar to R2 if:
-    // 1. it's different from the old avatar
-    // 2. it's not stored in R2 already
-    const finalCustomerAvatar =
-      avatar && avatar !== oldCustomerAvatar && !isStored(avatar)
-        ? `${R2_URL}/customers/${customer.id}/avatar_${nanoid(7)}`
-        : avatar;
-
-    try {
-      const updatedCustomer = await prisma.customer.update({
-        where: {
-          id: customer.id,
-        },
-        data: {
-          name,
-          email,
-          avatar: finalCustomerAvatar,
-          externalId,
-        },
-      });
-
-      if (avatar && !isStored(avatar) && finalCustomerAvatar) {
-        waitUntil(
-          Promise.allSettled([
-            storage.upload(
-              finalCustomerAvatar.replace(`${R2_URL}/`, ""),
-              avatar,
-              {
-                width: 128,
-                height: 128,
-              },
-            ),
-            oldCustomerAvatar &&
-              isStored(oldCustomerAvatar) &&
-              storage.delete(oldCustomerAvatar.replace(`${R2_URL}/`, "")),
-          ]),
-        );
-      }
-
-      let discount: Discount | null = null;
-
-      if (includeExpandedFields) {
-        const firstPurchase = await prisma.commission.findFirst({
-          where: {
-            customerId: customer.id,
-            type: "sale",
-          },
-          orderBy: {
-            createdAt: "asc",
-          },
-          select: {
-            createdAt: true,
-          },
-        });
-
-        discount = determineCustomerDiscount({
-          customerLink: customer.link,
-          firstPurchase,
-        });
-      }
-
-      const responseSchema = includeExpandedFields
-        ? CustomerEnrichedSchema
-        : CustomerSchema;
-
+    
+    // Handle 'undefined' or invalid customer ID gracefully
+    if (!id || id === 'undefined') {
       return NextResponse.json(
-        responseSchema.parse(
-          transformCustomer({
-            ...customer,
-            ...updatedCustomer,
-            ...(includeExpandedFields ? { discount } : {}),
-          }),
-        ),
+        { error: "Invalid customer ID" },
+        { status: 400 }
+      );
+    }
+    
+    const { includeExpandedFields } = getCustomersQuerySchema.parse(searchParams);
+
+    let customer;
+    try {
+      // If the id starts with ext_, use externalId lookup
+      if (id.startsWith("ext_")) {
+        const externalId = id.replace("ext_", "");
+        customer = await prisma.customer.findUnique({
+          where: {
+            projectId_externalId: {
+              projectId: workspace.id,
+              externalId,
+            },
+          },
+        });
+      } else {
+        customer = await prisma.customer.findUnique({
+          where: {
+            id,
+            projectId: workspace.id,
+          },
+        });
+      }
+      
+      if (!customer) {
+        throw new DubApiError({
+          code: "not_found",
+          message: "Customer not found.",
+        });
+      }
+      
+      return NextResponse.json(
+        CustomerSchema.parse(transformCustomer(customer)),
       );
     } catch (error) {
-      if (error.code === "P2002") {
-        throw new DubApiError({
-          code: "conflict",
-          message: "A customer with this external ID already exists.",
-        });
+      if (error instanceof DubApiError) {
+        throw error;
       }
-
-      throw new DubApiError({
-        code: "unprocessable_entity",
-        message: error.message,
-      });
+      
+      console.error("Error fetching customer:", error);
+      return NextResponse.json(
+        { error: "Error fetching customer" },
+        { status: 500 }
+      );
     }
   },
   {
@@ -190,10 +81,55 @@ export const PATCH = withWorkspace(
   },
 );
 
-// DELETE /api/customers/:id – Delete a customer by ID
-export const DELETE = withWorkspace(
-  async ({ workspace, params }) => {
+// PATCH /api/customers/[id] – Update a customer
+export const PATCH = withWorkspace(
+  async ({ req, params, workspace }) => {
     const { id } = params;
+    
+    // Handle 'undefined' or invalid customer ID gracefully
+    if (!id || id === 'undefined') {
+      return NextResponse.json(
+        { error: "Invalid customer ID" },
+        { status: 400 }
+      );
+    }
+    
+    const body = updateCustomerBodySchema.parse(await parseRequestBody(req));
+
+    const customer = await getCustomerOrThrow({
+      id,
+      workspaceId: workspace.id,
+    });
+
+    const updatedCustomer = await prisma.customer.update({
+      where: {
+        id: customer.id,
+        projectId: workspace.id,
+      },
+      data: body,
+    });
+
+    return NextResponse.json(
+      CustomerSchema.parse(transformCustomer(updatedCustomer)),
+    );
+  },
+  {
+    requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],
+  },
+);
+
+// DELETE /api/customers/[id] – Delete a customer
+export const DELETE = withWorkspace(
+  async ({ params, workspace }) => {
+    const { id } = params;
+    
+    // Handle 'undefined' or invalid customer ID gracefully
+    if (!id || id === 'undefined') {
+      return NextResponse.json(
+        { error: "Invalid customer ID" },
+        { status: 400 }
+      );
+    }
 
     const customer = await getCustomerOrThrow({
       id,
@@ -203,16 +139,11 @@ export const DELETE = withWorkspace(
     await prisma.customer.delete({
       where: {
         id: customer.id,
+        projectId: workspace.id,
       },
     });
 
-    if (customer.avatar && isStored(customer.avatar)) {
-      storage.delete(customer.avatar.replace(`${R2_URL}/`, ""));
-    }
-
-    return NextResponse.json({
-      id: customer.id,
-    });
+    return new NextResponse(null, { status: 204 });
   },
   {
     requiredPlan: ["free", "pro", "business", "business plus", "business extra", "business max", "advanced", "enterprise"],

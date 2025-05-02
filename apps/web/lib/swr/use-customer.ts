@@ -23,7 +23,11 @@ export default function useCustomer<
   const { id: workspaceId } = useWorkspace();
 
   // Don't make the API call if customerId is undefined or not a valid string
-  const shouldFetch = enabled && workspaceId && customerId && typeof customerId === 'string' && customerId !== 'undefined';
+  const shouldFetch = enabled && 
+    workspaceId && 
+    customerId && 
+    typeof customerId === 'string' && 
+    customerId !== 'undefined';
 
   const { data, error, isLoading } = useSWR<T>(
     shouldFetch
@@ -31,7 +35,7 @@ export default function useCustomer<
           workspaceId: workspaceId,
           ...query,
         } as Record<string, any>).toString()}`
-      : undefined,
+      : null,
     fetcher,
   );
 
