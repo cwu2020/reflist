@@ -59,13 +59,42 @@ export const createUserAccountAction = actionClient
     });
 
     if (!user) {
-      await prisma.user.create({
-        data: {
-          id: createId({ prefix: "user_" }),
-          email,
-          passwordHash: await hashPassword(password),
-          emailVerified: new Date(),
-        },
+      // Create user and corresponding partner record in a transaction
+      const userId = createId({ prefix: "user_" });
+      
+      await prisma.$transaction(async (tx) => {
+        // Create user
+        const newUser = await tx.user.create({
+          data: {
+            id: userId,
+            email,
+            passwordHash: await hashPassword(password),
+            emailVerified: new Date(),
+          },
+        });
+        
+        // Create partner record
+        const partnerId = createId({ prefix: "pn_" });
+        const partner = await tx.partner.create({
+          data: {
+            id: partnerId,
+            name: email.split('@')[0], // Default name from email
+            email,
+            // Add partner-user relationship
+            users: {
+              create: {
+                userId: newUser.id,
+                role: 'owner', // Set user as partner owner
+              },
+            },
+          },
+        });
+        
+        // Update user with defaultPartnerId
+        await tx.user.update({
+          where: { id: newUser.id },
+          data: { defaultPartnerId: partner.id },
+        });
       });
     }
   });

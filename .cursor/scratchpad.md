@@ -1046,7 +1046,7 @@ This suggests that there might be an issue with how customer data is being fetch
 
 1. **Inconsistent Event Display**: The fact that the manual sale appears in the stats widget but not in Events or Analytics pages suggests different data fetching mechanisms or filtering logic.
 
-2. **404 API Error**: The 404 error when fetching customer data with an "undefined" ID indicates a potential issue with how customer data is being passed or retrieved.
+2. **404 API Error**: The 404 error when fetching customer data with an "undefined" ID indicates a potential issue with how customer data is passed or retrieved.
 
 3. **Event Propagation**: The system might not be properly associating manual sales with events that should be displayed in the Events and Analytics pages.
 
@@ -1214,4 +1214,71 @@ We have identified several interconnected issues that are causing the problems w
 
 ## Lessons
 
-*To be filled as we encounter and resolve issues* 
+*To be filled as we encounter and resolve issues*
+
+### Customer Model Analysis
+
+After analyzing the Customer database model and its corresponding Zod schema, I've identified the following:
+
+1. **Database Model Fields** (from Prisma schema):
+   - `id`: String (ID)
+   - `name`: String?
+   - `email`: String?
+   - `avatar`: String? (Text)
+   - `externalId`: String?
+   - `stripeCustomerId`: String? (unique)
+   - `linkId`: String?
+   - `clickId`: String?
+   - `clickedAt`: DateTime?
+   - `country`: String?
+   - `projectId`: String
+   - `projectConnectId`: String?
+   - `createdAt`: DateTime
+   - `updatedAt`: DateTime
+   - Relational fields: project, link, commissions
+
+2. **Zod Schema Fields** (CustomerSchema):
+   - `id`: String
+   - `externalId`: String
+   - `name`: String
+   - `email`: String (nullish)
+   - `avatar`: String (nullish)
+   - `country`: String (nullish)
+   - `createdAt`: Date
+   - `programId`: String (nullish) - This field is not directly in the database model
+
+3. **Mismatch Analysis**:
+   - The `programId` field in the Zod schema doesn't correspond to a direct field in the database model, but is derived from the relationship: `customer.link?.programEnrollment?.programId`
+   - The Prisma model has several additional fields not in the Zod schema (clickId, clickedAt, projectId, etc.)
+   - `externalId` is optional in the database model but required in the Zod schema
+   - `name` is optional in the database model but required in the Zod schema
+
+4. **Transformation Logic** (transformCustomer function):
+   ```typescript
+   return {
+     ...customer,
+     name: customer.name || customer.email || generateRandomName(),
+     link: customer.link || undefined,
+     programId: programEnrollment?.programId || undefined,
+     partner: programEnrollment?.partner || undefined,
+   };
+   ```
+   
+   This function handles the field transformations:
+   - Ensures `name` is never null by using fallbacks
+   - Adds the derived `programId` field
+   - Adds the derived `partner` field
+
+This analysis confirms there is indeed a mismatch between the database model and the Zod schema, but these differences are intentional and are bridged by the `transformCustomer` function when data is passed between the systems.
+
+The database model stores more detailed information (like tracking data), while the Zod schema represents the API contract with simplified fields relevant to external consumers.
+
+The implementation provides a comprehensive solution that addresses both the root causes of the problem while maintaining data consistency across the application.
+
+## Lessons
+
+1. When implementing a feature that touches multiple data stores (SQL database and Tinybird in this case), ensure data consistency across all systems.
+2. Provide fallbacks for cases where data relationships might be incomplete (like missing customer associations).
+3. Include comprehensive testing for different data sources and viewing contexts to catch inconsistencies early.
+4. Always filter potentially undefined values before making API calls to prevent 404 errors.
+5. When creating records in one data store, ensure corresponding records are created in any linked systems. 

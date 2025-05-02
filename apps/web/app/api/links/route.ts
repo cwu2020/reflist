@@ -17,6 +17,7 @@ import { Folder } from "@dub/prisma/client";
 import { LOCALHOST_IP } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
+import { processLinkWithPartner } from "@/lib/api/links/process-link-with-partner";
 
 // GET /api/links – get all links for a workspace
 export const GET = withWorkspace(
@@ -74,7 +75,7 @@ export const GET = withWorkspace(
   },
 );
 
-// POST /api/links – create a new link
+// POST /api/links – create a new link
 export const POST = withWorkspace(
   async ({ req, headers, session, workspace }) => {
     if (workspace) {
@@ -96,7 +97,7 @@ export const POST = withWorkspace(
       }
     }
 
-    const { link, error, code } = await processLink({
+    const { link, error, code } = await processLinkWithPartner({
       payload: body,
       workspace,
       ...(session && { userId: session.user.id }),
