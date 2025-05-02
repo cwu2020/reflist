@@ -21,13 +21,14 @@ const updateStatusSchema = z.object({
 });
 
 // Helper function to determine if a status should not count towards Link stats
-function isInvalidStatus(status: string): boolean {
-  return [
+function isInvalidStatus(status: CommissionStatus): boolean {
+  const invalidStatuses: CommissionStatus[] = [
     CommissionStatus.duplicate,
     CommissionStatus.fraud,
     CommissionStatus.canceled,
     CommissionStatus.refunded
-  ].includes(status as CommissionStatus);
+  ];
+  return invalidStatuses.includes(status);
 }
 
 // PATCH /api/admin/commissions/[id]/status - Update commission status
@@ -91,8 +92,8 @@ export async function PATCH(
     }
     
     // Check if we need to update the link stats
-    const wasValidBefore = !isInvalidStatus(commission.status.toString());
-    const isValidNow = !isInvalidStatus(status.toString());
+    const wasValidBefore = !isInvalidStatus(commission.status);
+    const isValidNow = !isInvalidStatus(status);
     
     // Begin transaction to ensure Link stats and Commission status are updated atomically
     const result = await prisma.$transaction(async (tx) => {
