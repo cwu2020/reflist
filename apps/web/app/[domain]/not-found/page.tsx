@@ -48,7 +48,7 @@ export default function NotFoundLinkPage({
           Welcome to RefList
         </h1>
         <p className="animate-slide-up-fade mt-2 text-neutral-500 [--offset:10px] [animation-delay:500ms] [animation-duration:1s] [animation-fill-mode:both]">
-          Never shop the same again.
+          A curated circle where shopping gets you paid.
         </p>
       </div>
     </>
