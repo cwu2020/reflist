@@ -15,7 +15,7 @@ export default function LinkNotFound() {
       </p>
       <img
         src="https://assets.dub.co/misc/not-found.svg"
-        alt="No links yet"
+        alt="Start earning with affiliate links"
         width={300}
         height={300}
       />
