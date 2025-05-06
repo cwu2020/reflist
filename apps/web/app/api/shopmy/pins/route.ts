@@ -16,7 +16,10 @@ const LOCALHOST_IP = "127.0.0.1";
 const createPinSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
-  image: z.string().url().optional(),
+  image: z.string().optional().refine(
+    (val) => !val || val.startsWith("http") || val.startsWith("https"), 
+    { message: "Image must be a valid URL or empty" }
+  ),
   link: z.string().url(),
 });
 
@@ -61,7 +64,26 @@ export async function POST(req: Request) {
 
     // Parse the request body
     const body = await parseRequestBody(req);
-    const pinData = createPinSchema.parse(body);
+    
+    // Add more detailed logging for debugging
+    console.log(`ShopMy pins: Received raw pin data:`, body);
+    
+    // Transform image field if necessary
+    let processedBody = { ...body };
+    if (body.image) {
+      // Log the problematic image value
+      console.log(`ShopMy pins: Image field received: "${body.image}"`);
+      
+      // Check if it's an invalid URL
+      const isValidUrl = body.image.startsWith('http://') || body.image.startsWith('https://');
+      if (!isValidUrl) {
+        console.log(`ShopMy pins: Invalid image URL format, setting to null`);
+        processedBody.image = null; // Convert invalid URLs to null
+      }
+    }
+    
+    // Now validate the processed data
+    const pinData = createPinSchema.parse(processedBody);
 
     console.log(`ShopMy pins: Creating pin for URL: ${pinData.link}`);
 
