@@ -16,6 +16,17 @@ const updateStatusSchema = z.object({
   ]),
 });
 
+// Helper function to determine if a status should not count towards Link stats
+function isInvalidStatus(status: CommissionStatus): boolean {
+  const invalidStatuses: CommissionStatus[] = [
+    CommissionStatus.duplicate,
+    CommissionStatus.fraud,
+    CommissionStatus.canceled,
+    CommissionStatus.refunded
+  ];
+  return invalidStatuses.includes(status);
+}
+
 // PATCH /api/admin/sales/[id]/status - Update the status of a sale
 export async function PATCH(
   req: Request,
@@ -37,6 +48,11 @@ export async function PATCH(
       where: { id },
       include: {
         payout: true,
+        link: {
+          include: {
+            project: true
+          }
+        },
       },
     });
     
@@ -65,20 +81,89 @@ export async function PATCH(
       });
     }
     
-    // Update the commission status
-    const updatedCommission = await prisma.commission.update({
-      where: { id },
-      data: {
-        status,
-        // If marking as duplicate or fraud, remove from any payout
-        payoutId: status !== CommissionStatus.pending ? null : commission.payoutId,
-      },
+    // Check if we need to update the link stats
+    const wasValidBefore = !isInvalidStatus(commission.status);
+    const isValidNow = !isInvalidStatus(status);
+    
+    // Begin transaction to ensure Link stats and Commission status are updated atomically
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the commission status
+      const updatedCommission = await tx.commission.update({
+        where: { id },
+        data: {
+          status,
+          // If marking as duplicate, fraud, or canceled, remove from any payout
+          payoutId: status !== CommissionStatus.pending ? null : commission.payoutId,
+        },
+      });
+      
+      // Update link statistics if needed
+      if (commission.link && wasValidBefore !== isValidNow) {
+        if (wasValidBefore && !isValidNow) {
+          // Commission was valid but is now invalid - decrement stats
+          await tx.link.update({
+            where: { id: commission.linkId },
+            data: {
+              sales: {
+                decrement: 1,
+              },
+              saleAmount: {
+                decrement: commission.amount,
+              },
+            },
+          });
+          
+          // If available, update project stats too
+          if (commission.link.projectId) {
+            await tx.project.update({
+              where: { id: commission.link.projectId },
+              data: {
+                salesUsage: {
+                  decrement: commission.amount,
+                },
+              },
+            });
+          }
+          
+          console.log(`Decremented link stats for invalidated commission ${id}`);
+        } else if (!wasValidBefore && isValidNow) {
+          // Commission was invalid but is now valid - increment stats
+          await tx.link.update({
+            where: { id: commission.linkId },
+            data: {
+              sales: {
+                increment: 1,
+              },
+              saleAmount: {
+                increment: commission.amount,
+              },
+            },
+          });
+          
+          // If available, update project stats too
+          if (commission.link.projectId) {
+            await tx.project.update({
+              where: { id: commission.link.projectId },
+              data: {
+                salesUsage: {
+                  increment: commission.amount,
+                },
+              },
+            });
+          }
+          
+          console.log(`Incremented link stats for validated commission ${id}`);
+        }
+      }
+      
+      return updatedCommission;
     });
     
     return NextResponse.json({
       success: true,
       message: `Status updated to ${status}`,
-      commission: updatedCommission,
+      commission: result,
+      linkStatsUpdated: wasValidBefore !== isValidNow,
     });
   } catch (error) {
     console.error("Error updating commission status:", error);
