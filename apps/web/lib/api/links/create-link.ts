@@ -118,6 +118,10 @@ export async function createLink(link: ProcessedLinkProps) {
     try {
       console.log(`ShopMy: Creating pin for product URL: ${productUrl}`);
       
+      // Ensure we have a valid image URL
+      const imageUrl = shopmyMetadata.logo || image || 'https://placehold.co/800x800/e0e0e0/808080?text=Product+Image';
+      console.log(`ShopMy: Using image URL: ${imageUrl}`);
+      
       // Try to create a pin with the ShopMy API, first via client-side API, then directly
       let pinResult;
       
@@ -126,7 +130,7 @@ export async function createLink(link: ProcessedLinkProps) {
         pinResult = await createShopMyPin({
           title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
           description: description || '',
-          image: shopmyMetadata.logo || image || '',
+          image: imageUrl,
           link: productUrl || '', // Ensure a valid string
         });
       } catch (clientError) {
@@ -137,7 +141,7 @@ export async function createLink(link: ProcessedLinkProps) {
         pinResult = await createShopMyPinDirectly({
           title: shopmyMetadata.brand?.name || shopmyMetadata.name || title || '',
           description: description || '',
-          image: shopmyMetadata.logo || image || '',
+          image: imageUrl,
           link: productUrl || '', // Ensure a valid string
         });
       }

@@ -91,3 +91,119 @@ All implementation tasks are complete. The next step is to test the functionalit
 - Preserve financial records by preventing deletion of links with commissions rather than cascading deletion.
 - Provide clear UI feedback before users attempt actions that will fail, rather than showing error messages afterward.
 - Handle all related database relationships correctly to avoid constraint violations during deletion operations.
+
+# ShopMy API Product Image Error Analysis
+
+## Background and Motivation
+The system is encountering errors when interacting with the ShopMy API, specifically when there is no image URL or when the image URL is blank for a product. This is causing failures in the integration. We need to analyze how product images are currently being fetched and implement a solution to handle cases where product images are missing, either by finding alternative images or using placeholder images.
+
+## Key Challenges and Analysis
+1. **Current Image Handling Process**:
+   - The application extracts product metadata (including images) using two main approaches:
+     - General metadata extraction from page HTML via meta tags (og:image, twitter:image, etc.)
+     - ShopMy merchant data which includes merchant logos
+
+2. **Image Validation Process**:
+   - Images must be valid URLs starting with http or https
+   - The Zod schema in `apps/web/app/api/shopmy/pins/route.ts` validates image URLs
+   - If an image URL is invalid, it's converted to null in the request payload
+
+3. **ShopMy API Requirements**:
+   - The ShopMy API appears to require valid image URLs for pin creation
+   - When an image is null or invalid, the API returns an error
+   - Currently, there's no fallback mechanism for missing images
+
+4. **Product Image Extraction**:
+   - For product pages like Revolve, the system should be extracting images from OpenGraph meta tags
+   - Example Revolve meta tag found: `<meta property="og:image" content="https://is4.revolveassets.com/images/p4/n/c/LOVF-WD4434_V1.jpg">`
+   - The current metadata extraction might be failing to properly extract these tags
+
+5. **Current Limitations**:
+   - Meta tag extraction might be affected by:
+     - Improper HTML parsing
+     - User-Agent restrictions (some sites serve different content based on User-Agent)
+     - JavaScript-dependent meta tags (if site requires JS to populate meta tags)
+     - Incorrect selection when multiple og:image tags exist
+   - No fallback mechanism when meta tag extraction fails
+   - The shopmyClient had an invalid baseURL configuration for local development
+
+## High-level Task Breakdown
+1. **Improve OpenGraph Meta Tag Extraction**
+   - Success criteria: Successfully extract product images from Revolve and similar e-commerce sites
+   - Enhance the HTML parsing and meta tag extraction logic
+   - Update User-Agent to mimic popular browsers
+   - Add detailed logging to diagnose extraction failures
+
+2. **Implement Image Fallback System**
+   - Success criteria: All ShopMy pins are created with valid image URLs, even when meta tag extraction fails
+   - Add a default placeholder image URL to use when no image is found
+
+3. **Enhance Image Validation and Processing**
+   - Success criteria: The system properly validates and processes image URLs before sending to ShopMy API
+   - Update the validation process to include fallback mechanisms
+
+4. **Fix ShopMy Client Configuration**
+   - Success criteria: Client correctly makes requests to the API with proper base URLs
+   - Fix the base URL configuration for local development
+
+5. **Test with Problematic URLs**
+   - Success criteria: System successfully extracts images from previously problematic product pages
+   - Test specifically with the Revolve URL that was failing
+
+## Project Status Board
+- [x] Add detailed logging to the meta tag extraction process
+- [x] Enhance meta tag extraction to better handle multiple og:image tags and other formats
+- [x] Update User-Agent to mimic popular browsers
+- [x] Create a default placeholder image for product listings
+- [x] Implement fallback image URL mechanism
+- [x] Update image validation in the ShopMy pins API route
+- [x] Implement site-specific image extraction (like Revolve)
+- [x] Fix the shopmyClient baseURL configuration
+- [x] Add request/response interceptors for better debugging
+- [x] Update placeholder image to use a guaranteed public URL
+- [ ] Test extraction with the problematic Revolve URL
+- [ ] Document the solution for future reference
+
+## Current Status / Progress Tracking
+We've implemented several improvements to address the ShopMy API image URL issue:
+
+1. **Enhanced Meta Tag Extraction**:
+   - Updated the User-Agent to a browser-like value to avoid bot detection
+   - Added detailed logging throughout the extraction process
+   - Added support for additional meta tag formats (itemprop, etc.)
+   - Implemented a fallback mechanism to look for images in the HTML body
+
+2. **Site-Specific Image Extraction**:
+   - Added special handling for Revolve to find product images with ID `js-primary-slideshow__image`
+   - Added a generic approach to find large images in the page that might be product images
+
+3. **Fallback Image Mechanism**:
+   - Updated to use a guaranteed public placeholder image from placehold.co
+   - Updated the ShopMy pin creation process to always ensure a valid image URL
+   - Modified the image validation to use the placeholder instead of null
+
+4. **Fixed Client Configuration**:
+   - Fixed the shopmyClient baseURL for local development
+   - Added comprehensive request/response interceptors for debugging
+   - Properly handled potential URL construction errors
+
+5. **Improved Error Handling**:
+   - Added comprehensive logging to diagnose issues with meta tag extraction
+   - Enhanced error handling in the fetch process
+
+## Executor's Feedback or Assistance Requests
+The implementation has been completed with additional fixes for the shopmyClient. The next steps are:
+1. Test the solution with the specific Revolve URL that was failing
+2. Verify that pins are successfully created with the fallback image when needed
+3. Document the solution for future reference
+
+## Lessons
+- Read the file before you try to edit it.
+- Include info useful for debugging in the program output.
+- If there are vulnerabilities that appear in the terminal, run npm audit before proceeding.
+- Always ask before using the -force git command.
+- Implement fallback mechanisms when dealing with external dependencies.
+- Use browser-like User-Agents when scraping websites to avoid bot detection.
+- Add detailed logging to help diagnose issues with external API integrations.
+- Always provide a valid base URL for API clients, especially in server-side contexts.
+- Use public, guaranteed-to-exist placeholder images rather than relying on your own domain.

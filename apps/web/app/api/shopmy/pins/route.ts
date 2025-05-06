@@ -12,6 +12,8 @@ const SHOPMY_API_URL = "https://api.shopmy.us/api/Pins";
 const SHOPMY_TOKEN = process.env.SHOPMY_CREATOR_TOKEN;
 const SHOPMY_USER_ID = process.env.SHOPMY_USER_ID || "104679"; // Static user ID as instructed
 const LOCALHOST_IP = "127.0.0.1";
+// Default fallback image URL to use when no valid image is provided - use a public URL that's guaranteed to exist
+const DEFAULT_PRODUCT_IMAGE = "https://placehold.co/800x800/e0e0e0/808080?text=Product+Image";
 
 const createPinSchema = z.object({
   title: z.string(),
@@ -70,15 +72,20 @@ export async function POST(req: Request) {
     
     // Transform image field if necessary
     let processedBody = { ...body };
-    if (body.image) {
-      // Log the problematic image value
-      console.log(`ShopMy pins: Image field received: "${body.image}"`);
-      
-      // Check if it's an invalid URL
-      const isValidUrl = body.image.startsWith('http://') || body.image.startsWith('https://');
+
+    // Handle image URL - ensure we always have a valid image URL
+    if (!processedBody.image || !processedBody.image.trim()) {
+      // If no image URL is provided, use the fallback image
+      console.log(`ShopMy pins: No image URL provided, using fallback image`);
+      processedBody.image = DEFAULT_PRODUCT_IMAGE;
+    } else {
+      // Check if it's a valid URL
+      const isValidUrl = processedBody.image.startsWith('http://') || processedBody.image.startsWith('https://');
       if (!isValidUrl) {
-        console.log(`ShopMy pins: Invalid image URL format, setting to null`);
-        processedBody.image = null; // Convert invalid URLs to null
+        console.log(`ShopMy pins: Invalid image URL format, using fallback image`);
+        processedBody.image = DEFAULT_PRODUCT_IMAGE;
+      } else {
+        console.log(`ShopMy pins: Using provided image URL: ${processedBody.image}`);
       }
     }
     
