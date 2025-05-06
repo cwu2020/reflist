@@ -27,6 +27,15 @@ import useSWR from "swr";
 import { useShareDashboardModal } from "../modals/share-dashboard-modal";
 import { ResponseLink } from "./links-container";
 
+// Define types for the response from the links/stats API
+interface LinkStatsResponse {
+  clicks: number;
+  leads: number;
+  sales: number;
+  saleAmount: number;
+  lastClicked?: Date;
+}
+
 export function LinkAnalyticsBadge({
   link,
   url,
@@ -37,36 +46,76 @@ export function LinkAnalyticsBadge({
   sharingEnabled?: boolean;
 }) {
   const { slug, plan, id: workspaceId } = useWorkspace();
-  const { domain, key, trackConversion, leads, saleAmount } = link;
+  const { domain, key, trackConversion } = link;
 
-  // Fetch fresh analytics data
+  // Fetch fresh analytics data including sales data
   const { data: analyticsData } = useSWR(
-    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=clicks` : null,
+    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=clicks,leads,sales` : null,
     fetcher,
     {
       revalidateOnFocus: true,
+      refreshInterval: 10000, // Refresh every 10 seconds
       dedupingInterval: 5000,
     }
   );
 
-  // Safely extract the total clicks count from the analytics data
-  const freshClicks = useMemo(() => {
+  // Also fetch fresh link stats directly from the database
+  const { data: freshLinkData } = useSWR<LinkStatsResponse>(
+    workspaceId ? `/api/links/stats?domain=${domain}&key=${key}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 10000, // Refresh every 10 seconds
+      dedupingInterval: 5000,
+    }
+  );
+
+  // Safely extract the metrics from the analytics data
+  const freshMetrics = useMemo(() => {
+    // Use the direct link stats query data if available (most up-to-date source)
+    if (freshLinkData) {
+      return {
+        clicks: freshLinkData.clicks || 0,
+        leads: freshLinkData.leads || 0,
+        sales: freshLinkData.sales || 0,
+        saleAmount: freshLinkData.saleAmount || 0,
+        lastClicked: freshLinkData.lastClicked,
+      };
+    }
+    
+    // Fall back to analytics data if available
     if (!analyticsData) return null;
     
     // Handle different possible response formats
     if (Array.isArray(analyticsData)) {
-      // If it's an array, sum up the clicks
-      return analyticsData.reduce((sum, item) => sum + (Number(item.clicks) || 0), 0);
+      // If it's an array, sum up the metrics
+      return {
+        clicks: analyticsData.reduce((sum, item) => sum + (Number(item.clicks) || 0), 0),
+        leads: analyticsData.reduce((sum, item) => sum + (Number(item.leads) || 0), 0),
+        sales: analyticsData.reduce((sum, item) => sum + (Number(item.sales) || 0), 0),
+        saleAmount: analyticsData.reduce((sum, item) => sum + (Number(item.saleAmount) || 0), 0),
+        lastClicked: link.lastClicked,
+      };
     } else if (typeof analyticsData === 'object' && analyticsData !== null) {
-      // If it's an object with a clicks property
-      return 'clicks' in analyticsData ? Number(analyticsData.clicks) : 0;
+      // If it's an object with the properties
+      return {
+        clicks: 'clicks' in analyticsData ? Number(analyticsData.clicks) : 0,
+        leads: 'leads' in analyticsData ? Number(analyticsData.leads) : 0,
+        sales: 'sales' in analyticsData ? Number(analyticsData.sales) : 0,
+        saleAmount: 'saleAmount' in analyticsData ? Number(analyticsData.saleAmount) : 0,
+        lastClicked: link.lastClicked,
+      };
     }
     
     return null;
-  }, [analyticsData]);
+  }, [analyticsData, freshLinkData, link.lastClicked]);
 
   // Use fresh data if available, fall back to prop data
-  const clicks = freshClicks ?? link.clicks;
+  const clicks = freshMetrics?.clicks ?? link.clicks;
+  const leads = freshMetrics?.leads ?? link.leads;
+  const sales = freshMetrics?.sales ?? 0;
+  const saleAmount = freshMetrics?.saleAmount ?? link.saleAmount;
+  const lastClicked = freshMetrics?.lastClicked ?? link.lastClicked;
 
   // Determine if there have been any clicks
   const hasClicks = clicks > 0;
@@ -147,8 +196,8 @@ export function LinkAnalyticsBadge({
             ))}
             <p className="text-xs leading-none text-neutral-400">
               {hasClicks 
-                ? (link.lastClicked 
-                  ? `Last clicked ${timeAgo(link.lastClicked, { withAgo: true })}`
+                ? (lastClicked 
+                  ? `Last clicked ${timeAgo(lastClicked, { withAgo: true })}`
                   : "Recently clicked") 
                 : "No clicks yet"}
             </p>

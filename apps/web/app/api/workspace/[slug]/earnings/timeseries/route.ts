@@ -104,6 +104,7 @@ export const GET = withWorkspace(
           )
           AND createdAt >= ${startDate}
           AND createdAt < ${endDate}
+          AND status NOT IN ('canceled', 'fraud', 'duplicate')
           ${type ? Prisma.sql`AND type = ${type}` : Prisma.sql``}
           ${status ? Prisma.sql`AND status = ${status}` : Prisma.sql``}
           ${linkId ? Prisma.sql`AND linkId = ${linkId}` : Prisma.sql``}
