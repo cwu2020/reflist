@@ -457,7 +457,7 @@ export const DELETE = withWorkspace(
     if (linksWithCommissions.length > 0) {
       throw new DubApiError({
         code: "bad_request",
-        message: `Cannot delete links with commissions. These links have generated financial records that must be preserved.`,
+        message: `Cannot delete links with commissions. Archive instead.`,
       });
     }
 
