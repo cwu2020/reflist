@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Table, StatusBadge } from "@dub/ui";
+import { Table, StatusBadge, Modal, Button } from "@dub/ui";
 import { fetcher, formatDateTime } from "@dub/utils";
 import useSWR from "swr";
 import { toast } from "sonner";
@@ -26,6 +26,9 @@ interface SaleData {
 
 export function RecentSalesTable() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<SaleData | null>(null);
   
   // Fetch sales data from the API
   const { data, isLoading, error, mutate } = useSWR<{ sales: SaleData[] }>(
@@ -76,6 +79,44 @@ export function RecentSalesTable() {
     }
   };
 
+  // Handle delete confirmation
+  const openDeleteConfirmation = (sale: SaleData) => {
+    setSaleToDelete(sale);
+    setShowDeleteConfirmation(true);
+  };
+
+  // Handle actual deletion
+  const handleDelete = async () => {
+    if (!saleToDelete) return;
+    
+    try {
+      setDeletingId(saleToDelete.id);
+      
+      const response = await fetch(`/api/admin/commissions/${saleToDelete.id}`, {
+        method: 'DELETE'
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete commission");
+      }
+      
+      toast.success(`Commission has been permanently deleted`);
+      
+      // Close the dialog
+      setShowDeleteConfirmation(false);
+      
+      // Revalidate the data
+      mutate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete commission");
+      console.error(error);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (error) {
     return <div className="text-center text-red-500">Error loading sales data</div>;
   }
@@ -88,6 +129,63 @@ export function RecentSalesTable() {
 
   return (
     <div className="space-y-4">
+      {/* Delete Confirmation Modal */}
+      <Modal 
+        showModal={showDeleteConfirmation}
+        setShowModal={setShowDeleteConfirmation}
+      >
+        <div className="space-y-2 border-b border-neutral-200 p-4 sm:p-6">
+          <h3 className="text-lg font-medium leading-none">Delete Commission</h3>
+        </div>
+        
+        <div className="bg-neutral-50 p-4 sm:p-6">
+          <p className="text-sm text-neutral-800">
+            Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> this commission record?
+          </p>
+          
+          {saleToDelete && (
+            <div className="mt-4 rounded-md bg-neutral-100 p-3">
+              <p className="text-sm">
+                <span className="font-semibold">Amount:</span>{" "}
+                {new Intl.NumberFormat('en-US', { 
+                  style: 'currency', 
+                  currency: saleToDelete.currency.toUpperCase() 
+                }).format(saleToDelete.amount / 100)}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Link:</span> {saleToDelete.linkKey}
+              </p>
+              <p className="text-sm">
+                <span className="font-semibold">Date:</span> {formatDateTime(new Date(saleToDelete.createdAt))}
+              </p>
+            </div>
+          )}
+          
+          <p className="mt-4 text-sm font-medium text-neutral-800">This action:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-700">
+            <li>Cannot be undone</li>
+            <li>Will remove this sale from all reports and analytics</li>
+            <li>Will update link statistics to remove this sale</li>
+          </ul>
+        </div>
+        
+        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 bg-neutral-50 p-4 sm:p-6">
+          <Button
+            text="Cancel"
+            variant="secondary"
+            onClick={() => setShowDeleteConfirmation(false)}
+            className="h-8 w-fit px-3"
+          />
+          <Button
+            text={deletingId === saleToDelete?.id ? "Deleting..." : "Delete Commission"}
+            variant="danger"
+            loading={deletingId === saleToDelete?.id}
+            onClick={handleDelete}
+            className="h-8 w-fit px-3"
+          />
+        </div>
+      </Modal>
+
       {sales.length === 0 ? (
         <div className="rounded-lg border border-neutral-200 p-8 text-center text-sm text-neutral-500">
           No manual sales have been recorded yet.
@@ -131,8 +229,10 @@ export function RecentSalesTable() {
                     </StatusBadge>
                   </td>
                   <td className="p-3 text-right">
-                    {updatingId === sale.id ? (
-                      <span className="text-xs text-neutral-400">Updating...</span>
+                    {updatingId === sale.id || deletingId === sale.id ? (
+                      <span className="text-xs text-neutral-400">
+                        {updatingId === sale.id ? "Updating..." : "Deleting..."}
+                      </span>
                     ) : (
                       <>
                         {sale.status === "pending" && (
@@ -149,15 +249,29 @@ export function RecentSalesTable() {
                             >
                               Mark Fraud
                             </button>
+                            <button 
+                              className="ml-2 text-xs text-red-500 hover:text-red-800"
+                              onClick={() => handleStatusChange(sale.id, "canceled")}
+                            >
+                              Mark Canceled
+                            </button>
                           </>
                         )}
-                        {(sale.status === "duplicate" || sale.status === "fraud") && (
-                          <button 
-                            className="text-xs text-blue-500 hover:text-blue-800"
-                            onClick={() => handleStatusChange(sale.id, "pending")}
-                          >
-                            Restore
-                          </button>
+                        {(sale.status === "duplicate" || sale.status === "fraud" || sale.status === "canceled") && (
+                          <>
+                            <button 
+                              className="mr-2 text-xs text-blue-500 hover:text-blue-800"
+                              onClick={() => handleStatusChange(sale.id, "pending")}
+                            >
+                              Restore
+                            </button>
+                            <button 
+                              className="text-xs text-red-500 hover:text-red-800"
+                              onClick={() => openDeleteConfirmation(sale)}
+                            >
+                              Delete Permanently
+                            </button>
+                          </>
                         )}
                       </>
                     )}

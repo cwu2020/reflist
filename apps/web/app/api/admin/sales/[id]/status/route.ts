@@ -12,6 +12,7 @@ const updateStatusSchema = z.object({
     CommissionStatus.pending,
     CommissionStatus.duplicate,
     CommissionStatus.fraud,
+    CommissionStatus.canceled,
   ]),
 });
 
