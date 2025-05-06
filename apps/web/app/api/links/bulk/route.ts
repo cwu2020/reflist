@@ -461,12 +461,25 @@ export const DELETE = withWorkspace(
       });
     }
 
-    // Extract program IDs from links for cascade deletion
-    const programIdsToDelete = links
-      .filter(link => link.programId && link.program)
-      .map(link => link.programId as string);
+    // Extract program IDs from links for reporting purposes
+    const linksWithPrograms = links.filter(link => link.programId !== null);
+    const programCount = linksWithPrograms.length;
 
-    // Delete links first
+    // Update links to break relationship with programs before deletion
+    if (linksWithPrograms.length > 0) {
+      await prisma.link.updateMany({
+        where: {
+          id: { in: linksWithPrograms.map(link => link.id) },
+          projectId: workspace.id,
+        },
+        data: {
+          programId: null,
+          partnerId: null // Also clear partnerId if it's related to programs
+        },
+      });
+    }
+
+    // Delete links
     const { count: deletedCount } = await prisma.link.deleteMany({
       where: {
         id: { in: links.map((link) => link.id) },
@@ -474,37 +487,12 @@ export const DELETE = withWorkspace(
       },
     });
 
-    // Delete associated programs if any, but first handle rewards
-    let deletedProgramCount = 0;
-    if (programIdsToDelete.length > 0) {
-      // First, set the defaultRewardId to null on all programs to be deleted
-      await prisma.program.updateMany({
-        where: {
-          id: { in: programIdsToDelete },
-          workspaceId: workspace.id,
-        },
-        data: {
-          defaultRewardId: null,
-          defaultDiscountId: null,
-        },
-      });
-
-      // Now delete the programs
-      const { count } = await prisma.program.deleteMany({
-        where: {
-          id: { in: programIdsToDelete },
-          workspaceId: workspace.id,
-        },
-      });
-      deletedProgramCount = count;
-    }
-
     waitUntil(bulkDeleteLinks(links));
 
     return NextResponse.json(
       {
         deletedCount,
-        deletedProgramCount,
+        programsDisconnected: programCount, // Report programs that were disconnected rather than deleted
       },
       { headers },
     );

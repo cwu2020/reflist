@@ -71,7 +71,7 @@ function DeleteLinkModalInner({
         
         {links.some(link => link.programId) && (
           <p className="mt-2 text-sm font-medium text-amber-600">
-            Warning: Some of these links are associated with programs. Deleting these links will also delete the associated programs.
+            Warning: Some of these links are associated with programs. These links will be deleted, but the programs will be preserved for future use.
           </p>
         )}
 
@@ -97,8 +97,8 @@ function DeleteLinkModalInner({
               setShowDeleteLinkModal(false);
               onSuccess?.();
               const data = await res.json();
-              const successMessage = data.deletedProgramCount > 0 
-                ? `Successfully deleted ${pluralize("link", links.length)} and ${pluralize("program", data.deletedProgramCount)}!` 
+              const successMessage = data.programsDisconnected > 0 
+                ? `Successfully deleted ${pluralize("link", links.length)} and preserved ${pluralize("program", data.programsDisconnected)}!` 
                 : `Successfully deleted ${pluralize("link", links.length)}!`;
               toast.success(successMessage);
             } else {
