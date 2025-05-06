@@ -13,6 +13,13 @@ interface MoveLinkFormProps {
   onCancel: () => void;
 }
 
+interface LinkMoveResult {
+  linkId: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
 export const MoveLinkForm = ({
   links,
   onSuccess,
@@ -34,34 +41,108 @@ export const MoveLinkForm = ({
     e.preventDefault();
     setIsMoving(true);
 
-    const response = await fetch(
-      `/api/links/bulk?workspaceId=${workspace.id}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          linkIds: links.map(({ id }) => id),
-          data: {
-            folderId: selectedFolderId === "unsorted" ? null : selectedFolderId,
-          },
-        }),
-      },
-    );
+    // Convert "unsorted" to null for the API request
+    const targetFolderId = selectedFolderId === "unsorted" ? null : selectedFolderId;
 
-    if (!response.ok) {
-      const { error } = await response.json();
-      toast.error(error.message);
+    console.log("[MoveLinkForm] Starting move operation", {
+      linkIds: links.map(({ id }) => id),
+      fromFolderId: links[0].folderId,
+      toFolderId: targetFolderId,
+    });
+
+    try {
+      // We'll now take a more robust approach by updating links one by one
+      // This avoids potential batch update issues and makes it easier to debug
+      const results: LinkMoveResult[] = [];
+      let allSuccessful = true;
+
+      for (const link of links) {
+        try {
+          // Make individual PUT request for each link
+          const response = await fetch(`/api/links/${link.id}?workspaceId=${workspace.id}`, {
+            method: "PATCH",  // Using PATCH endpoint for individual link updates
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              folderId: targetFolderId,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error(`[MoveLinkForm] Error moving link ${link.id}:`, await response.text());
+            allSuccessful = false;
+            results.push({
+              linkId: link.id,
+              success: false,
+              error: `API returned ${response.status}`
+            });
+            continue;
+          }
+
+          const result = await response.json();
+          console.log(`[MoveLinkForm] Successfully moved link ${link.id}:`, result);
+          
+          results.push({
+            linkId: link.id,
+            success: true,
+            data: result
+          });
+          
+          // Force immediate revalidation of this specific link's data
+          await mutate(`/api/links/${link.id}?workspaceId=${workspace.id}`);
+          
+        } catch (error) {
+          console.error(`[MoveLinkForm] Exception moving link ${link.id}:`, error);
+          allSuccessful = false;
+          results.push({
+            linkId: link.id,
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      console.log("[MoveLinkForm] All individual move operations completed:", results);
+
+      // Force cache revalidation for all links in both folders
+      await mutate(
+        (key) => typeof key === "string" && key.includes(`/api/links?`),
+        undefined,
+        { revalidate: true }
+      );
+      
+      // Also invalidate link counts
+      await mutate(
+        (key) => typeof key === "string" && key.includes(`/api/links/count`),
+        undefined,
+        { revalidate: true }
+      );
+
+      if (allSuccessful) {
+        console.log("[MoveLinkForm] All links successfully moved");
+        toast.success(`${links.length > 1 ? 'Links' : 'Link'} moved successfully!`);
+        
+        // Wait a short time to allow the revalidation to complete
+        setTimeout(() => {
+          onSuccess(targetFolderId);
+        }, 300);
+      } else {
+        const successCount = results.filter(r => r.success).length;
+        
+        if (successCount > 0) {
+          toast.warning(`Moved ${successCount} out of ${links.length} links. Some links failed to move.`);
+        } else {
+          toast.error("Failed to move links. Please try again.");
+        }
+        
+        setIsMoving(false);
+      }
+    } catch (error) {
+      console.error("[MoveLinkForm] Unexpected error during move operation:", error);
+      toast.error("An unexpected error occurred while moving the link");
       setIsMoving(false);
-      return;
     }
-
-    mutate(
-      (key) => typeof key === "string" && key.startsWith("/api/links"),
-      undefined,
-      { revalidate: true },
-    );
-
-    toast.success("Link moved successfully!");
-    onSuccess(selectedFolderId === "unsorted" ? null : selectedFolderId);
   };
 
   return (
