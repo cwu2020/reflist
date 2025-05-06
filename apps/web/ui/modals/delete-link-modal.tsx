@@ -64,6 +64,16 @@ function DeleteLinkModalInner({
           Deleting these links will remove all of their analytics. This action
           cannot be undone – proceed with caution.
         </p>
+        
+        <p className="mt-2 text-sm font-medium text-neutral-600">
+          Note: If any of these links have generated commissions, they cannot be deleted to preserve financial records.
+        </p>
+        
+        {links.some(link => link.programId) && (
+          <p className="mt-2 text-sm font-medium text-amber-600">
+            Warning: Some of these links are associated with programs. Deleting these links will also delete the associated programs.
+          </p>
+        )}
 
         <div className="scrollbar-hide mt-4 flex max-h-[190px] flex-col gap-2 overflow-y-auto rounded-2xl border border-neutral-200 p-2">
           {links.map((link) => (
@@ -86,13 +96,20 @@ function DeleteLinkModalInner({
               await mutatePrefix("/api/links");
               setShowDeleteLinkModal(false);
               onSuccess?.();
-              toast.success(
-                `Successfully deleted ${pluralize("link", links.length)}!`,
-              );
+              const data = await res.json();
+              const successMessage = data.deletedProgramCount > 0 
+                ? `Successfully deleted ${pluralize("link", links.length)} and ${pluralize("program", data.deletedProgramCount)}!` 
+                : `Successfully deleted ${pluralize("link", links.length)}!`;
+              toast.success(successMessage);
             } else {
-              const { error } = await res.json();
-              toast.error(error.message);
+              const response = await res.json();
+              const errorMsg = response.error?.message || "Error deleting link(s).";
+              toast.error(errorMsg);
             }
+            setDeleting(false);
+          }).catch(error => {
+            console.error("Delete operation failed:", error);
+            toast.error("Error deleting link(s).");
             setDeleting(false);
           });
         }}
