@@ -36,6 +36,7 @@ type BulkAction = {
   icon: Icon;
   action: () => void;
   disabledTooltip?: string | ReactNode;
+  tooltipContent?: ReactNode;
   keyboardShortcut?: string;
 };
 
@@ -145,8 +146,8 @@ export const LinksToolbar = memo(
           label: "Delete",
           icon: Trash,
           action: () => setShowDeleteLinkModal(true),
-          disabledTooltip: selectedLinks.some(({ programId }) => programId)
-            ? "You can't delete a link that's part of a program."
+          disabledTooltip: selectedLinks.some(link => (link as any).hasCommissions === true) 
+            ? "Cannot delete links with commissions. Archive instead." 
             : undefined,
           keyboardShortcut: "x",
         },
@@ -284,6 +285,7 @@ export const LinksToolbar = memo(
                           icon: Icon,
                           action,
                           disabledTooltip,
+                          tooltipContent,
                           keyboardShortcut,
                         }) => (
                           <Button

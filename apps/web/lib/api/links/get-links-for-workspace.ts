@@ -145,6 +145,11 @@ export async function getLinksForWorkspace({
       user: includeUser,
       webhooks: includeWebhooks,
       dashboard: includeDashboard,
+      _count: {
+        select: {
+          commissions: true,
+        }
+      },
     },
     orderBy: {
       [sortBy]: sortOrder,
@@ -153,5 +158,11 @@ export async function getLinksForWorkspace({
     skip: (page - 1) * pageSize,
   });
 
-  return links.map((link) => transformLink(link));
+  return links.map((link) => {
+    const transformedLink = transformLink(link);
+    return {
+      ...transformedLink,
+      hasCommissions: link._count.commissions > 0,
+    };
+  });
 }

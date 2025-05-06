@@ -398,7 +398,6 @@ export const DELETE = withWorkspace(
     let links = await prisma.link.findMany({
       where: {
         projectId: workspace.id,
-        programId: null,
         OR: [
           ...(linkIds.size > 0 ? [{ id: { in: Array.from(linkIds) } }] : []),
           ...(externalIds.size > 0
@@ -412,6 +411,7 @@ export const DELETE = withWorkspace(
             tag: true,
           },
         },
+        program: true,
       },
     });
 
@@ -442,6 +442,31 @@ export const DELETE = withWorkspace(
       });
     }
 
+    // Check if any links have commissions that need to be preserved
+    const linksWithCommissions = await prisma.link.findMany({
+      where: {
+        id: { in: links.map((link) => link.id) },
+        commissions: { some: {} },
+      },
+      select: {
+        id: true,
+        shortLink: true,
+      },
+    });
+
+    if (linksWithCommissions.length > 0) {
+      throw new DubApiError({
+        code: "bad_request",
+        message: `Cannot delete links with commissions. These links have generated financial records that must be preserved.`,
+      });
+    }
+
+    // Extract program IDs from links for cascade deletion
+    const programIdsToDelete = links
+      .filter(link => link.programId && link.program)
+      .map(link => link.programId as string);
+
+    // Delete links first
     const { count: deletedCount } = await prisma.link.deleteMany({
       where: {
         id: { in: links.map((link) => link.id) },
@@ -449,11 +474,37 @@ export const DELETE = withWorkspace(
       },
     });
 
+    // Delete associated programs if any, but first handle rewards
+    let deletedProgramCount = 0;
+    if (programIdsToDelete.length > 0) {
+      // First, set the defaultRewardId to null on all programs to be deleted
+      await prisma.program.updateMany({
+        where: {
+          id: { in: programIdsToDelete },
+          workspaceId: workspace.id,
+        },
+        data: {
+          defaultRewardId: null,
+          defaultDiscountId: null,
+        },
+      });
+
+      // Now delete the programs
+      const { count } = await prisma.program.deleteMany({
+        where: {
+          id: { in: programIdsToDelete },
+          workspaceId: workspace.id,
+        },
+      });
+      deletedProgramCount = count;
+    }
+
     waitUntil(bulkDeleteLinks(links));
 
     return NextResponse.json(
       {
         deletedCount,
+        deletedProgramCount,
       },
       { headers },
     );

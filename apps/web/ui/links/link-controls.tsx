@@ -103,7 +103,8 @@ export function LinkControls({
     useMoveLinkToFolderModal({ link, onSuccess: onMoveSuccess });
 
   const isRootLink = link.key === "_root";
-  const isProgramLink = link.programId !== null;
+  const isProgramLink = false;
+  const hasCommissions = (link as any).hasCommissions === true;
   const folderId = link.folderId || searchParams.get("folderId");
 
   // Duplicate link Modal
@@ -350,14 +351,14 @@ export function LinkControls({
                   icon={<Delete className="size-4" />}
                   shortcut="X"
                   className="h-9 px-2 font-medium"
-                  disabled={isRootLink || isProgramLink}
+                  disabled={isRootLink || hasCommissions}
                   disabledTooltip={
                     !canManageLink
                       ? "You don't have permission to delete this link."
                       : isRootLink
                         ? "You can't delete a custom domain link. You can delete the domain instead."
-                        : isProgramLink
-                          ? "You can't delete a link that's part of a program."
+                        : hasCommissions
+                          ? "Cannot delete links with commissions. Archive instead."
                           : undefined
                   }
                 />
