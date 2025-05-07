@@ -146,13 +146,21 @@ export const createPartnerCommission = async ({
     console.log('Link details:', { 
       linkId, 
       hasCommissionSplits: !!link.commissionSplits,
-      rawCommissionSplits: link.commissionSplits
+      rawCommissionSplits: link.commissionSplits,
+      typeOfSplits: typeof link.commissionSplits
     });
     
     if (link && link.commissionSplits) {
       try {
-        // Parse the JSON data into our type
-        commissionSplits = JSON.parse(JSON.stringify(link.commissionSplits)) as LinkCommissionSplit[];
+        // Handle both cases: already parsed object or string that needs parsing
+        if (typeof link.commissionSplits === 'string') {
+          commissionSplits = JSON.parse(link.commissionSplits) as LinkCommissionSplit[];
+        } else if (Array.isArray(link.commissionSplits)) {
+          commissionSplits = link.commissionSplits as LinkCommissionSplit[];
+        } else {
+          // If it's an object but not an array, put it in an array
+          commissionSplits = [link.commissionSplits] as LinkCommissionSplit[];
+        }
         console.log('Parsed commissionSplits:', commissionSplits);
       } catch (error) {
         console.error("Error parsing commissionSplits JSON", error);
