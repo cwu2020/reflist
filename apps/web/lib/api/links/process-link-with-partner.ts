@@ -40,11 +40,6 @@ export async function processLinkWithPartner<T extends Record<string, any>>({
       return result;
     }
 
-    // Don't modify links that already have a programId or partnerId set
-    if (link.programId && link.partnerId) {
-      return result;
-    }
-
     try {
       // If no partnerId is specified, try to get the user's default partner
       const partnerId = link.partnerId || await getDefaultPartnerForUser(userId);
