@@ -78,6 +78,12 @@ export const PATCH = withPartnerProfile(
           link.testStartedAt instanceof Date
             ? link.testStartedAt.toISOString()
             : link.testStartedAt,
+        // Ensure commissionSplits is properly typed
+        commissionSplits: (link as any).commissionSplits 
+          ? Array.isArray((link as any).commissionSplits) 
+            ? (link as any).commissionSplits 
+            : JSON.parse(JSON.stringify((link as any).commissionSplits))
+          : undefined,
 
         // merge in new props
         key: key || undefined,
