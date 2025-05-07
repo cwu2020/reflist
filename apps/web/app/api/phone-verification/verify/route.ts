@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import { verifyPhoneNumber } from "@/lib/verification/phone-verification";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@dub/prisma";
 
 // Rate limiting - 10 attempts per minute per IP
 const limiter = rateLimit({
@@ -34,14 +34,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check for any commissions associated with this phone number
-    const commissions = await prisma.commission.findMany({
+    // Find commission splits associated with this phone number
+    const splits = await (prisma as any).commissionSplit.findMany({
       where: {
-        splitRecipientPhone: phoneNumber,
-        splitClaimed: false, // Only include unclaimed commissions
+        phoneNumber: phoneNumber,
+        claimed: false,
       },
       include: {
-        link: true,
+        commission: {
+          include: {
+            link: true,
+          },
+        },
       },
     });
 
@@ -50,13 +54,14 @@ export async function POST(req: Request) {
       message: result.message,
       data: {
         verified: true,
-        hasUnclaimedCommissions: commissions.length > 0,
-        unclaimedCommissions: commissions.map((commission) => ({
-          id: commission.id,
-          amount: commission.amount,
-          currency: commission.currency,
-          linkTitle: commission.link?.title || "Unknown Link",
-          date: commission.createdAt,
+        hasUnclaimedCommissions: splits.length > 0,
+        unclaimedCommissions: splits.map((split) => ({
+          id: split.id,
+          amount: split.commission.amount,
+          currency: split.commission.currency,
+          earnings: split.earnings,
+          linkTitle: split.commission.link?.title || "Unknown Link",
+          date: split.createdAt,
         })),
       },
     });

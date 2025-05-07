@@ -28,7 +28,7 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<{ succ
 
   try {
     // Delete any existing verification tokens for this phone number
-    await prisma.PhoneVerificationToken.deleteMany({
+    await (prisma as any).phoneVerificationToken.deleteMany({
       where: { identifier: formattedNumber },
     });
 
@@ -44,7 +44,7 @@ export async function sendPhoneVerification(phoneNumber: string): Promise<{ succ
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 10);
       
-      await prisma.PhoneVerificationToken.create({
+      await (prisma as any).phoneVerificationToken.create({
         data: {
           identifier: formattedNumber,
           token: hashedToken,
@@ -85,7 +85,7 @@ export async function verifyPhoneNumber(
       return await checkVerificationCode(formattedNumber, token);
     } else {
       // Use our own database-backed solution
-      const verificationToken = await prisma.PhoneVerificationToken.findFirst({
+      const verificationToken = await (prisma as any).phoneVerificationToken.findFirst({
         where: {
           identifier: formattedNumber,
           expires: { gt: new Date() }, // Token must not be expired
@@ -104,7 +104,7 @@ export async function verifyPhoneNumber(
 
       if (isValid) {
         // Delete the token after successful verification
-        await prisma.PhoneVerificationToken.delete({
+        await (prisma as any).phoneVerificationToken.delete({
           where: { id: verificationToken.id },
         });
 

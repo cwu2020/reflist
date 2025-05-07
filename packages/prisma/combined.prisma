@@ -8,6 +8,12 @@ generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
 }
+
+import "workspace.prisma"
+import "domain.prisma"
+import "webhook.prisma"
+import "commission-split.prisma"
+
 enum CommissionStatus {
   pending
   processed
@@ -302,7 +308,7 @@ model Invoice {
   id           String        @id @default(cuid())
   programId    String
   workspaceId  String
-  number       String?       @unique // This starts with the customer’s unique invoicePrefix
+  number       String?       @unique // This starts with the customer's unique invoicePrefix
   status       InvoiceStatus @default(processing)
   amount       Int           @default(0)
   fee          Int           @default(0)
@@ -781,20 +787,6 @@ model PartnerReward {
   @@unique([programEnrollmentId, rewardId])
   @@index(rewardId)
 }
-datasource db {
-  provider     = "mysql"
-  url          = env("DATABASE_URL")
-  relationMode = "prisma"
-}
-
-generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex", "driverAdapters", "omitApi"]
-}
-
-import "workspace.prisma"
-import "domain.prisma"
-import "webhook.prisma"
 
 model User {
   id            String    @id @default(cuid())
