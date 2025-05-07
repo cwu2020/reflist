@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button, Input, Label, Spinner } from "@dub/ui";
+import { Button, Input, Label, LoadingSpinner } from "@dub/ui";
 
 interface PhoneVerificationFormProps {
   onVerificationSuccess: (phoneNumber: string, unclaimedCommissions: any[]) => void;
@@ -115,7 +115,7 @@ export default function PhoneVerificationForm({ onVerificationSuccess }: PhoneVe
             </p>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? <Spinner className="mr-2" /> : null}
+            {isLoading ? <LoadingSpinner className="mr-2" /> : null}
             Send Verification Code
           </Button>
         </form>
@@ -138,7 +138,7 @@ export default function PhoneVerificationForm({ onVerificationSuccess }: PhoneVe
           </div>
           <div className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isVerifying}>
-              {isVerifying ? <Spinner className="mr-2" /> : null}
+              {isVerifying ? <LoadingSpinner className="mr-2" /> : null}
               Verify Code
             </Button>
             <Button
