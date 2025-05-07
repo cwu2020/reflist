@@ -50,7 +50,7 @@ export function LinkAnalyticsBadge({
 
   // Fetch fresh analytics data including sales data
   const { data: analyticsData } = useSWR(
-    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=clicks,leads,sales` : null,
+    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=composite` : null,
     fetcher,
     {
       revalidateOnFocus: true,
