@@ -4,6 +4,7 @@ model Partner {
   companyName                  String?
   profileType                  PartnerProfileType  @default(individual)
   email                        String?             @unique
+  phoneNumber                  String?             @unique
   image                        String?
   description                  String?             @db.Text
   country                      String?

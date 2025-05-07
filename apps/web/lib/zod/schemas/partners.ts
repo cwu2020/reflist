@@ -126,6 +126,7 @@ export const PartnerSchema = z.object({
   companyName: z.string().nullish(),
   profileType: z.nativeEnum(PartnerProfileType),
   email: z.string().nullish(),
+  phoneNumber: z.string().nullish(),
   image: z.string().nullish(),
   description: z.string().nullish(),
   website: z.string().nullish(),
@@ -160,6 +161,7 @@ export const EnrolledPartnerSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string().nullish(),
+  phoneNumber: z.string().nullish(),
   image: z.string().nullish(),
   description: z.string().nullish(),
   country: z.string().nullish(),
@@ -243,6 +245,13 @@ export const createPartnerSchema = z.object({
     .describe(
       "Email for the partner in your system. Partners will be able to claim their profile by signing up to Dub Partners with this email.",
     ),
+  phoneNumber: z
+    .string()
+    .trim()
+    .nullish()
+    .describe(
+      "Phone number for the partner. Partners will be able to claim their profile by signing up with this phone number.",
+    ),
   username: z
     .string()
     .max(100)
@@ -303,6 +312,8 @@ export const onboardPartnerSchema = createPartnerSchema
       country: z.enum(COUNTRY_CODES),
       profileType: z.nativeEnum(PartnerProfileType).default("individual"),
       companyName: z.string().nullish(),
+      email: z.string().trim().email().nullish(),
+      phoneNumber: z.string().trim().nullish(),
     }),
   )
   .refine(
@@ -316,6 +327,16 @@ export const onboardPartnerSchema = createPartnerSchema
     {
       message: "Legal company name is required.",
       path: ["companyName"],
+    },
+  )
+  // At least one contact method (email or phone) should be provided
+  .refine(
+    (data) => {
+      return !!data.email || !!data.phoneNumber;
+    },
+    {
+      message: "At least one contact method (email or phone number) is required.",
+      path: ["email", "phoneNumber"],
     },
   )
   .transform((data) => ({

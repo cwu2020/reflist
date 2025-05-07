@@ -4,6 +4,7 @@ import { log } from "@dub/utils";
 import { differenceInMonths } from "date-fns";
 import { createId } from "../api/create-id";
 import { calculateSaleEarnings } from "../api/sales/calculate-sale-earnings";
+import { getOrCreatePartnerByPhone } from "../api/partners/get-or-create-partner-by-phone";
 import { RewardProps } from "../types";
 import { determinePartnerReward } from "./determine-partner-reward";
 
@@ -142,10 +143,17 @@ export const createPartnerCommission = async ({
     // Check if this link has commission splits configured
     let commissionSplits: LinkCommissionSplit[] = [];
     
+    console.log('Link details:', { 
+      linkId, 
+      hasCommissionSplits: !!link.commissionSplits,
+      rawCommissionSplits: link.commissionSplits
+    });
+    
     if (link && link.commissionSplits) {
       try {
         // Parse the JSON data into our type
         commissionSplits = JSON.parse(JSON.stringify(link.commissionSplits)) as LinkCommissionSplit[];
+        console.log('Parsed commissionSplits:', commissionSplits);
       } catch (error) {
         console.error("Error parsing commissionSplits JSON", error);
       }
@@ -199,40 +207,38 @@ export const createPartnerCommission = async ({
     for (const split of commissionSplits) {
       const splitEarnings = Math.floor(earnings * (split.splitPercent / 100));
       
-      // Check if recipient exists as partner
-      const existingPartner = await prisma.partner.findFirst({
-        where: {
-          users: { 
-            some: { 
-              user: { 
-                email: split.phoneNumber
-              } 
-            } 
-          }
-        }
+      // Use our new function to get or create a partner by phone number
+      let recipientPartner;
+      try {
+        recipientPartner = await getOrCreatePartnerByPhone(
+          split.phoneNumber,
+          `Split Recipient (${split.phoneNumber})`
+        );
+      } catch (error) {
+        console.error(`Error getting/creating partner for phone ${split.phoneNumber}:`, error);
+        // Continue with next split if partner creation fails
+        continue;
+      }
+      
+      // Check if the partner is associated with a user account
+      const partnerUser = await prisma.partnerUser.findFirst({
+        where: { partnerId: recipientPartner.id }
       });
       
-      // Store split information in a JSON field on the commission record
-      // This is a simpler approach than creating a separate model
-      // It avoids schema changes while still tracking the information
-      const splitInfo = {
-        originalCommissionId: primaryCommission.id,
-        phoneNumber: existingPartner ? null : split.phoneNumber,
-        partnerId: existingPartner?.id || null,
-        splitPercent: split.splitPercent,
-        claimed: !!existingPartner,
-      };
+      // Partner is claimed if there's an associated user
+      const isClaimed = !!partnerUser;
       
-      // If partner exists, create a commission for them directly
-      if (existingPartner) {
-        await prisma.commission.create({
+      // Create a commission and split record in a transaction 
+      await prisma.$transaction(async (tx) => {
+        // Create a commission for the recipient
+        const splitCommission = await tx.commission.create({
           data: {
             id: createId({ prefix: "cm_" }),
             programId,
-            partnerId: existingPartner.id,
+            partnerId: recipientPartner.id,
             customerId,
             linkId,
-            eventId: `${eventId}_split_${existingPartner.id}`,
+            eventId: `${eventId}_split_${recipientPartner.id}`,
             invoiceId,
             quantity,
             amount,
@@ -241,10 +247,28 @@ export const createPartnerCommission = async ({
             earnings: splitEarnings,
           },
         });
-      }
+
+        // Create the split record through SQL since the model may not be available in the client yet
+        await tx.$executeRaw`
+          INSERT INTO CommissionSplit (
+            id, commissionId, partnerId, phoneNumber, splitPercent, 
+            earnings, claimed, createdAt, updatedAt
+          ) VALUES (
+            ${createId({ prefix: "cm_" })}, 
+            ${primaryCommission.id}, 
+            ${recipientPartner.id}, 
+            ${split.phoneNumber}, 
+            ${split.splitPercent}, 
+            ${splitEarnings}, 
+            ${isClaimed}, 
+            NOW(), 
+            NOW()
+          )
+        `;
+      });
       
       // Log the split for tracking purposes
-      console.log(`Commission split created: ${JSON.stringify(splitInfo)}`);
+      console.log(`Commission split created for partner ${recipientPartner.id} with phone ${split.phoneNumber}, claimed status: ${isClaimed}`);
     }
     
     return primaryCommission;
