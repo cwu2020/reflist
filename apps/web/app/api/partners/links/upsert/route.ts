@@ -18,7 +18,7 @@ import { deepEqual, getApexDomain } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 
-// PUT /api/partners/links/upsert – update or create a partner link
+// PUT /api/partners/links/upsert – update or create a partner link
 export const PUT = withWorkspace(
   async ({ req, headers, workspace, session }) => {
     const { programId, partnerId, tenantId, url, key, linkProps } =
@@ -94,6 +94,12 @@ export const PUT = withWorkspace(
           link.testStartedAt instanceof Date
             ? link.testStartedAt.toISOString()
             : link.testStartedAt,
+        // Add proper handling for commissionSplits field
+        commissionSplits: (link as any).commissionSplits 
+          ? Array.isArray((link as any).commissionSplits) 
+            ? (link as any).commissionSplits 
+            : JSON.parse(JSON.stringify((link as any).commissionSplits))
+          : undefined,
         // merge in new props
         ...linkProps,
         // set default fields
