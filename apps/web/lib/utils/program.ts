@@ -9,6 +9,59 @@ import { createId } from '../api/create-id';
 const TOKEN_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
 const TOKEN_LENGTH = 6;
 
+// Maximum URL length to store in the database
+const MAX_URL_LENGTH = 500;
+
+/**
+ * Safely truncates a URL to a maximum length
+ * Ensures the URL remains valid by keeping the protocol and domain
+ * 
+ * @param url The URL to truncate
+ * @param maxLength Maximum length allowed
+ * @returns Truncated URL
+ */
+function truncateUrl(url: string, maxLength: number = MAX_URL_LENGTH): string {
+  if (!url || url.length <= maxLength) {
+    return url;
+  }
+  
+  try {
+    // Parse the URL to keep the origin (protocol + domain)
+    const urlObj = new URL(url);
+    const origin = urlObj.origin;
+    
+    // If even the origin is too long, just take the first part of it
+    if (origin.length >= maxLength) {
+      return origin.substring(0, maxLength);
+    }
+    
+    // Calculate how much of the pathname + search we can keep
+    const remainingLength = maxLength - origin.length - 1; // -1 for the slash
+    let pathWithSearch = urlObj.pathname;
+    
+    // Add as much of the search params as we can fit
+    if (remainingLength > 0 && urlObj.search) {
+      if (pathWithSearch.length + urlObj.search.length <= remainingLength) {
+        pathWithSearch += urlObj.search;
+      } else {
+        // Only add part of the search params
+        pathWithSearch += urlObj.search.substring(0, remainingLength - pathWithSearch.length);
+      }
+    }
+    
+    // Truncate the pathname if necessary
+    if (pathWithSearch.length > remainingLength) {
+      pathWithSearch = pathWithSearch.substring(0, remainingLength);
+    }
+    
+    return `${origin}${pathWithSearch}`;
+  } catch (error) {
+    // If URL parsing fails, do a simple truncation
+    console.error("Error truncating URL:", error);
+    return url.substring(0, maxLength);
+  }
+}
+
 /**
  * Generates a deterministic token for a domain
  * The token is a 6-character string of alphanumeric characters
@@ -103,9 +156,16 @@ export async function getOrCreateProgramByUrl(
     
     // Use the original URL if it exists (from ShopMy integration)
     // This ensures we're using the merchant's actual URL, not ShopMy's tracking URL
-    const originalUrl = (shopmyMetadata && 'originalUrl' in shopmyMetadata) ? 
+    let originalUrl = (shopmyMetadata && 'originalUrl' in shopmyMetadata) ? 
       shopmyMetadata.originalUrl : 
       (url.includes('shopmy.us') ? null : url);
+    
+    // Truncate URL if needed to avoid database column size issues
+    if (originalUrl) {
+      originalUrl = truncateUrl(originalUrl);
+    }
+    
+    let safeUrl = truncateUrl(url);
 
     // If shopmy metadata is passed, use it directly instead of making another API call
     if (shopmyMetadata) {
@@ -121,7 +181,7 @@ export async function getOrCreateProgramByUrl(
     } else {
       // Fall back to API call if no metadata was passed
       try {
-        const merchantData = await fetchShopMyMerchantData(originalUrl || url);
+        const merchantData = await fetchShopMyMerchantData(originalUrl || safeUrl);
         if (merchantData) {
           // Convert commission data from ShopMy format to our format
           if (merchantData.fullPayout && merchantData.rateType) {
@@ -152,7 +212,7 @@ export async function getOrCreateProgramByUrl(
           name: domain,
           slug,
           domain,
-          url: originalUrl || url, // Use original URL if available
+          url: originalUrl || safeUrl, // Use original URL if available
           workspaceId,
           cookieLength: 90, // 90 days default cookie length
           holdingPeriodDays: 30, // 30 days default holding period
