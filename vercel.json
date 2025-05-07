@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run db:deploy && npm run build",
   "outputDirectory": "apps/web/.next",
-  "installCommand": "npm ci",
+  "installCommand": "pnpm install",
   "env": {
     "VERCEL_BUILD_SKIP_INSTALL": "0"
   }
