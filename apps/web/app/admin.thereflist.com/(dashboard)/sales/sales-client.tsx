@@ -37,6 +37,12 @@ export default function SalesPageClient() {
           invoiceId: formData.invoiceId,
           notes: formData.notes,
           customerId: formData.customerId || undefined,
+          commissionAmount: formData.commissionAmount && formData.commissionAmount > 0 
+            ? formData.commissionAmount 
+            : undefined,
+          commissionSplitPercentage: formData.commissionSplitPercentage !== undefined 
+            ? formData.commissionSplitPercentage 
+            : undefined,
         }),
       });
       

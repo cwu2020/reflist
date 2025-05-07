@@ -57,6 +57,23 @@ export function calculateDefaultEarnings(amount: number): number {
   return Math.floor(amount * defaultCommissionRate);
 }
 
+// Calculate earnings based on manually entered commission amount and split percentage
+export function calculateManualEarnings({
+  commissionAmount,
+  splitPercentage,
+}: {
+  commissionAmount: number;
+  splitPercentage: number;
+}): number {
+  // Ensure split percentage is between 0 and 100
+  const validSplitPercentage = Math.max(0, Math.min(100, splitPercentage));
+  
+  // Calculate earnings based on the commission amount and split percentage
+  const earnings = Math.floor(commissionAmount * (validSplitPercentage / 100));
+  
+  return earnings;
+}
+
 // Helper to look up a program's reward structure and calculate earnings
 export async function calculateProgramEarnings({
   programId,
@@ -103,4 +120,27 @@ export async function calculateProgramEarnings({
     console.error("Error calculating program earnings:", error);
     return calculateDefaultEarnings(amount);
   }
+}
+
+// Enhanced helper that supports manual override of earnings calculation
+export async function calculateProgramEarningsWithOverride({
+  programId,
+  amount,
+  quantity = 1,
+  commissionAmount,
+  splitPercentage,
+}: {
+  programId: string | null;
+  amount: number;
+  quantity?: number;
+  commissionAmount?: number; 
+  splitPercentage?: number;
+}): Promise<number> {
+  // If commission amount and split percentage are provided, use manual calculation
+  if (commissionAmount !== undefined && splitPercentage !== undefined) {
+    return calculateManualEarnings({ commissionAmount, splitPercentage });
+  }
+  
+  // Otherwise, use the existing calculation logic
+  return calculateProgramEarnings({ programId, amount, quantity });
 }

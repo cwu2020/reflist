@@ -7,7 +7,7 @@ import { CommissionStatus, EventType } from "@dub/prisma/client";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { calculateProgramEarnings } from "@/lib/api/sales/calculate-sale-earnings";
+import { calculateProgramEarnings, calculateManualEarnings } from "@/lib/api/sales/calculate-sale-earnings";
 import { recordSaleWithTimestamp } from "@/lib/tinybird/record-sale";
 import { generateRandomName } from "@/lib/names";
 import { OG_AVATAR_URL } from "@dub/utils";
@@ -101,6 +101,8 @@ const recordSaleSchema = z.object({
   invoiceId: z.string().optional(),
   notes: z.string().optional(),
   customerId: z.string().optional(), // Optional customer ID to associate with the sale
+  commissionAmount: z.number().int().min(0).optional(), // Optional commission amount for manual override
+  commissionSplitPercentage: z.number().min(0).max(100).default(50).optional(), // Optional split percentage
 });
 
 // POST /api/admin/sales - Record a manual sale
@@ -142,7 +144,15 @@ export async function POST(req: Request) {
     // Format the eventId to include the admin email, notes, and other data
     // This allows us to store additional information within the eventId itself
     // Format: manual_[random_id]_[admin_email]_[payment_processor]_[event_name]
-    const adminInfo = {
+    const adminInfo: {
+      admin: string;
+      date: string;
+      notes: string;
+      processor: string;
+      event: string;
+      commissionAmount?: number;
+      commissionSplitPercentage?: number;
+    } = {
       admin: session.user.email,
       date: new Date().toISOString(),
       notes: validatedData.notes || "",
@@ -154,12 +164,26 @@ export async function POST(req: Request) {
     // Store JSON data in the eventId truncated to stay below string length limits
     const eventId = `manual_${nanoid(10)}_${Buffer.from(JSON.stringify(adminInfo).slice(0, 100)).toString('base64')}`;
     
-    // Calculate earnings based on program's commission structure
-    const earnings = await calculateProgramEarnings({
-      programId: link.programId || null,
-      amount: validatedData.amount,
-      quantity: 1
-    });
+    // Calculate earnings based on provided commission data or program's commission structure
+    let earnings;
+    if (validatedData.commissionAmount !== undefined && validatedData.commissionSplitPercentage !== undefined) {
+      // Use manual override calculation
+      earnings = calculateManualEarnings({
+        commissionAmount: validatedData.commissionAmount,
+        splitPercentage: validatedData.commissionSplitPercentage
+      });
+      
+      // Store commission data in the metadata for future reference
+      adminInfo.commissionAmount = validatedData.commissionAmount;
+      adminInfo.commissionSplitPercentage = validatedData.commissionSplitPercentage;
+    } else {
+      // Use the default program-based calculation
+      earnings = await calculateProgramEarnings({
+        programId: link.programId || null,
+        amount: validatedData.amount,
+        quantity: 1
+      });
+    }
 
     // Get or create a customer record if customerId is not provided
     let customerId = validatedData.customerId;
@@ -276,6 +300,8 @@ export async function POST(req: Request) {
         manual: true,
         admin: session.user.email,
         notes: validatedData.notes || "",
+        commissionAmount: validatedData.commissionAmount,
+        commissionSplitPercentage: validatedData.commissionSplitPercentage,
       }),
     };
     

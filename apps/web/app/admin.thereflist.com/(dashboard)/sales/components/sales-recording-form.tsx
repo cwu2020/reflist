@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Input } from "@dub/ui";
+import { useState, useMemo, useEffect } from "react";
+import { Button, Input, Sliders } from "@dub/ui";
 
 interface SalesRecordingFormProps {
   linkId: string;
@@ -17,6 +17,8 @@ export interface SaleFormData {
   eventName: string;
   notes?: string;
   customerId?: string;
+  commissionAmount?: number;
+  commissionSplitPercentage?: number;
 }
 
 const PAYMENT_PROCESSORS = [
@@ -46,7 +48,29 @@ export function SalesRecordingForm({
     invoiceId: "",
     notes: "",
     customerId: "",
+    commissionAmount: 0,
+    commissionSplitPercentage: 50, // Default to 50%
   });
+
+  // Calculate partner earnings based on commission amount and split percentage
+  const calculatedEarnings = useMemo(() => {
+    if (!formData.commissionAmount || formData.commissionAmount <= 0) {
+      return 0;
+    }
+    
+    const splitPercentage = formData.commissionSplitPercentage || 50;
+    return Math.floor(formData.commissionAmount * (splitPercentage / 100));
+  }, [formData.commissionAmount, formData.commissionSplitPercentage]);
+
+  // Validate that commission amount doesn't exceed sale amount
+  useEffect(() => {
+    if (formData.commissionAmount && formData.commissionAmount > formData.amount && formData.amount > 0) {
+      setFormData(prev => ({
+        ...prev,
+        commissionAmount: formData.amount
+      }));
+    }
+  }, [formData.amount, formData.commissionAmount]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -55,7 +79,16 @@ export function SalesRecordingForm({
     
     setFormData(prev => ({
       ...prev,
-      [name]: name === "amount" ? parseFloat(value) * 100 : value, // Convert to cents for amount
+      [name]: name === "amount" || name === "commissionAmount" 
+        ? parseFloat(value) * 100 // Convert to cents for monetary amounts
+        : value,
+    }));
+  };
+
+  const handleSliderChange = (value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      commissionSplitPercentage: value,
     }));
   };
 
@@ -87,7 +120,7 @@ export function SalesRecordingForm({
               onChange={handleChange}
             />
           </div>
-          <p className="mt-1 text-xs text-neutral-500">Enter the amount in dollars (will be converted to cents)</p>
+          <p className="mt-1 text-xs text-neutral-500">Enter the total sale amount in dollars (will be converted to cents)</p>
         </div>
 
         <div>
@@ -108,6 +141,78 @@ export function SalesRecordingForm({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* New Commission Amount Field */}
+      <div className="rounded-md bg-blue-50 p-4">
+        <h3 className="mb-2 text-sm font-medium text-blue-800">Commission Override Settings</h3>
+        <p className="mb-3 text-xs text-blue-700">
+          Use these fields to manually control the commission calculation. If left at zero, the system will use the default calculation logic.
+        </p>
+        
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="commissionAmount" className="mb-2 block text-sm font-medium text-neutral-700">
+              Commission Amount
+            </label>
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span className="text-neutral-500 sm:text-sm">$</span>
+              </div>
+              <Input
+                id="commissionAmount"
+                name="commissionAmount"
+                type="number"
+                className="pl-7"
+                placeholder="0.00"
+                min="0"
+                max={formData.amount > 0 ? formData.amount / 100 : undefined}
+                step="0.01"
+                onChange={handleChange}
+              />
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              The commission amount that Reflist received from ShopMy (cannot exceed the sale amount)
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="commissionSplitPercentage" className="mb-2 block text-sm font-medium text-neutral-700">
+              Commission Split Percentage: {formData.commissionSplitPercentage || 50}%
+            </label>
+            <input
+              type="range"
+              id="commissionSplitPercentage"
+              name="commissionSplitPercentage"
+              min="0"
+              max="100"
+              step="1"
+              value={formData.commissionSplitPercentage || 50}
+              onChange={(e) => handleSliderChange(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <p className="mt-1 text-xs text-neutral-500">
+              Percentage of the commission that goes to the partner (the rest is kept by Reflist)
+            </p>
+          </div>
+
+          <div className="rounded-md bg-white p-3 shadow-sm">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium text-neutral-700">Partner Earnings:</span>
+              <span className="font-bold text-green-600">
+                ${(calculatedEarnings / 100).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs text-neutral-500">
+              <span>Reflist Keeps:</span>
+              <span>
+                ${(formData.commissionAmount && formData.commissionAmount > 0 
+                  ? (formData.commissionAmount - calculatedEarnings) / 100 
+                  : 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
