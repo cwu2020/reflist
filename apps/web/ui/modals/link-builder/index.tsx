@@ -5,6 +5,7 @@ import { ExpandedLinkProps } from "@/lib/types";
 import { LinkBuilderFolderSelector } from "@/ui/links/link-builder/controls/link-builder-folder-selector";
 import { LinkBuilderShortLinkInput } from "@/ui/links/link-builder/controls/link-builder-short-link-input";
 import { LinkCommentsInput } from "@/ui/links/link-builder/controls/link-comments-input";
+import { CommissionSplitsToggle } from "@/ui/links/link-builder/commission-splits-toggle";
 import { ConversionTrackingToggle } from "@/ui/links/link-builder/conversion-tracking-toggle";
 import {
   DraftControls,
@@ -207,6 +208,8 @@ function LinkBuilderInner({
                 <LinkCommentsInput />
 
                 <ConversionTrackingToggle />
+                
+                <CommissionSplitsToggle />
 
                 <div className="flex grow flex-col justify-end">
                   <OptionsList />

@@ -20,6 +20,7 @@ model Commission {
   payout     Payout?          @relation(fields: [payoutId], references: [id])
   link       Link             @relation(fields: [linkId], references: [id])
   customer   Customer?        @relation(fields: [customerId], references: [id])
+  splits     CommissionSplit[]
 
   @@unique([programId, invoiceId])
   @@index([earnings, programId, partnerId, status])

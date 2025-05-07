@@ -5,6 +5,8 @@ import z from "@/lib/zod";
 import { signUpSchema } from "@/lib/zod/schemas/auth";
 import { Button, Input } from "@dub/ui";
 import { useAction } from "next-safe-action/hooks";
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRegisterContext } from "./context";
@@ -12,8 +14,29 @@ import { useRegisterContext } from "./context";
 type SignUpProps = z.infer<typeof signUpSchema>;
 
 export const SignUpEmail = () => {
-  const { setStep, setEmail, setPassword, email, lockEmail } =
-    useRegisterContext();
+  const { 
+    setStep, 
+    setEmail, 
+    setPassword, 
+    setPhoneNumber,
+    setClaim,
+    email, 
+    lockEmail 
+  } = useRegisterContext();
+  
+  const searchParams = useSearchParams();
+  const phoneNumberParam = searchParams?.get("phoneNumber");
+  const claimParam = searchParams?.get("claim");
+
+  // Set phone number and claim flags from URL parameters
+  useEffect(() => {
+    if (phoneNumberParam) {
+      setPhoneNumber(phoneNumberParam);
+    }
+    if (claimParam === "true") {
+      setClaim(true);
+    }
+  }, [phoneNumberParam, claimParam, setPhoneNumber, setClaim]);
 
   const {
     register,
@@ -61,6 +84,11 @@ export const SignUpEmail = () => {
           error={errors.password?.message}
           minLength={8}
         />
+        {phoneNumberParam && (
+          <div className="text-sm text-green-600">
+            <p>You'll be able to claim your earnings after registration.</p>
+          </div>
+        )}
         <Button
           type="submit"
           text={isPending ? "Submitting..." : "Sign Up"}

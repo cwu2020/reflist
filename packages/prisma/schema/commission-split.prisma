@@ -1,0 +1,30 @@
+model CommissionSplit {
+  id             String    @id @default(cuid())
+  commissionId   String
+  partnerId      String?   // Can be null for unregistered recipients (by phone number)
+  phoneNumber    String?   // Store phone number for unregistered users
+  splitPercent   Int       // Percentage (0-100) of commission share
+  earnings       Int       // Actual earnings amount
+  claimed        Boolean   @default(false)
+  claimedAt      DateTime?
+  claimedById    String?   // Partner ID who claimed this split
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  commission     Commission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  partner        Partner?   @relation(fields: [partnerId], references: [id])
+  claimedBy      Partner?   @relation("ClaimedSplits", fields: [claimedById], references: [id])
+
+  @@unique([commissionId, partnerId])
+  @@unique([commissionId, phoneNumber])
+  @@index([partnerId])
+  @@index([phoneNumber])
+  @@index([commissionId])
+}
+
+model PhoneVerificationToken {
+  identifier String    // The phone number being verified
+  token      String    @unique  // The OTP code
+  expires    DateTime  // When the token expires
+
+  @@unique([identifier, token])
+} 

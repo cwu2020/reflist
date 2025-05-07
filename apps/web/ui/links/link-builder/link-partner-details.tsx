@@ -10,14 +10,39 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   });
 
+// Define the CommissionSplit type for the JSON field
+type LinkCommissionSplit = {
+  phoneNumber: string;
+  splitPercent: number;
+};
+
+// Extend the LinkProps type to include commissionSplits
+interface LinkWithSplits extends LinkProps {
+  commissionSplits?: LinkCommissionSplit[];
+}
+
 export function LinkPartnerDetails({
   link,
   partner,
 }: {
-  link: LinkProps;
+  link: LinkWithSplits;
   partner?: EnrolledPartnerProps;
 }) {
   const { slug } = useWorkspace();
+  
+  // Parse the commissionSplits field from the link, if it exists
+  let commissionSplits: LinkCommissionSplit[] = [];
+  if (link.commissionSplits) {
+    try {
+      commissionSplits = link.commissionSplits;
+    } catch (error) {
+      console.error("Error parsing commissionSplits", error);
+    }
+  }
+  
+  // Calculate the creator's percentage
+  const totalSplitPercent = commissionSplits.reduce((sum, split) => sum + split.splitPercent, 0);
+  const creatorPercent = 100 - totalSplitPercent;
 
   return (
     <div>
@@ -84,6 +109,29 @@ export function LinkPartnerDetails({
           </div>
         ))}
       </div>
+      
+      {/* Commission Splits Section */}
+      {commissionSplits.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-neutral-700 mb-2">Commission Splits</h3>
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-200">
+              <div className="flex justify-between">
+                <span className="text-xs font-medium text-neutral-600">Creator ({partner?.name})</span>
+                <span className="text-xs font-medium text-neutral-800">{creatorPercent}%</span>
+              </div>
+            </div>
+            <div className="divide-y divide-neutral-200">
+              {commissionSplits.map((split, index) => (
+                <div key={index} className="px-4 py-2 flex justify-between">
+                  <span className="text-xs text-neutral-600">{split.phoneNumber}</span>
+                  <span className="text-xs font-medium text-neutral-800">{split.splitPercent}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

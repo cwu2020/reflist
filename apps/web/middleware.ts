@@ -22,7 +22,7 @@ import { supportedWellKnownFiles } from "./lib/well-known";
 export const config = {
   matcher: [
     // Run on all paths except Next internals and static assets
-    "/((?!_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
+    "/((?!api/|_next/|_proxy/|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest).*)",
   ],
 };
 
@@ -38,16 +38,18 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   try {
     const { pathname } = req.nextUrl;
 
-    // 1️⃣ CORS preflight for only /api/shopmy/data
-    if (req.method === "OPTIONS" && (pathname === "/api/shopmy/data" || pathname === "/api/shopmy/pin")) {
-      return new Response(null, {
-        status: 204,
-        headers: CORS_HEADERS,
-      });
-    }
-
-    // 2️⃣ Handle actual /api/shopmy/data requests with CORS
+    // Handle API routes that need CORS (add specific routes as needed)
+    // Since the matcher now excludes /api/ routes, we'll handle only the ones we explicitly want
     if (pathname === "/api/shopmy/data" || pathname === "/api/shopmy/pin") {
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: CORS_HEADERS,
+        });
+      }
+      
+      // For actual requests, add CORS headers
       AxiomMiddleware(req, ev);
       const response = NextResponse.next();
       Object.entries(CORS_HEADERS).forEach(([key, value]) => {
@@ -56,12 +58,7 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       return response;
     }
 
-    // 3️⃣ Let Next.js built-in API routes handle all other /api/* paths
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.next();
-    }
-
-    // 4️⃣ All other requests: existing domain-based routing
+    // All other requests proceed with normal middleware
     const host = req.headers.get("host");
     if (!host) {
       console.error("No host header found in request");

@@ -8,62 +8,55 @@ import { SignUpForm } from "@/ui/auth/register/signup-form";
 import { VerifyEmailForm } from "@/ui/auth/register/verify-email-form";
 import { truncate } from "@dub/utils";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function RegisterPageClient() {
+  const searchParams = useSearchParams();
+  const phoneNumber = searchParams?.get("phoneNumber");
+  const claim = searchParams?.get("claim") === "true";
+  
   return (
-    <RegisterProvider>
+    <RegisterProvider phoneNumber={phoneNumber || undefined} claim={claim}>
       <RegisterFlow />
     </RegisterProvider>
   );
 }
 
-function SignUp() {
-  return (
-    <>
-      <div className="w-full max-w-md overflow-hidden border-y border-neutral-200 sm:rounded-2xl sm:border sm:shadow-sm">
-        <div className="border-b border-neutral-200 bg-white pb-6 pt-8 text-center">
-          <h3 className="text-lg font-semibold">Get started with RefList</h3>
-        </div>
-        <div className="bg-neutral-50 px-4 py-8 sm:px-16">
-          <SignUpForm />
-        </div>
-      </div>
-      <p className="mt-4 text-center text-sm text-neutral-500">
-        Already have an account?&nbsp;
-        <Link
-          href="/login"
-          className="font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black"
-        >
-          Sign in
-        </Link>
-      </p>
-    </>
-  );
-}
-
-function Verify() {
+const SignUp = () => {
   const { email } = useRegisterContext();
+  const searchParams = useSearchParams();
+  const phoneNumber = searchParams?.get("phoneNumber");
+  const claim = searchParams?.get("claim") === "true";
 
   return (
     <>
-      <div className="w-full max-w-md overflow-hidden border-y border-neutral-200 sm:rounded-2xl sm:border sm:shadow-sm">
-        <div className="flex flex-col items-center justify-center gap-3 border-b border-neutral-200 bg-white px-4 pb-6 pt-8 text-center sm:px-16">
-          <h3 className="text-xl font-semibold">Verify your email address</h3>
-          <p className="text-sm text-neutral-500">
-            Enter the six digit verification code sent to{" "}
-            <strong className="font-medium text-neutral-600" title={email}>
-              {truncate(email, 30)}
-            </strong>
+      <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
+        <h1 className="text-lg font-medium text-neutral-800">
+          Create a RefList account
+          {phoneNumber && claim && (
+            <span className="ml-1 text-sm text-green-600">to claim your earnings</span>
+          )}
+        </h1>
+        {email ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            An account with {truncate(email, 20)} already exists.
           </p>
-        </div>
-        <div className="bg-neutral-50 px-4 py-8 sm:px-16">
-          <VerifyEmailForm />
+        ) : (
+          <p className="mt-2 text-sm text-neutral-500">
+            Create an account to start using RefList
+            {phoneNumber && claim && ` and claim your earnings`}.
+          </p>
+        )}
+        <div className="mt-8">
+          <SignUpForm methods={["email", "google"]} />
         </div>
       </div>
       <p className="mt-4 text-center text-sm text-neutral-500">
         Already have an account?&nbsp;
         <Link
-          href="/login"
+          href={`/login${
+            phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}&claim=${claim}` : ""
+          }`}
           className="font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black"
         >
           Sign in
@@ -71,7 +64,18 @@ function Verify() {
       </p>
     </>
   );
-}
+};
+
+const Verify = () => {
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
+      <h1 className="mb-6 text-lg font-medium text-neutral-800">
+        Verify your email
+      </h1>
+      <VerifyEmailForm />
+    </div>
+  );
+};
 
 const RegisterFlow = () => {
   const { step } = useRegisterContext();

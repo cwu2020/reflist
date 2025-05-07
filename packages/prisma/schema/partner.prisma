@@ -32,6 +32,8 @@ model Partner {
   invites                      PartnerInvite[]
   payouts                      Payout[]
   commissions                  Commission[]
+  commissionSplits             CommissionSplit[]
+  claimedSplits                CommissionSplit[] @relation("ClaimedSplits")
 }
 
 model PartnerUser {

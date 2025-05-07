@@ -55,7 +55,7 @@ async function recordSaleEvent(event) {
 
 async function addManualSale() {
   // Find the link by its key
-  const linkKey = "Astmamv";
+  const linkKey = "9k21feQ";
   
   const link = await prisma.link.findFirst({
     where: {
@@ -93,7 +93,6 @@ async function addManualSale() {
       id: `cus_${nanoid(20)}`,
       name: placeholderName,
       externalId: `manual_sale_${nanoid(8)}`,
-      programId: link.programId || "",
       projectId: link.projectId,
       linkId: link.id,
     },

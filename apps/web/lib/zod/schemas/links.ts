@@ -204,6 +204,18 @@ export const domainKeySchema = z.object({
     ),
 });
 
+export const linkSplitSchema = z.object({
+  phoneNumber: z
+    .string()
+    .regex(/^\+[1-9]\d{1,14}$/, "Please enter a valid international phone number")
+    .describe("The phone number of the partner to share the commission with."),
+  splitPercent: z
+    .number()
+    .min(1, "Split percentage must be at least 1%")
+    .max(99, "Split percentage cannot exceed 99%")
+    .describe("The percentage of the commission to share with this partner.")
+});
+
 export const createLinkBodySchema = z.object({
   url: parseUrlSchemaAllowEmpty()
     .describe("The destination URL of the short link.")
@@ -431,9 +443,22 @@ export const createLinkBodySchema = z.object({
     .nullish()
     .describe("The original URL before transformation (e.g., for ShopMy links)"),
   shopmyMetadata: z
-    .any()
+    .object({
+      affiliate: z.object({
+        id: z.string().optional(),
+        email: z.string().optional()
+      }).optional(),
+      merchant: z.object({
+        id: z.string().optional(),
+        email: z.string().optional()
+      }).optional()
+    })
     .nullish()
     .describe("Metadata from ShopMy for merchant and affiliate information"),
+  commissionSplits: z
+    .array(linkSplitSchema)
+    .optional()
+    .describe("Configuration for splitting commissions with other partners by phone number.")
 });
 
 export const updateLinkBodySchema = createLinkBodySchema.partial();

@@ -16,13 +16,19 @@ export const VerifyEmailForm = () => {
   const router = useRouter();
   const { isMobile } = useMediaQuery();
   const [code, setCode] = useState("");
-  const { email, password } = useRegisterContext();
+  const { email, password, phoneNumber, claim } = useRegisterContext();
   const [isInvalidCode, setIsInvalidCode] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const { executeAsync, isPending } = useAction(createUserAccountAction, {
     async onSuccess() {
-      toast.success("Account created! Redirecting to dashboard...");
+      // Show different toast message based on whether user is claiming commissions
+      if (claim && phoneNumber) {
+        toast.success("Account created! Your unclaimed earnings are now available in your dashboard.");
+      } else {
+        toast.success("Account created! Redirecting to dashboard...");
+      }
+      
       setIsRedirecting(true);
 
       const response = await signIn("credentials", {
@@ -52,70 +58,63 @@ export const VerifyEmailForm = () => {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <AnimatedSizeContainer height>
+    <>
+      <AnimatedSizeContainer>
         <form
+          className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            executeAsync({ email, password, code });
+            executeAsync({
+              email,
+              password,
+              code,
+              phoneNumber,
+              claim,
+            });
           }}
         >
           <div>
+            <div className="pb-2 text-sm font-medium">
+              We've sent a verification code to <b>{email}</b>
+            </div>
             <OTPInput
               maxLength={6}
+              containerClassName="flex justify-center gap-2 pb-2"
               value={code}
-              onChange={(code) => {
+              onChange={(value) => {
+                setCode(value);
                 setIsInvalidCode(false);
-                setCode(code);
               }}
-              autoFocus={!isMobile}
-              containerClassName="group flex items-center justify-center"
-              render={({ slots }) => (
-                <div className="flex items-center">
-                  {slots.map(({ char, isActive, hasFakeCaret }, idx) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        "relative flex h-14 w-10 items-center justify-center text-xl",
-                        "border-y border-r border-neutral-200 bg-white first:rounded-l-lg first:border-l last:rounded-r-lg",
-                        "ring-0 transition-all",
-                        isActive &&
-                          "z-10 border border-neutral-500 ring-2 ring-neutral-200",
-                        isInvalidCode && "border-red-500 ring-red-200",
-                      )}
-                    >
-                      {char}
-                      {hasFakeCaret && (
-                        <div className="animate-caret-blink pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <div className="h-5 w-px bg-black" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              itemClassName={cn(
+                "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
+                {
+                  "border-red-500": isInvalidCode,
+                },
               )}
-              onComplete={() => {
-                executeAsync({ email, password, code });
-              }}
+              render={({ slots }) => (
+                <>
+                  {slots.map((slot, idx) => (
+                    <div key={idx}>{slot}</div>
+                  ))}
+                </>
+              )}
             />
             {isInvalidCode && (
-              <p className="mt-2 text-center text-sm text-red-500">
-                Invalid code. Please try again.
-              </p>
+              <div className="text-center text-xs font-normal leading-none text-red-500">
+                Invalid code, please try again.
+              </div>
             )}
-
-            <Button
-              className="mt-8"
-              text={isPending ? "Verifying..." : "Continue"}
-              type="submit"
-              loading={isPending || isRedirecting}
-              disabled={!code || code.length < 6}
-            />
           </div>
+          <Button
+            text={isPending || isRedirecting ? "Verifying..." : "Verify Email"}
+            fullWidth
+            type="submit"
+            loading={isPending || isRedirecting}
+            disabled={isPending || isRedirecting || code.length < 6}
+          />
+          <ResendOtp />
         </form>
-
-        <ResendOtp email={email} />
       </AnimatedSizeContainer>
-    </div>
+    </>
   );
 };

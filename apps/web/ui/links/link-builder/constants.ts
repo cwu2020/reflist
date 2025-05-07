@@ -13,10 +13,10 @@ import {
   Webhook,
   WindowSearch,
 } from "@dub/ui/icons";
-import { Settings } from "lucide-react";
+import { Settings, SplitSquareVertical } from "lucide-react";
 
 type MoreItem = {
-  key: string;
+  key: keyof LinkFormData | string;
   icon: Icon;
   label: string;
   description?: string;
@@ -48,6 +48,17 @@ export const MORE_ITEMS: MoreItem[] = [
     learnMoreUrl: "https://dub.co/help/article/how-noindex-works",
     shortcutKey: "s",
     type: "boolean",
+  },
+  {
+    key: "commissionSplits",
+    icon: SplitSquareVertical,
+    label: "Commission Splits",
+    description:
+      "Split commissions with other users by phone number.",
+    shortcutKey: "p",
+    enabled: (data) => Boolean(data.commissionSplits?.length),
+    type: "modal",
+    add: false,
   },
   {
     key: "webhookIds",

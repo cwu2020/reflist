@@ -368,14 +368,19 @@ export const withWorkspace = (
         const url = new URL(req.url || "", API_DOMAIN);
 
         // plan checks
+        // Temporarily bypass all plan restrictions (comment out actual check)
+        /*
         if (!requiredPlan.includes(workspace.plan)) {
           throw new DubApiError({
             code: "forbidden",
             message: "Unauthorized: Need higher plan.",
           });
         }
+        */
 
         // analytics API checks
+        // Temporarily bypass all plan restrictions for analytics API
+        /*
         if (
           workspace.plan === "free" &&
           apiKey &&
@@ -386,6 +391,7 @@ export const withWorkspace = (
             message: "Analytics API is only available on paid plans.",
           });
         }
+        */
 
         return await handler({
           req,

@@ -11,8 +11,12 @@ interface RegisterContextType {
   email: string;
   password: string;
   step: "signup" | "verify";
+  phoneNumber?: string; // Optional phone number for claiming commissions
+  claim?: boolean; // Flag to indicate if user is claiming commissions
   setEmail: (email: string) => void;
   setPassword: (password: string) => void;
+  setPhoneNumber: (phoneNumber: string) => void; // Setter for phone number
+  setClaim: (claim: boolean) => void; // Setter for claim flag
   setStep: (step: "signup" | "verify") => void;
   lockEmail?: boolean;
 }
@@ -22,10 +26,17 @@ const RegisterContext = createContext<RegisterContextType | undefined>(
 );
 
 export const RegisterProvider: React.FC<
-  PropsWithChildren<{ email?: string; lockEmail?: boolean }>
-> = ({ email: emailProp, lockEmail, children }) => {
+  PropsWithChildren<{ 
+    email?: string; 
+    phoneNumber?: string;
+    claim?: boolean; 
+    lockEmail?: boolean;
+  }>
+> = ({ email: emailProp, phoneNumber: phoneNumberProp, claim: claimProp, lockEmail, children }) => {
   const [email, setEmail] = useState(emailProp ?? "");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(phoneNumberProp ?? "");
+  const [claim, setClaim] = useState(claimProp ?? false);
   const [step, setStep] = useState<"signup" | "verify">("signup");
 
   return (
@@ -33,9 +44,13 @@ export const RegisterProvider: React.FC<
       value={{
         email,
         password,
+        phoneNumber,
+        claim,
         step,
         setEmail,
         setPassword,
+        setPhoneNumber,
+        setClaim,
         setStep,
         lockEmail,
       }}
@@ -47,12 +62,10 @@ export const RegisterProvider: React.FC<
 
 export const useRegisterContext = () => {
   const context = useContext(RegisterContext);
-
-  if (context === undefined) {
+  if (!context) {
     throw new Error(
-      "useRegisterContext must be used within a RegisterProvider",
+      "useRegisterContext must be used within a RegisterContextProvider",
     );
   }
-
   return context;
 };

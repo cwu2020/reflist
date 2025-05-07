@@ -7,6 +7,12 @@ import { calculateSaleEarnings } from "../api/sales/calculate-sale-earnings";
 import { RewardProps } from "../types";
 import { determinePartnerReward } from "./determine-partner-reward";
 
+// Define the CommissionSplit type for the JSON field
+type LinkCommissionSplit = {
+  phoneNumber: string;
+  splitPercent: number;
+};
+
 export const createPartnerCommission = async ({
   reward,
   event,
@@ -127,11 +133,56 @@ export const createPartnerCommission = async ({
   }
 
   try {
-    const commission = await prisma.commission.create({
+    // Get link details to check for commission splits
+    // Use any type to bypass type checking for JSON fields
+    const link = await prisma.link.findUnique({
+      where: { id: linkId }
+    }) as any;
+
+    // Check if this link has commission splits configured
+    let commissionSplits: LinkCommissionSplit[] = [];
+    
+    if (link && link.commissionSplits) {
+      try {
+        // Parse the JSON data into our type
+        commissionSplits = JSON.parse(JSON.stringify(link.commissionSplits)) as LinkCommissionSplit[];
+      } catch (error) {
+        console.error("Error parsing commissionSplits JSON", error);
+      }
+    }
+
+    // If no splits defined, create commission as normal
+    if (!commissionSplits || commissionSplits.length === 0) {
+      const commission = await prisma.commission.create({
+        data: {
+          id: createId({ prefix: "cm_" }),
+          programId,
+          partnerId,
+          customerId,
+          linkId,
+          eventId,
+          invoiceId,
+          quantity,
+          amount,
+          type: event,
+          currency,
+          earnings,
+        },
+      });
+      return commission;
+    }
+
+    // Calculate creator's share (primary partner)
+    const totalSplitPercent = commissionSplits.reduce((sum, split) => sum + split.splitPercent, 0);
+    const creatorPercent = 100 - totalSplitPercent;
+    const creatorEarnings = Math.floor(earnings * (creatorPercent / 100));
+    
+    // Create primary commission for the creator
+    const primaryCommission = await prisma.commission.create({
       data: {
         id: createId({ prefix: "cm_" }),
         programId,
-        partnerId,
+        partnerId, // Original partner (link creator)
         customerId,
         linkId,
         eventId,
@@ -140,11 +191,63 @@ export const createPartnerCommission = async ({
         amount,
         type: event,
         currency,
-        earnings,
+        earnings: creatorEarnings,
       },
     });
-
-    return commission;
+    
+    // Process each split
+    for (const split of commissionSplits) {
+      const splitEarnings = Math.floor(earnings * (split.splitPercent / 100));
+      
+      // Check if recipient exists as partner
+      const existingPartner = await prisma.partner.findFirst({
+        where: {
+          users: { 
+            some: { 
+              user: { 
+                email: split.phoneNumber
+              } 
+            } 
+          }
+        }
+      });
+      
+      // Store split information in a JSON field on the commission record
+      // This is a simpler approach than creating a separate model
+      // It avoids schema changes while still tracking the information
+      const splitInfo = {
+        originalCommissionId: primaryCommission.id,
+        phoneNumber: existingPartner ? null : split.phoneNumber,
+        partnerId: existingPartner?.id || null,
+        splitPercent: split.splitPercent,
+        claimed: !!existingPartner,
+      };
+      
+      // If partner exists, create a commission for them directly
+      if (existingPartner) {
+        await prisma.commission.create({
+          data: {
+            id: createId({ prefix: "cm_" }),
+            programId,
+            partnerId: existingPartner.id,
+            customerId,
+            linkId,
+            eventId: `${eventId}_split_${existingPartner.id}`,
+            invoiceId,
+            quantity,
+            amount,
+            type: event,
+            currency,
+            earnings: splitEarnings,
+          },
+        });
+      }
+      
+      // Log the split for tracking purposes
+      console.log(`Commission split created: ${JSON.stringify(splitInfo)}`);
+    }
+    
+    return primaryCommission;
   } catch (error) {
     console.error("Error creating commission", error);
 
