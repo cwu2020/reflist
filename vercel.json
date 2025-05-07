@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run db:deploy && pnpm run build",
+  "buildCommand": "pnpm turbo build --filter=web",
   "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install",
   "env": {
