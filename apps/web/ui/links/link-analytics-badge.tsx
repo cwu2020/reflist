@@ -61,7 +61,7 @@ export function LinkAnalyticsBadge({
 
   // Also fetch fresh link stats directly from the database
   const { data: freshLinkData } = useSWR<LinkStatsResponse>(
-    workspaceId ? `/api/links/stats?domain=${domain}&key=${key}` : null,
+    workspaceId ? `/api/links/stats?domain=${domain}&key=${key}&workspaceId=${workspaceId}` : null,
     fetcher,
     {
       revalidateOnFocus: true,
