@@ -193,16 +193,19 @@ export async function createLink(link: ProcessedLinkProps) {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       geo: geo || Prisma.JsonNull,
       shopmyMetadata: shopmyMetadata || Prisma.JsonNull,
-      commissionSplits: commissionSplits
-        ? Array.isArray(commissionSplits)
+      // Handle commissionSplits as a JSON field in Prisma
+      ...(commissionSplits && {
+        commissionSplits: Array.isArray(commissionSplits)
           ? commissionSplits
           : JSON.parse(JSON.stringify(commissionSplits))
-        : Prisma.JsonNull,
-
+      }),
       testVariants: testVariants || Prisma.JsonNull,
       testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,
       testStartedAt: testStartedAt ? new Date(testStartedAt) : null,
-
+      
+      // The domain field needs to be present for the relation to work
+      domain: link.domain,
+      
       // Associate tags by tagNames
       ...(tagNames?.length &&
         link.projectId && {
