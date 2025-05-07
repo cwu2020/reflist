@@ -10,8 +10,6 @@
     }
   ],
   "env": {
-    "VERCEL_BUILD_SKIP_INSTALL": {
-      "value": "0"
-    }
+    "VERCEL_BUILD_SKIP_INSTALL": "0"
   }
 } 
