@@ -243,11 +243,7 @@ function LinkBuilder({ link }: { link: ExpandedLinkProps }) {
                 <LinkPartnerDetails 
                   link={{
                     ...link,
-                    commissionSplits: (link as any).commissionSplits 
-                      ? Array.isArray((link as any).commissionSplits) 
-                        ? (link as any).commissionSplits 
-                        : JSON.parse(JSON.stringify((link as any).commissionSplits))
-                      : undefined
+                    commissionSplits: (link as any).commissionSplits
                   }} 
                   partner={partner} 
                 />

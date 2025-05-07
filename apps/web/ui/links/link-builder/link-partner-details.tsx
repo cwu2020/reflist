@@ -35,10 +35,29 @@ export function LinkPartnerDetails({
   let commissionSplits: LinkCommissionSplit[] = [];
   if (link.commissionSplits) {
     try {
-      // Parse the JSON value to an array of LinkCommissionSplit
-      commissionSplits = link.commissionSplits as LinkCommissionSplit[];
+      // Improved parsing logic to handle different JSON formats
+      if (Array.isArray(link.commissionSplits)) {
+        // If it's already an array, use it directly
+        commissionSplits = link.commissionSplits as LinkCommissionSplit[];
+      } else if (typeof link.commissionSplits === 'string') {
+        // If it's a string, parse it
+        commissionSplits = JSON.parse(link.commissionSplits) as LinkCommissionSplit[];
+      } else {
+        // Otherwise, try to stringify and parse it
+        commissionSplits = JSON.parse(JSON.stringify(link.commissionSplits)) as LinkCommissionSplit[];
+      }
+      
+      // Additional validation to ensure the parsed data has the expected structure
+      commissionSplits = commissionSplits.filter(split => 
+        typeof split === 'object' && 
+        split !== null && 
+        'phoneNumber' in split && 
+        'splitPercent' in split
+      );
+      
+      console.log("Parsed commission splits:", commissionSplits);
     } catch (error) {
-      console.error("Error parsing commissionSplits", error);
+      console.error("Error parsing commissionSplits", error, link.commissionSplits);
     }
   }
   
