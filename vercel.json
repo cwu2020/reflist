@@ -5,7 +5,8 @@
       "src": "package.json",
       "use": "@vercel/next",
       "config": {
-        "buildCommand": "npm run db:deploy && npm run build"
+        "buildCommand": "npm run db:deploy && npm run build",
+        "outputDirectory": ".next"
       }
     }
   ],
