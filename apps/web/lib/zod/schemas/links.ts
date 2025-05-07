@@ -457,7 +457,7 @@ export const createLinkBodySchema = z.object({
     .describe("Metadata from ShopMy for merchant and affiliate information"),
   commissionSplits: z
     .array(linkSplitSchema)
-    .optional()
+    .nullish()
     .describe("Configuration for splitting commissions with other partners by phone number.")
 });
 
