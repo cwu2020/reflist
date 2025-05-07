@@ -1,15 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "buildCommand": "npm run db:deploy && npm run build",
-        "outputDirectory": ".next"
-      }
-    }
-  ],
+  "buildCommand": "npm run db:deploy && npm run build",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "npm ci",
   "env": {
     "VERCEL_BUILD_SKIP_INSTALL": "0"
   }
