@@ -101,6 +101,7 @@ export async function createLink(link: ProcessedLinkProps) {
     testStartedAt,
     testCompletedAt,
     originalUrl: initialProductUrl,
+    commissionSplits,
   } = link;
 
   // Handle ShopMy integration if metadata is present
@@ -192,6 +193,11 @@ export async function createLink(link: ProcessedLinkProps) {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       geo: geo || Prisma.JsonNull,
       shopmyMetadata: shopmyMetadata || Prisma.JsonNull,
+      commissionSplits: commissionSplits
+        ? Array.isArray(commissionSplits)
+          ? commissionSplits
+          : JSON.parse(JSON.stringify(commissionSplits))
+        : Prisma.JsonNull,
 
       testVariants: testVariants || Prisma.JsonNull,
       testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,
@@ -250,7 +256,7 @@ export async function createLink(link: ProcessedLinkProps) {
           },
         },
       }),
-    },
+    } as any,
     include: {
       ...includeTags,
       webhooks: webhookIds ? true : false,

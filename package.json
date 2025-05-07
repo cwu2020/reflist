@@ -20,6 +20,7 @@
     "test": "turbo run test",
     "db:check": "node scripts/check-schema-sync.js",
     "db:sync": "cd packages/prisma && pnpm run push",
+    "db:deploy": "cd packages/prisma && pnpm run deploy",
     "db:cleanup": "node cleanup-direct.js",
     "pre-deploy": "node scripts/pre-deploy-check.js"
   },

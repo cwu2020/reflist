@@ -56,7 +56,12 @@ export const MORE_ITEMS: MoreItem[] = [
     description:
       "Split commissions with other users by phone number.",
     shortcutKey: "p",
-    enabled: (data) => Boolean(data.commissionSplits?.length),
+    enabled: (data) => {
+      if (Array.isArray(data.commissionSplits)) {
+        return data.commissionSplits.length > 0;
+      }
+      return false;
+    },
     type: "modal",
     add: false,
   },

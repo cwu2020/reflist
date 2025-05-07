@@ -57,7 +57,7 @@ export async function processLinkWithPartner<T extends Record<string, any>>({
       // If we have ShopMy metadata, use it to construct a complete metadata object
       const completeShopMyData = shopmyMetadata ? {
         ...shopmyMetadata,
-        originalUrl: originalUrl || (shopmyMetadata.originalUrl || null)
+        originalUrl: originalUrl
       } : null;
       
       // Ensure partner is enrolled in a program for this URL

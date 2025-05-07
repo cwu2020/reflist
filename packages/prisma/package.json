@@ -11,7 +11,10 @@
     "studio": "npx prisma studio --schema=./schema --browser none",
     "prebuild": "pnpm run generate",
     "predev": "pnpm run generate",
-    "format": "npx prisma format --schema=./schema"
+    "format": "npx prisma format --schema=./schema",
+    "deploy": "node scripts/deploy-prisma.js",
+    "db:sync": "prisma db push",
+    "db:deploy": "node scripts/deploy-prisma.js"
   },
   "dependencies": {
     "@planetscale/database": "^1.18.0",

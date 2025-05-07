@@ -3,7 +3,7 @@
 import { createUserAccountAction } from "@/lib/actions/create-user-account";
 import { AnimatedSizeContainer, Button, useMediaQuery } from "@dub/ui";
 import { cn } from "@dub/utils";
-import { OTPInput } from "input-otp";
+import { OTPInput, SlotProps } from "input-otp";
 import { signIn } from "next-auth/react";
 import { useAction } from "next-safe-action/hooks";
 import { useRouter } from "next/navigation";
@@ -85,16 +85,20 @@ export const VerifyEmailForm = () => {
                 setCode(value);
                 setIsInvalidCode(false);
               }}
-              itemClassName={cn(
-                "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
-                {
-                  "border-red-500": isInvalidCode,
-                },
-              )}
               render={({ slots }) => (
                 <>
                   {slots.map((slot, idx) => (
-                    <div key={idx}>{slot}</div>
+                    <div 
+                      key={idx}
+                      className={cn(
+                        "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
+                        {
+                          "border-red-500": isInvalidCode,
+                        }
+                      )}
+                    >
+                      {slot.char}
+                    </div>
                   ))}
                 </>
               )}
@@ -107,12 +111,12 @@ export const VerifyEmailForm = () => {
           </div>
           <Button
             text={isPending || isRedirecting ? "Verifying..." : "Verify Email"}
-            fullWidth
+            className="w-full"
             type="submit"
             loading={isPending || isRedirecting}
             disabled={isPending || isRedirecting || code.length < 6}
           />
-          <ResendOtp />
+          <ResendOtp email={email} />
         </form>
       </AnimatedSizeContainer>
     </>

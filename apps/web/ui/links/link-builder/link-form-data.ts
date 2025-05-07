@@ -1,7 +1,8 @@
 import { ExpandedLinkProps } from "@/lib/types";
+import { Prisma } from "@prisma/client";
 
 // Define the CommissionSplit type
-type CommissionSplit = {
+export type CommissionSplit = {
   phoneNumber: string;
   splitPercent: number;
 };
@@ -9,5 +10,5 @@ type CommissionSplit = {
 // Extend the LinkFormData to include productUrl field and commissionSplits
 export interface LinkFormData extends ExpandedLinkProps {
   productUrl?: string; // The user-entered product URL
-  commissionSplits?: CommissionSplit[]; // Configuration for commission splits
+  commissionSplits: Prisma.JsonValue; // Configuration for commission splits
 } 

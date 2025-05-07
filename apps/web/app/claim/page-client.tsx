@@ -126,6 +126,6 @@ function calculateTotalAmount(commissions: any[]): string {
 
   // Format each currency group
   return Object.entries(byCurrency)
-    .map(([currency, amount]) => formatAmount(amount, currency))
+    .map(([currency, amount]) => formatAmount(amount as number, currency))
     .join(", ");
 } 

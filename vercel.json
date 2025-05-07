@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next",
+      "config": {
+        "buildCommand": "npm run db:deploy && npm run build"
+      }
+    }
+  ],
+  "env": {
+    "VERCEL_BUILD_SKIP_INSTALL": {
+      "value": "0"
+    }
+  }
+} 

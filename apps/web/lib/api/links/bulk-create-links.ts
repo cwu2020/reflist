@@ -73,6 +73,12 @@ export async function bulkCreateLinks({
         expiresAt: link.expiresAt ? new Date(link.expiresAt) : null,
         geo: link.geo || undefined,
         testVariants: link.testVariants || Prisma.JsonNull,
+        shopmyMetadata: link.shopmyMetadata ? 
+          JSON.parse(JSON.stringify(link.shopmyMetadata)) : 
+          Prisma.JsonNull,
+        commissionSplits: link.commissionSplits ? 
+          JSON.parse(JSON.stringify(link.commissionSplits)) : 
+          Prisma.JsonNull,
       };
     }),
     skipDuplicates: true,

@@ -1,5 +1,5 @@
 import useWorkspace from "@/lib/swr/use-workspace";
-import { LinkFormData } from "@/ui/links/link-builder/link-form-data";
+import { CommissionSplit, LinkFormData } from "@/ui/links/link-builder/link-form-data";
 import {
   Button,
   InfoTooltip,
@@ -18,7 +18,7 @@ export const CommissionSplitsToggle = () => {
   const { control, setValue, register } = useFormContext<LinkFormData>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "commissionSplits",
+    name: "commissionSplits" as any,
   });
 
   const [enableSplits, setEnableSplits] = useState(
@@ -46,7 +46,7 @@ export const CommissionSplitsToggle = () => {
     control,
     name: "commissionSplits",
     defaultValue: [],
-  });
+  }) as CommissionSplit[];
 
   const totalSplitPercentage = commissionSplits?.reduce(
     (sum, split) => sum + (split.splitPercent || 0),

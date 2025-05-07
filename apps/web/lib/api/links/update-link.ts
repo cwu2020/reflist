@@ -160,7 +160,7 @@ export async function updateLink({
           },
         },
       }),
-    },
+    } as any,
     include: {
       ...includeTags,
       webhooks: webhookIds ? true : false,

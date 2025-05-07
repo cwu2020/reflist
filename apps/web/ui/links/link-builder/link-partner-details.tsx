@@ -3,6 +3,7 @@ import { EnrolledPartnerProps, LinkProps } from "@/lib/types";
 import { ArrowUpRight } from "@dub/ui/icons";
 import { currencyFormatter, OG_AVATAR_URL } from "@dub/utils";
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 
 const formatCurrency = (value: number) =>
   currencyFormatter(value / 100, {
@@ -16,9 +17,9 @@ type LinkCommissionSplit = {
   splitPercent: number;
 };
 
-// Extend the LinkProps type to include commissionSplits
+// Extend the LinkProps type to include commissionSplits with the correct type
 interface LinkWithSplits extends LinkProps {
-  commissionSplits?: LinkCommissionSplit[];
+  commissionSplits: Prisma.JsonValue;
 }
 
 export function LinkPartnerDetails({
@@ -34,7 +35,8 @@ export function LinkPartnerDetails({
   let commissionSplits: LinkCommissionSplit[] = [];
   if (link.commissionSplits) {
     try {
-      commissionSplits = link.commissionSplits;
+      // Parse the JSON value to an array of LinkCommissionSplit
+      commissionSplits = link.commissionSplits as LinkCommissionSplit[];
     } catch (error) {
       console.error("Error parsing commissionSplits", error);
     }
