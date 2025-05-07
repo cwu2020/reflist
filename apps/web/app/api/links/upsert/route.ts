@@ -71,6 +71,11 @@ export const PUT = withWorkspace(
           link.testStartedAt instanceof Date
             ? link.testStartedAt.toISOString()
             : link.testStartedAt,
+        commissionSplits: (link as any).commissionSplits 
+          ? Array.isArray((link as any).commissionSplits) 
+            ? (link as any).commissionSplits 
+            : JSON.parse(JSON.stringify((link as any).commissionSplits))
+          : undefined,
         ...body,
       };
 

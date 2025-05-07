@@ -108,6 +108,12 @@ export const PATCH = withWorkspace(
           ? link.expiresAt.toISOString()
           : link.expiresAt,
       geo: link.geo as NewLinkProps["geo"],
+      // Ensure commissionSplits is properly typed
+      commissionSplits: (link as any).commissionSplits 
+        ? Array.isArray((link as any).commissionSplits) 
+          ? (link as any).commissionSplits 
+          : JSON.parse(JSON.stringify((link as any).commissionSplits))
+        : undefined,
 
       ...body,
       // for UTM tags, we only pass them to processLink if they have changed from their previous value
