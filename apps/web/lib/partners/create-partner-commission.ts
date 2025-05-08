@@ -303,76 +303,37 @@ export const createPartnerCommission = async ({
             claimed: isClaimed
           });
           
-          try {
-            await tx.$executeRaw`
-              INSERT INTO CommissionSplit (
-                id, commissionId, partnerId, phoneNumber, splitPercent, 
-                earnings, claimed, createdAt, updatedAt
-              ) VALUES (
-                ${splitId}, 
-                ${primaryCommission.id}, 
-                ${recipientPartner.id}, 
-                ${split.phoneNumber}, 
-                ${split.splitPercent}, 
-                ${splitEarnings}, 
-                ${isClaimed}, 
-                NOW(), 
-                NOW()
-              )
-            `;
-            console.log('CommissionSplit record created successfully');
-          } catch (sqlError) {
-            console.error('SQL Error creating CommissionSplit:', sqlError);
-            console.log('Trying alternate column format...');
-            
-            // Try with backticks around column names in case that's the issue
-            try {
-              await tx.$executeRaw`
-                INSERT INTO CommissionSplit (
-                  \`id\`, \`commissionId\`, \`partnerId\`, \`phoneNumber\`, \`splitPercent\`, 
-                  \`earnings\`, \`claimed\`, \`createdAt\`, \`updatedAt\`
-                ) VALUES (
-                  ${splitId}, 
-                  ${primaryCommission.id}, 
-                  ${recipientPartner.id}, 
-                  ${split.phoneNumber}, 
-                  ${split.splitPercent}, 
-                  ${splitEarnings}, 
-                  ${isClaimed}, 
-                  NOW(), 
-                  NOW()
-                )
-              `;
-              console.log('CommissionSplit record created successfully with alternate format');
-            } catch (backticksError) {
-              console.error('SQL Error (backticks attempt):', backticksError);
-              
-              // Try with lowercase table name
-              try {
-                console.log('Trying lowercase table name...');
-                await tx.$executeRaw`
-                  INSERT INTO commissionsplit (
-                    id, commissionId, partnerId, phoneNumber, splitPercent, 
-                    earnings, claimed, createdAt, updatedAt
-                  ) VALUES (
-                    ${splitId}, 
-                    ${primaryCommission.id}, 
-                    ${recipientPartner.id}, 
-                    ${split.phoneNumber}, 
-                    ${split.splitPercent}, 
-                    ${splitEarnings}, 
-                    ${isClaimed}, 
-                    NOW(), 
-                    NOW()
-                  )
-                `;
-                console.log('commissionsplit record created successfully with lowercase name');
-              } catch (lowercaseError) {
-                console.error('SQL Error (lowercase attempt):', lowercaseError);
-                throw lowercaseError; // Re-throw to be caught by outer try/catch
-              }
-            }
-          }
+          // Use SQL to create the CommissionSplit record
+          // If the partner is already associated with a user (isClaimed is true),
+          // mark the split as automatically claimed
+          await tx.$executeRaw`
+            INSERT INTO "CommissionSplit" (
+              "id", 
+              "commissionId", 
+              "partnerId", 
+              "phoneNumber", 
+              "splitPercent", 
+              "earnings", 
+              "claimed", 
+              "claimedAt", 
+              "claimedById", 
+              "createdAt", 
+              "updatedAt"
+            ) 
+            VALUES (
+              ${splitId}, 
+              ${primaryCommission.id}, 
+              ${recipientPartner.id}, 
+              ${split.phoneNumber}, 
+              ${split.splitPercent}, 
+              ${splitEarnings}, 
+              ${isClaimed}, 
+              ${isClaimed ? new Date() : null}, 
+              ${isClaimed ? recipientPartner.id : null}, 
+              NOW(), 
+              NOW()
+            )
+          `;
         });
         console.log('Transaction completed successfully');
       } catch (error) {

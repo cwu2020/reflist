@@ -85,6 +85,11 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       if (path === "/claim" && domain !== "localhost:8888") {
         return NextResponse.redirect(new URL(`https://app.${process.env.NEXT_PUBLIC_APP_DOMAIN}/claim`, req.url));
       }
+
+      // For localhost testing: direct rewrite of /claim to app.thereflist.com/claim
+      if (path === "/claim" && domain === "localhost:8888") {
+        return NextResponse.rewrite(new URL(`/app.thereflist.com/claim`, req.url));
+      }
     }
 
     // App routes

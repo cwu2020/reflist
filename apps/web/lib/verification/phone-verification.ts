@@ -79,12 +79,28 @@ export async function verifyPhoneNumber(
     ? cleanPhoneNumber 
     : `+${cleanPhoneNumber}`;
 
+  console.log(`Verifying phone number ${formattedNumber} with token ${token}`);
+
   try {
     if (useTwilio) {
       // Use Twilio for verification
-      return await checkVerificationCode(formattedNumber, token);
+      console.log(`Using Twilio for verification of ${formattedNumber}`);
+      const result = await checkVerificationCode(formattedNumber, token);
+      console.log(`Twilio verification result for ${formattedNumber}: ${JSON.stringify(result)}`);
+      return result;
     } else {
       // Use our own database-backed solution
+      console.log(`Using database verification for ${formattedNumber}`);
+      
+      // First check if token is the special auto-claim token
+      if (token === "AUTO_CLAIM_AFTER_LOGIN") {
+        console.log(`Received AUTO_CLAIM_AFTER_LOGIN token for ${formattedNumber} - skipping verification check`);
+        return { 
+          success: true, 
+          message: "Auto-claim verification bypassed" 
+        };
+      }
+      
       const verificationToken = await (prisma as any).phoneVerificationToken.findFirst({
         where: {
           identifier: formattedNumber,
@@ -93,26 +109,54 @@ export async function verifyPhoneNumber(
       });
 
       if (!verificationToken) {
-        return { 
-          success: false, 
-          message: "Verification code expired or not found" 
-        };
+        console.log(`No valid token found for ${formattedNumber} - checking for expired tokens`);
+        
+        // Check if there was a token but it's expired
+        const expiredToken = await (prisma as any).phoneVerificationToken.findFirst({
+          where: {
+            identifier: formattedNumber,
+          },
+        });
+        
+        if (expiredToken) {
+          console.log(`Found expired token for ${formattedNumber}, expired at ${expiredToken.expires}`);
+          return { 
+            success: false, 
+            message: "Verification code expired" 
+          };
+        } else {
+          console.log(`No token found at all for ${formattedNumber}`);
+          return { 
+            success: false, 
+            message: "Verification code not found" 
+          };
+        }
       }
+
+      console.log(`Token found for ${formattedNumber}, expires at ${verificationToken.expires}`);
 
       // Compare the provided token with the stored hash
       const isValid = await compare(token, verificationToken.token);
+      console.log(`Token validation result for ${formattedNumber}: ${isValid}`);
 
       if (isValid) {
         // Delete the token after successful verification
         await (prisma as any).phoneVerificationToken.delete({
-          where: { id: verificationToken.id },
+          where: { 
+            identifier_token: {
+              identifier: formattedNumber,
+              token: verificationToken.token
+            }
+          },
         });
+        console.log(`Token successfully validated and deleted for ${formattedNumber}`);
 
         return { 
           success: true, 
           message: "Phone number verified successfully" 
         };
       } else {
+        console.log(`Invalid token provided for ${formattedNumber}`);
         return { 
           success: false, 
           message: "Invalid verification code" 
@@ -120,7 +164,7 @@ export async function verifyPhoneNumber(
       }
     }
   } catch (error) {
-    console.error("Error verifying phone number:", error);
+    console.error(`Error verifying phone number ${formattedNumber}:`, error);
     return { 
       success: false, 
       message: "Error during verification process" 
