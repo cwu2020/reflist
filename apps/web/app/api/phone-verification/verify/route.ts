@@ -49,13 +49,16 @@ export async function POST(req: Request) {
       },
     });
 
+    // Filter out splits with null commission values
+    const validSplits = splits.filter(split => split.commission !== null);
+
     return NextResponse.json({
       success: true,
       message: result.message,
       data: {
         verified: true,
-        hasUnclaimedCommissions: splits.length > 0,
-        unclaimedCommissions: splits.map((split) => ({
+        hasUnclaimedCommissions: validSplits.length > 0,
+        unclaimedCommissions: validSplits.map((split) => ({
           id: split.id,
           amount: split.commission.amount,
           currency: split.commission.currency,

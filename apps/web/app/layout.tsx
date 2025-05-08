@@ -17,6 +17,7 @@ export default function RootLayout({
       className={cn(satoshi.variable, inter.variable, geistMono.variable)}
     >
       <body>
+
         <RootProviders>{children}</RootProviders>
 
         <Script id="set-theme" strategy="beforeInteractive">

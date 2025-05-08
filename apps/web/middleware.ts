@@ -70,14 +70,19 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
 
     // Handle special paths on the main domain
-    if (domain === process.env.NEXT_PUBLIC_APP_DOMAIN) {
+    if (domain === process.env.NEXT_PUBLIC_APP_DOMAIN || domain === "localhost:8888") {
+      // Serve the homepage for the root path
+      if (path === "/") {
+        return NextResponse.rewrite(new URL("/", req.url));
+      }
+      
       // Serve legal pages directly from the top-level legal directory
       if (path.startsWith("/legal/")) {
         return NextResponse.rewrite(new URL(`/legal${path.replace("/legal", "")}`, req.url));
       }
       
       // Redirect /claim to app subdomain where the claim functionality lives
-      if (path === "/claim") {
+      if (path === "/claim" && domain !== "localhost:8888") {
         return NextResponse.redirect(new URL(`https://app.${process.env.NEXT_PUBLIC_APP_DOMAIN}/claim`, req.url));
       }
     }
