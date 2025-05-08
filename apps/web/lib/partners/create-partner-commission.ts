@@ -214,11 +214,14 @@ export const createPartnerCommission = async ({
       originalEarnings: earnings
     });
     
-    // Create primary commission for the creator
+    // Generate a common token for all related commissions
+    const commonToken = createId({ prefix: "cm_" }).replace("cm_", "");
+    
+    // Create primary commission for the creator with -0 suffix
     console.log('Creating primary commission for creator with ID:', partnerId);
     const primaryCommission = await prisma.commission.create({
       data: {
-        id: createId({ prefix: "cm_" }),
+        id: `cm_${commonToken}-0`,
         programId,
         partnerId, // Original partner (link creator)
         customerId,
@@ -235,7 +238,7 @@ export const createPartnerCommission = async ({
     console.log('Primary commission created:', primaryCommission.id);
     
     // Process each split
-    for (const split of commissionSplits) {
+    for (const [index, split] of commissionSplits.entries()) {
       const splitEarnings = Math.floor(earnings * (split.splitPercent / 100));
       console.log('Processing split for', split.phoneNumber, 'with earnings', splitEarnings);
       
@@ -267,11 +270,11 @@ export const createPartnerCommission = async ({
       try {
         console.log('Starting transaction for split commission');
         await prisma.$transaction(async (tx) => {
-          // Create a commission for the recipient
+          // Create a commission for the recipient with -{index+1} suffix
           console.log('Creating split commission for recipient:', recipientPartner.id);
           const splitCommission = await tx.commission.create({
             data: {
-              id: createId({ prefix: "cm_" }),
+              id: `cm_${commonToken}-${index+1}`,
               programId,
               partnerId: recipientPartner.id,
               customerId,
@@ -289,7 +292,7 @@ export const createPartnerCommission = async ({
 
           // Create the split record through SQL since the model may not be available in the client yet
           console.log('Creating CommissionSplit record with SQL');
-          const splitId = createId({ prefix: "cm_" });
+          const splitId = `cm_${commonToken}-split-${index+1}`;
           console.log('CommissionSplit data:', {
             id: splitId,
             commissionId: primaryCommission.id,
