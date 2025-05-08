@@ -38,7 +38,11 @@ export const VerifyEmailForm = () => {
       });
 
       if (response?.ok) {
-        router.push("/onboarding");
+        if (claim && phoneNumber) {
+          router.push("/workspaces"); // Direct claimed users to their dashboard
+        } else {
+          router.push("/onboarding");
+        }
       } else {
         toast.error(
           "Failed to sign in with credentials. Please try again or contact support.",

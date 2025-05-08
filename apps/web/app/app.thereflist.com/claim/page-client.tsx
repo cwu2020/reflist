@@ -20,7 +20,7 @@ export default function PhoneVerificationPageClient() {
 
   const handleSignUp = () => {
     // Navigate to sign up page with phone number pre-filled
-    router.push(`/signin?phoneNumber=${encodeURIComponent(verifiedPhone)}&claim=true`);
+    router.push(`/register?phoneNumber=${encodeURIComponent(verifiedPhone)}&claim=true`);
   };
 
   return (
@@ -68,7 +68,7 @@ export default function PhoneVerificationPageClient() {
                       {unclaimedCommissions.map((commission, index) => (
                         <li key={index} className="text-sm">
                           <span className="font-medium">{commission.linkTitle}</span>:{" "}
-                          {formatAmount(commission.amount, commission.currency)} (
+                          {formatAmount(commission.earnings, commission.currency)} (
                           {new Date(commission.date).toLocaleDateString()})
                         </li>
                       ))}
@@ -120,7 +120,8 @@ function calculateTotalAmount(commissions: any[]): string {
     if (!acc[currency]) {
       acc[currency] = 0;
     }
-    acc[currency] += Number(commission.amount);
+    // Use earnings instead of amount
+    acc[currency] += Number(commission.earnings);
     return acc;
   }, {} as Record<string, number>);
 

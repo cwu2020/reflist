@@ -50,7 +50,7 @@ export function NavMobile({
     >
       {session && Object.keys(session).length > 0 ? (
         <AuthButton href={APP_DOMAIN} className="max-[280px]:hidden">
-          Dashboard
+          Home
         </AuthButton>
       ) : (
         <div className="flex gap-2 max-[280px]:hidden">
@@ -97,7 +97,7 @@ export function NavMobile({
                 href={APP_DOMAIN}
                 className="flex w-full font-semibold capitalize"
               >
-                Dashboard
+                Home
               </Link>
             </li>
           ) : (

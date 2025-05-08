@@ -90,7 +90,7 @@ export const createUserAccountAction = actionClient
               },
             },
             // If phone number is provided, save it to partner
-            ...(phoneNumber && { phone: phoneNumber }),
+            ...(phoneNumber && { phoneNumber: phoneNumber }),
           },
         });
         
@@ -110,8 +110,23 @@ export const createUserAccountAction = actionClient
 
 // Helper function to claim unclaimed commissions
 async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId: string) {
-  // Find all unclaimed commissions associated with this phone number
-  const unclaimedCommissions = await tx.commission.findMany({
+  // Find all unclaimed commission splits associated with this phone number
+  const commissionSplits = await tx.commissionSplit.findMany({
+    where: {
+      phoneNumber: phoneNumber,
+      claimed: false,
+    },
+    include: {
+      commission: {
+        include: {
+          program: true,
+        }
+      }
+    },
+  });
+
+  // Also check for legacy format with splitRecipientPhone field
+  const legacyCommissions = await tx.commission.findMany({
     where: {
       splitRecipientPhone: phoneNumber,
       splitClaimed: false,
@@ -121,12 +136,46 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
     },
   });
 
-  if (unclaimedCommissions.length === 0) {
+  if (commissionSplits.length === 0 && legacyCommissions.length === 0) {
     return;
   }
 
-  // For each unclaimed commission, create a new commission for the new partner
-  for (const commission of unclaimedCommissions) {
+  // Process commission splits first
+  for (const split of commissionSplits) {
+    if (split.commission) {
+      // Create a new commission for the new partner
+      await tx.commission.create({
+        data: {
+          id: createId({ prefix: "cm_" }),
+          programId: split.commission.programId,
+          partnerId: partnerId,
+          customerId: split.commission.customerId,
+          linkId: split.commission.linkId,
+          eventId: `${split.commission.eventId}_claimed_by_${partnerId}`,
+          invoiceId: split.commission.invoiceId,
+          quantity: split.commission.quantity,
+          amount: split.commission.amount,
+          type: split.commission.type,
+          currency: split.commission.currency,
+          earnings: split.earnings || 0,
+          note: `Claimed from commission split via phone verification (${phoneNumber})`,
+        },
+      });
+
+      // Mark the split as claimed
+      await tx.commissionSplit.update({
+        where: { id: split.id },
+        data: {
+          claimed: true,
+          claimedAt: new Date(),
+          claimedById: partnerId,
+        },
+      });
+    }
+  }
+
+  // Process legacy commissions
+  for (const commission of legacyCommissions) {
     // Create a new commission for the new partner
     await tx.commission.create({
       data: {
@@ -142,7 +191,7 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
         type: commission.type,
         currency: commission.currency,
         earnings: commission.splitAmount || 0,
-        note: `Claimed from split via phone verification (${phoneNumber})`,
+        note: `Claimed from legacy split via phone verification (${phoneNumber})`,
       },
     });
 
