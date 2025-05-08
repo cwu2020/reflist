@@ -110,6 +110,8 @@ export const createUserAccountAction = actionClient
 
 // Helper function to claim unclaimed commissions
 async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId: string) {
+  console.log(`Starting commission claiming process for phone: ${phoneNumber}, partnerId: ${partnerId}`);
+  
   // Find all unclaimed commission splits associated with this phone number
   const commissionSplits = await tx.commissionSplit.findMany({
     where: {
@@ -124,6 +126,8 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
       }
     },
   });
+  
+  console.log(`Found ${commissionSplits.length} unclaimed commission splits`);
 
   // Also check for legacy format with splitRecipientPhone field
   const legacyCommissions = await tx.commission.findMany({
@@ -163,14 +167,20 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
       });
 
       // Mark the split as claimed
-      await tx.commissionSplit.update({
-        where: { id: split.id },
-        data: {
-          claimed: true,
-          claimedAt: new Date(),
-          claimedById: partnerId,
-        },
-      });
+      try {
+        console.log(`Attempting to update commission split ${split.id} to claimed status for partner ${partnerId}`);
+        await tx.commissionSplit.update({
+          where: { id: split.id },
+          data: {
+            claimed: true,
+            claimedAt: new Date(),
+            claimedById: partnerId,
+          },
+        });
+        console.log(`Successfully updated commission split ${split.id} to claimed status`);
+      } catch (error) {
+        console.error(`Error updating commission split ${split.id}:`, error);
+      }
     }
   }
 
@@ -196,13 +206,35 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
     });
 
     // Mark the original commission as claimed
-    await tx.commission.update({
-      where: { id: commission.id },
-      data: {
-        splitClaimed: true,
-        splitClaimedAt: new Date(),
-        splitClaimedById: partnerId,
-      },
-    });
+    try {
+      console.log(`Attempting to update legacy commission ${commission.id} to claimed status for partner ${partnerId}`);
+      await tx.commission.update({
+        where: { id: commission.id },
+        data: {
+          splitClaimed: true,
+          splitClaimedAt: new Date(),
+          splitClaimedById: partnerId,
+        },
+      });
+      console.log(`Successfully updated legacy commission ${commission.id} to claimed status`);
+    } catch (error) {
+      console.error(`Error updating legacy commission ${commission.id}:`, error);
+    }
   }
+
+  // Verify all splits were properly claimed by checking for any remaining unclaimed splits
+  const remainingUnclaimedSplits = await tx.commissionSplit.findMany({
+    where: {
+      phoneNumber: phoneNumber,
+      claimed: false,
+    },
+  });
+  
+  console.log(`After claiming process, found ${remainingUnclaimedSplits.length} remaining unclaimed splits`);
+  
+  if (remainingUnclaimedSplits.length > 0) {
+    console.log(`WARNING: Not all commission splits were claimed. IDs: ${remainingUnclaimedSplits.map(s => s.id).join(', ')}`);
+  }
+  
+  console.log(`Commission claiming process completed for ${phoneNumber}`);
 }
