@@ -26,6 +26,7 @@ export const createPartnerCommission = async ({
   amount = 0,
   quantity,
   currency,
+  calculatedEarnings,
 }: {
   // we optionally let the caller pass in a reward to avoid a db call
   // (e.g. in aggregate-clicks route)
@@ -40,6 +41,7 @@ export const createPartnerCommission = async ({
   amount?: number;
   quantity: number;
   currency?: string;
+  calculatedEarnings?: number;
 }) => {
   if (!reward) {
     reward = await determinePartnerReward({
@@ -93,16 +95,22 @@ export const createPartnerCommission = async ({
     }
   }
 
-  let earnings =
-    event === "sale"
-      ? calculateSaleEarnings({
-          reward,
-          sale: {
-            quantity,
-            amount,
-          },
-        })
-      : reward.amount * quantity;
+  // If calculatedEarnings is provided, use that instead of calculating
+  let earnings = calculatedEarnings;
+  
+  // Only calculate earnings if not provided
+  if (earnings === undefined) {
+    earnings =
+      event === "sale"
+        ? calculateSaleEarnings({
+            reward,
+            sale: {
+              quantity,
+              amount,
+            },
+          })
+        : reward.amount * quantity;
+  }
 
   // handle rewards with max reward amount limit
   if (reward.maxAmount) {
@@ -169,6 +177,7 @@ export const createPartnerCommission = async ({
 
     // If no splits defined, create commission as normal
     if (!commissionSplits || commissionSplits.length === 0) {
+      console.log('No commission splits found, creating normal commission');
       const commission = await prisma.commission.create({
         data: {
           id: createId({ prefix: "cm_" }),
@@ -188,12 +197,25 @@ export const createPartnerCommission = async ({
       return commission;
     }
 
+    console.log('Processing commission splits:', { 
+      numberOfSplits: commissionSplits.length,
+      totalEarnings: earnings
+    });
+
     // Calculate creator's share (primary partner)
     const totalSplitPercent = commissionSplits.reduce((sum, split) => sum + split.splitPercent, 0);
     const creatorPercent = 100 - totalSplitPercent;
     const creatorEarnings = Math.floor(earnings * (creatorPercent / 100));
     
+    console.log('Split calculations:', {
+      totalSplitPercent,
+      creatorPercent,
+      creatorEarnings,
+      originalEarnings: earnings
+    });
+    
     // Create primary commission for the creator
+    console.log('Creating primary commission for creator with ID:', partnerId);
     const primaryCommission = await prisma.commission.create({
       data: {
         id: createId({ prefix: "cm_" }),
@@ -210,18 +232,22 @@ export const createPartnerCommission = async ({
         earnings: creatorEarnings,
       },
     });
+    console.log('Primary commission created:', primaryCommission.id);
     
     // Process each split
     for (const split of commissionSplits) {
       const splitEarnings = Math.floor(earnings * (split.splitPercent / 100));
+      console.log('Processing split for', split.phoneNumber, 'with earnings', splitEarnings);
       
       // Use our new function to get or create a partner by phone number
       let recipientPartner;
       try {
+        console.log('Looking up or creating partner for phone:', split.phoneNumber);
         recipientPartner = await getOrCreatePartnerByPhone(
           split.phoneNumber,
           `Split Recipient (${split.phoneNumber})`
         );
+        console.log('Retrieved/created partner:', recipientPartner.id);
       } catch (error) {
         console.error(`Error getting/creating partner for phone ${split.phoneNumber}:`, error);
         // Continue with next split if partner creation fails
@@ -235,50 +261,126 @@ export const createPartnerCommission = async ({
       
       // Partner is claimed if there's an associated user
       const isClaimed = !!partnerUser;
+      console.log('Partner claimed status:', isClaimed, partnerUser ? `(User: ${partnerUser.userId})` : '(No user)');
       
       // Create a commission and split record in a transaction 
-      await prisma.$transaction(async (tx) => {
-        // Create a commission for the recipient
-        const splitCommission = await tx.commission.create({
-          data: {
-            id: createId({ prefix: "cm_" }),
-            programId,
-            partnerId: recipientPartner.id,
-            customerId,
-            linkId,
-            eventId: `${eventId}_split_${recipientPartner.id}`,
-            invoiceId,
-            quantity,
-            amount,
-            type: event,
-            currency,
-            earnings: splitEarnings,
-          },
-        });
+      try {
+        console.log('Starting transaction for split commission');
+        await prisma.$transaction(async (tx) => {
+          // Create a commission for the recipient
+          console.log('Creating split commission for recipient:', recipientPartner.id);
+          const splitCommission = await tx.commission.create({
+            data: {
+              id: createId({ prefix: "cm_" }),
+              programId,
+              partnerId: recipientPartner.id,
+              customerId,
+              linkId,
+              eventId: `${eventId}_split_${recipientPartner.id}`,
+              invoiceId: invoiceId ? `${invoiceId}_split_${recipientPartner.id}` : null,
+              quantity,
+              amount,
+              type: event,
+              currency,
+              earnings: splitEarnings,
+            },
+          });
+          console.log('Split commission created:', splitCommission.id);
 
-        // Create the split record through SQL since the model may not be available in the client yet
-        await tx.$executeRaw`
-          INSERT INTO CommissionSplit (
-            id, commissionId, partnerId, phoneNumber, splitPercent, 
-            earnings, claimed, createdAt, updatedAt
-          ) VALUES (
-            ${createId({ prefix: "cm_" })}, 
-            ${primaryCommission.id}, 
-            ${recipientPartner.id}, 
-            ${split.phoneNumber}, 
-            ${split.splitPercent}, 
-            ${splitEarnings}, 
-            ${isClaimed}, 
-            NOW(), 
-            NOW()
-          )
-        `;
-      });
+          // Create the split record through SQL since the model may not be available in the client yet
+          console.log('Creating CommissionSplit record with SQL');
+          const splitId = createId({ prefix: "cm_" });
+          console.log('CommissionSplit data:', {
+            id: splitId,
+            commissionId: primaryCommission.id,
+            partnerId: recipientPartner.id,
+            phoneNumber: split.phoneNumber,
+            splitPercent: split.splitPercent,
+            earnings: splitEarnings,
+            claimed: isClaimed
+          });
+          
+          try {
+            await tx.$executeRaw`
+              INSERT INTO CommissionSplit (
+                id, commissionId, partnerId, phoneNumber, splitPercent, 
+                earnings, claimed, createdAt, updatedAt
+              ) VALUES (
+                ${splitId}, 
+                ${primaryCommission.id}, 
+                ${recipientPartner.id}, 
+                ${split.phoneNumber}, 
+                ${split.splitPercent}, 
+                ${splitEarnings}, 
+                ${isClaimed}, 
+                NOW(), 
+                NOW()
+              )
+            `;
+            console.log('CommissionSplit record created successfully');
+          } catch (sqlError) {
+            console.error('SQL Error creating CommissionSplit:', sqlError);
+            console.log('Trying alternate column format...');
+            
+            // Try with backticks around column names in case that's the issue
+            try {
+              await tx.$executeRaw`
+                INSERT INTO CommissionSplit (
+                  \`id\`, \`commissionId\`, \`partnerId\`, \`phoneNumber\`, \`splitPercent\`, 
+                  \`earnings\`, \`claimed\`, \`createdAt\`, \`updatedAt\`
+                ) VALUES (
+                  ${splitId}, 
+                  ${primaryCommission.id}, 
+                  ${recipientPartner.id}, 
+                  ${split.phoneNumber}, 
+                  ${split.splitPercent}, 
+                  ${splitEarnings}, 
+                  ${isClaimed}, 
+                  NOW(), 
+                  NOW()
+                )
+              `;
+              console.log('CommissionSplit record created successfully with alternate format');
+            } catch (backticksError) {
+              console.error('SQL Error (backticks attempt):', backticksError);
+              
+              // Try with lowercase table name
+              try {
+                console.log('Trying lowercase table name...');
+                await tx.$executeRaw`
+                  INSERT INTO commissionsplit (
+                    id, commissionId, partnerId, phoneNumber, splitPercent, 
+                    earnings, claimed, createdAt, updatedAt
+                  ) VALUES (
+                    ${splitId}, 
+                    ${primaryCommission.id}, 
+                    ${recipientPartner.id}, 
+                    ${split.phoneNumber}, 
+                    ${split.splitPercent}, 
+                    ${splitEarnings}, 
+                    ${isClaimed}, 
+                    NOW(), 
+                    NOW()
+                  )
+                `;
+                console.log('commissionsplit record created successfully with lowercase name');
+              } catch (lowercaseError) {
+                console.error('SQL Error (lowercase attempt):', lowercaseError);
+                throw lowercaseError; // Re-throw to be caught by outer try/catch
+              }
+            }
+          }
+        });
+        console.log('Transaction completed successfully');
+      } catch (error) {
+        console.error('Error in split transaction:', error);
+      }
       
       // Log the split for tracking purposes
       console.log(`Commission split created for partner ${recipientPartner.id} with phone ${split.phoneNumber}, claimed status: ${isClaimed}`);
     }
     
+    console.log('All commission splits processed, returning primary commission');
     return primaryCommission;
   } catch (error) {
     console.error("Error creating commission", error);

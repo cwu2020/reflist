@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
-// GET /api/links/exists – run keyChecks on the key
+// GET /api/links/exists – run keyChecks on the key
 export const GET = async (req: NextRequest) => {
   try {
     const searchParams = getSearchParams(req.url);
@@ -16,6 +16,9 @@ export const GET = async (req: NextRequest) => {
     let { domain, key, workspaceId } = domainKeySchema
       .and(workspaceIdSchema)
       .parse(searchParams);
+
+    // Log the input parameters for debugging
+    console.log("[links/exists]", { domain, key, workspaceId });
 
     const processedKey = processKey({ domain, key });
     if (processedKey === null) {
@@ -50,6 +53,8 @@ export const GET = async (req: NextRequest) => {
 
     return NextResponse.json(response);
   } catch (error) {
+    // Improved error logging
+    console.error("[links/exists] Error:", error);
     return handleAndReturnErrorResponse(error);
   }
 };

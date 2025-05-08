@@ -18,6 +18,8 @@ import { LOCALHOST_IP } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 import { processLinkWithPartner } from "@/lib/api/links/process-link-with-partner";
+import { exceededLimitError } from "@/lib/api/errors";
+import { updateLinksUsage } from "@/lib/api/links/update-links-usage";
 
 // GET /api/links – get all links for a workspace
 export const GET = withWorkspace(
@@ -82,54 +84,90 @@ export const POST = withWorkspace(
       throwIfLinksUsageExceeded(workspace);
     }
 
-    const body = createLinkBodySchema.parse(await parseRequestBody(req));
+    try {
+      // Validate request body with zod schema
+      const body = createLinkBodySchema.parse(await parseRequestBody(req));
 
-    if (!session) {
-      const ip = req.headers.get("x-forwarded-for") || LOCALHOST_IP;
-      const { success } = await ratelimit(10, "1 d").limit(ip);
+      // Log commission splits for debugging if present
+      if (body.commissionSplits && Array.isArray(body.commissionSplits)) {
+        console.log('Received commissionSplits:', body.commissionSplits);
 
-      if (!success) {
+        // Validate phone numbers in commission splits
+        for (const split of body.commissionSplits) {
+          if (!split.phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
+            throw new DubApiError({
+              code: "unprocessable_entity",
+              message: `Invalid phone number format: ${split.phoneNumber}. Must be in E.164 format (e.g., +12345678901).`,
+            });
+          }
+
+          // Validate split percentage
+          if (split.splitPercent < 1 || split.splitPercent > 99) {
+            throw new DubApiError({
+              code: "unprocessable_entity",
+              message: `Invalid split percentage: ${split.splitPercent}. Must be between 1 and 99.`,
+            });
+          }
+        }
+      }
+
+      if (!session) {
+        const ip = req.headers.get("x-forwarded-for") || LOCALHOST_IP;
+        const { success } = await ratelimit(10, "1 d").limit(ip);
+
+        if (!success) {
+          throw new DubApiError({
+            code: "rate_limit_exceeded",
+            message:
+              "Rate limited – you can only create up to 10 links per day without an account.",
+          });
+        }
+      }
+
+      const { link, error, code } = await processLinkWithPartner({
+        payload: body,
+        workspace,
+        ...(session && { userId: session.user.id }),
+      });
+
+      if (error != null) {
         throw new DubApiError({
-          code: "rate_limit_exceeded",
-          message:
-            "Rate limited – you can only create up to 10 links per day without an account.",
+          code: code as ErrorCodes,
+          message: error,
         });
       }
-    }
 
-    const { link, error, code } = await processLinkWithPartner({
-      payload: body,
-      workspace,
-      ...(session && { userId: session.user.id }),
-    });
+      try {
+        const response = await createLink(link);
 
-    if (error != null) {
-      throw new DubApiError({
-        code: code as ErrorCodes,
-        message: error,
-      });
-    }
+        if (response.projectId && response.userId) {
+          waitUntil(
+            sendWorkspaceWebhook({
+              trigger: "link.created",
+              workspace,
+              data: linkEventSchema.parse(response),
+            }),
+          );
+        }
 
-    try {
-      const response = await createLink(link);
-
-      if (response.projectId && response.userId) {
-        waitUntil(
-          sendWorkspaceWebhook({
-            trigger: "link.created",
-            workspace,
-            data: linkEventSchema.parse(response),
-          }),
-        );
+        return NextResponse.json(response, {
+          headers,
+        });
+      } catch (error) {
+        console.error("Error creating link:", error);
+        throw new DubApiError({
+          code: "unprocessable_entity",
+          message: error.message,
+        });
       }
-
-      return NextResponse.json(response, {
-        headers,
-      });
     } catch (error) {
+      console.error("Error processing link request:", error);
+      if (error instanceof DubApiError) {
+        throw error;
+      }
       throw new DubApiError({
         code: "unprocessable_entity",
-        message: error.message,
+        message: error.message || "Failed to create link",
       });
     }
   },

@@ -21,6 +21,7 @@ import { nanoid } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { calculateProgramEarnings } from "@/lib/api/sales/calculate-sale-earnings";
 
 type LeadEvent = z.infer<typeof leadEventSchemaTB>;
 
@@ -195,6 +196,17 @@ export const POST = withWorkspace(
 
         // for program links
         if (link.programId && link.partnerId) {
+          // Calculate raw earnings based on program's commission structure
+          const rawEarnings = await calculateProgramEarnings({
+            programId: link.programId,
+            amount: saleData.amount,
+            quantity: 1
+          });
+          
+          // Apply default userTakeRate to the earnings (50% goes to the user, 50% to the platform)
+          const defaultUserTakeRate = 50;
+          const adjustedEarnings = Math.floor(rawEarnings * (defaultUserTakeRate / 100));
+
           const commission = await createPartnerCommission({
             event: "sale",
             programId: link.programId,
@@ -206,6 +218,7 @@ export const POST = withWorkspace(
             quantity: 1,
             invoiceId,
             currency,
+            calculatedEarnings: adjustedEarnings, // Pass earnings with userTakeRate applied
           });
 
           if (commission) {
@@ -248,7 +261,7 @@ export const POST = withWorkspace(
 
     return NextResponse.json({
       ...sale,
-      // for backwards compatibility – will remove soon
+      // for backwards compatibility – will remove soon
       amount,
       currency,
       invoiceId,

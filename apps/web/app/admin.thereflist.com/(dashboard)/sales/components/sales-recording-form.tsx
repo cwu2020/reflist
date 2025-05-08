@@ -18,7 +18,7 @@ export interface SaleFormData {
   notes?: string;
   customerId?: string;
   commissionAmount?: number;
-  commissionSplitPercentage?: number;
+  userTakeRate?: number;
 }
 
 const PAYMENT_PROCESSORS = [
@@ -49,18 +49,18 @@ export function SalesRecordingForm({
     notes: "",
     customerId: "",
     commissionAmount: 0,
-    commissionSplitPercentage: 50, // Default to 50%
+    userTakeRate: 50,
   });
 
-  // Calculate partner earnings based on commission amount and split percentage
+  // Calculate partner earnings based on commission amount and take rate
   const calculatedEarnings = useMemo(() => {
     if (!formData.commissionAmount || formData.commissionAmount <= 0) {
       return 0;
     }
     
-    const splitPercentage = formData.commissionSplitPercentage || 50;
-    return Math.floor(formData.commissionAmount * (splitPercentage / 100));
-  }, [formData.commissionAmount, formData.commissionSplitPercentage]);
+    const takeRate = formData.userTakeRate || 50;
+    return Math.floor(formData.commissionAmount * (takeRate / 100));
+  }, [formData.commissionAmount, formData.userTakeRate]);
 
   // Validate that commission amount doesn't exceed sale amount
   useEffect(() => {
@@ -88,7 +88,7 @@ export function SalesRecordingForm({
   const handleSliderChange = (value: number) => {
     setFormData(prev => ({
       ...prev,
-      commissionSplitPercentage: value,
+      userTakeRate: value,
     }));
   };
 
@@ -178,17 +178,17 @@ export function SalesRecordingForm({
           </div>
 
           <div>
-            <label htmlFor="commissionSplitPercentage" className="mb-2 block text-sm font-medium text-neutral-700">
-              Commission Split Percentage: {formData.commissionSplitPercentage || 50}%
+            <label htmlFor="userTakeRate" className="mb-2 block text-sm font-medium text-neutral-700">
+              User Take Rate: {formData.userTakeRate || 50}%
             </label>
             <input
               type="range"
-              id="commissionSplitPercentage"
-              name="commissionSplitPercentage"
+              id="userTakeRate"
+              name="userTakeRate"
               min="0"
               max="100"
               step="1"
-              value={formData.commissionSplitPercentage || 50}
+              value={formData.userTakeRate || 50}
               onChange={(e) => handleSliderChange(parseInt(e.target.value))}
               className="w-full"
             />

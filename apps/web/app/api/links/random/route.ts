@@ -7,13 +7,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "edge";
 
-// GET /api/links/random – get a random available link key for a given domain
+// GET /api/links/random – get a random available link key for a given domain
 export const GET = async (req: NextRequest) => {
   try {
     const searchParams = getSearchParams(req.url);
     const { domain } = domainKeySchema
       .pick({ domain: true })
       .parse(searchParams);
+
+    // Log input parameters for debugging
+    console.log("[links/random]", { domain });
 
     await ratelimitOrThrow(req, "links-random");
 
@@ -23,6 +26,8 @@ export const GET = async (req: NextRequest) => {
     });
     return NextResponse.json(response);
   } catch (error) {
+    // Improved error logging
+    console.error("[links/random] Error:", error);
     return handleAndReturnErrorResponse(error);
   }
 };

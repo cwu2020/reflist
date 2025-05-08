@@ -161,6 +161,42 @@ export async function createLink(link: ProcessedLinkProps) {
     }
   }
 
+  // Debug logging for commission splits
+  console.log('Creating link with commission splits:', commissionSplits);
+
+  // Process commission splits
+  let processedCommissionSplits: any = null;
+  if (commissionSplits) {
+    try {
+      // Normalize the commission splits to ensure it's properly formatted
+      if (Array.isArray(commissionSplits)) {
+        // Validate each commission split
+        processedCommissionSplits = commissionSplits.map(split => {
+          // Ensure each split has phoneNumber and splitPercent
+          if (!split.phoneNumber || typeof split.splitPercent !== 'number') {
+            console.error('Invalid commission split:', split);
+            throw new Error(`Invalid commission split: ${JSON.stringify(split)}`);
+          }
+          return {
+            phoneNumber: split.phoneNumber,
+            splitPercent: split.splitPercent
+          };
+        });
+      } else if (typeof commissionSplits === 'string') {
+        // Parse string JSON
+        processedCommissionSplits = JSON.parse(commissionSplits);
+      } else {
+        // Assume it's an object that needs to be serialized
+        processedCommissionSplits = JSON.parse(JSON.stringify(commissionSplits));
+      }
+      console.log('Processed commission splits:', processedCommissionSplits);
+    } catch (error) {
+      console.error('Error processing commission splits:', error);
+      // Set to null if there's an error processing the splits
+      processedCommissionSplits = null;
+    }
+  }
+
   const combinedTagIds = combineTagIds(link);
 
   const { utm_source, utm_medium, utm_campaign, utm_term, utm_content } =
@@ -194,11 +230,7 @@ export async function createLink(link: ProcessedLinkProps) {
       geo: geo || Prisma.JsonNull,
       shopmyMetadata: shopmyMetadata || Prisma.JsonNull,
       // Handle commissionSplits as a JSON field in Prisma
-      ...(commissionSplits && {
-        commissionSplits: Array.isArray(commissionSplits)
-          ? commissionSplits
-          : JSON.parse(JSON.stringify(commissionSplits))
-      }),
+      commissionSplits: processedCommissionSplits || Prisma.JsonNull,
       testVariants: testVariants || Prisma.JsonNull,
       testCompletedAt: testCompletedAt ? new Date(testCompletedAt) : null,
       testStartedAt: testStartedAt ? new Date(testStartedAt) : null,

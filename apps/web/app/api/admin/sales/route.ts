@@ -11,6 +11,7 @@ import { calculateProgramEarnings, calculateManualEarnings } from "@/lib/api/sal
 import { recordSaleWithTimestamp } from "@/lib/tinybird/record-sale";
 import { generateRandomName } from "@/lib/names";
 import { OG_AVATAR_URL } from "@dub/utils";
+import { createPartnerCommission } from "@/lib/partners/create-partner-commission";
 
 // GET /api/admin/sales - Get manually recorded sales
 export async function GET(req: Request) {
@@ -102,7 +103,7 @@ const recordSaleSchema = z.object({
   notes: z.string().optional(),
   customerId: z.string().optional(), // Optional customer ID to associate with the sale
   commissionAmount: z.number().int().min(0).optional(), // Optional commission amount for manual override
-  commissionSplitPercentage: z.number().min(0).max(100).default(50).optional(), // Optional split percentage
+  userTakeRate: z.number().min(0).max(100).default(50).optional(), // Optional user take rate (renamed from commissionSplitPercentage)
 });
 
 // POST /api/admin/sales - Record a manual sale
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
       processor: string;
       event: string;
       commissionAmount?: number;
-      commissionSplitPercentage?: number;
+      userTakeRate?: number; // Renamed from commissionSplitPercentage
     } = {
       admin: session.user.email,
       date: new Date().toISOString(),
@@ -165,24 +166,47 @@ export async function POST(req: Request) {
     const eventId = `manual_${nanoid(10)}_${Buffer.from(JSON.stringify(adminInfo).slice(0, 100)).toString('base64')}`;
     
     // Calculate earnings based on provided commission data or program's commission structure
-    let earnings;
-    if (validatedData.commissionAmount !== undefined && validatedData.commissionSplitPercentage !== undefined) {
-      // Use manual override calculation
-      earnings = calculateManualEarnings({
+    let rawEarnings;
+    let adjustedEarnings; // Earnings after applying userTakeRate
+    let reward: any = null;
+
+    // Make sure userTakeRate has a value by using the default from the schema
+    const userTakeRate = validatedData.userTakeRate ?? 50;
+
+    // Always store userTakeRate in metadata for reference
+    adminInfo.userTakeRate = userTakeRate;
+
+    if (validatedData.commissionAmount !== undefined && validatedData.userTakeRate !== undefined) {
+      // Get raw earnings (commission amount)
+      rawEarnings = validatedData.commissionAmount;
+      
+      // Apply userTakeRate to get the adjusted earnings
+      adjustedEarnings = calculateManualEarnings({
         commissionAmount: validatedData.commissionAmount,
-        splitPercentage: validatedData.commissionSplitPercentage
+        splitPercentage: validatedData.userTakeRate // Use the exact value from form
       });
       
-      // Store commission data in the metadata for future reference
+      // Store commission amount in metadata
       adminInfo.commissionAmount = validatedData.commissionAmount;
-      adminInfo.commissionSplitPercentage = validatedData.commissionSplitPercentage;
+      
+      // Create a custom reward object for commission splits
+      reward = {
+        id: 'manual',
+        event: 'sale',
+        type: 'flat',
+        amount: validatedData.commissionAmount,
+        programId: link.programId || '',
+      };
     } else {
       // Use the default program-based calculation
-      earnings = await calculateProgramEarnings({
+      rawEarnings = await calculateProgramEarnings({
         programId: link.programId || null,
         amount: validatedData.amount,
         quantity: 1
       });
+      
+      // Apply the userTakeRate to the raw earnings
+      adjustedEarnings = Math.floor(rawEarnings * (userTakeRate / 100));
     }
 
     // Get or create a customer record if customerId is not provided
@@ -211,24 +235,71 @@ export async function POST(req: Request) {
       customerId = customer.id;
     }
 
-    // Create the commission record
-    const commission = await prisma.commission.create({
-      data: {
-        id: createId({ prefix: "cm_" }),
+    // Create the commission record using createPartnerCommission which handles commission splits
+    let commission;
+    try {
+      // Check if the link has commission splits
+      console.log("Checking for commission splits in link:", link.id);
+      console.log("Commission splits data:", (link as any).commissionSplits);
+      
+      // Use createPartnerCommission function which handles commission splits
+      commission = await createPartnerCommission({
+        reward,
+        event: EventType.sale,
         programId: link.programId || "",
         partnerId: link.partnerId || "",
         linkId: link.id,
-        customerId: customerId, // Associate with the customer
+        customerId: customerId,
         eventId,
-        type: EventType.sale,
+        invoiceId: validatedData.invoiceId || null,
         amount: validatedData.amount,
         quantity: 1,
         currency: validatedData.currency,
-        status: CommissionStatus.pending,
-        invoiceId: validatedData.invoiceId || null,
-        earnings: earnings,
-      },
-    });
+        calculatedEarnings: adjustedEarnings, // Use the earnings adjusted by userTakeRate
+      });
+      
+      if (!commission) {
+        // If createPartnerCommission returns null (e.g., no applicable reward), create a basic commission
+        console.log("Creating basic commission as fallback");
+        commission = await prisma.commission.create({
+          data: {
+            id: createId({ prefix: "cm_" }),
+            programId: link.programId || "",
+            partnerId: link.partnerId || "",
+            linkId: link.id,
+            customerId: customerId,
+            eventId,
+            type: EventType.sale,
+            amount: validatedData.amount,
+            quantity: 1,
+            currency: validatedData.currency,
+            status: CommissionStatus.pending,
+            invoiceId: validatedData.invoiceId || null,
+            earnings: adjustedEarnings,
+          },
+        });
+      }
+    } catch (commissionError) {
+      console.error("Error creating commission with splits:", commissionError);
+      // Fallback to basic commission creation if there's an error
+      commission = await prisma.commission.create({
+        data: {
+          id: createId({ prefix: "cm_" }),
+          programId: link.programId || "",
+          partnerId: link.partnerId || "",
+          linkId: link.id,
+          customerId: customerId,
+          eventId,
+          type: EventType.sale,
+          amount: validatedData.amount,
+          quantity: 1,
+          currency: validatedData.currency,
+          status: CommissionStatus.pending,
+          invoiceId: validatedData.invoiceId || null,
+          earnings: adjustedEarnings,
+        },
+      });
+    }
     
     // Update link sales statistics
     await prisma.link.update({
@@ -301,7 +372,7 @@ export async function POST(req: Request) {
         admin: session.user.email,
         notes: validatedData.notes || "",
         commissionAmount: validatedData.commissionAmount,
-        commissionSplitPercentage: validatedData.commissionSplitPercentage,
+        userTakeRate: validatedData.userTakeRate, // Renamed from commissionSplitPercentage
       }),
     };
     

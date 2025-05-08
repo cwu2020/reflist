@@ -10,6 +10,7 @@ import { prisma } from "@dub/prisma";
 import { nanoid } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import type Stripe from "stripe";
+import { calculateProgramEarnings } from "@/lib/api/sales/calculate-sale-earnings";
 
 // Handle event "invoice.paid"
 export async function invoicePaid(event: Stripe.Event) {
@@ -128,6 +129,17 @@ export async function invoicePaid(event: Stripe.Event) {
 
   // for program links
   if (link.programId && link.partnerId) {
+    // Calculate raw earnings based on program's commission structure
+    const rawEarnings = await calculateProgramEarnings({
+      programId: link.programId,
+      amount: saleData.amount,
+      quantity: 1
+    });
+    
+    // Apply default userTakeRate to the earnings (50% goes to the user, 50% to the platform)
+    const defaultUserTakeRate = 50;
+    const adjustedEarnings = Math.floor(rawEarnings * (defaultUserTakeRate / 100));
+
     const commission = await createPartnerCommission({
       event: "sale",
       programId: link.programId,
@@ -139,6 +151,7 @@ export async function invoicePaid(event: Stripe.Event) {
       quantity: 1,
       invoiceId,
       currency: saleData.currency,
+      calculatedEarnings: adjustedEarnings, // Pass earnings with userTakeRate applied
     });
 
     if (commission) {

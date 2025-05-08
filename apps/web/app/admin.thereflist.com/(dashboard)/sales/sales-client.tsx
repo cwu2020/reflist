@@ -40,8 +40,8 @@ export default function SalesPageClient() {
           commissionAmount: formData.commissionAmount && formData.commissionAmount > 0 
             ? formData.commissionAmount 
             : undefined,
-          commissionSplitPercentage: formData.commissionSplitPercentage !== undefined 
-            ? formData.commissionSplitPercentage 
+          userTakeRate: formData.userTakeRate !== undefined 
+            ? formData.userTakeRate 
             : undefined,
         }),
       });

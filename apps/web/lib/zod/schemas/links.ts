@@ -207,7 +207,7 @@ export const domainKeySchema = z.object({
 export const linkSplitSchema = z.object({
   phoneNumber: z
     .string()
-    .regex(/^\+[1-9]\d{1,14}$/, "Please enter a valid international phone number")
+    .regex(/^\+[1-9]\d{1,14}$/, "Please enter a valid international phone number in E.164 format (e.g., +12345678901)")
     .describe("The phone number of the partner to share the commission with."),
   splitPercent: z
     .number()
