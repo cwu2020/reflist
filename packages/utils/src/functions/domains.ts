@@ -40,18 +40,64 @@ export const getSubdomain = (name: string, apexName: string) => {
   return name.slice(0, name.length - apexName.length - 1);
 };
 
+/**
+ * Get the apex domain from a URL
+ * Enhanced to handle extremely long URLs, malformed URLs, and various edge cases
+ * 
+ * @param url The URL to extract the apex domain from
+ * @returns The apex domain or empty string if extraction fails
+ */
 export const getApexDomain = (url: string) => {
+  if (!url) return "";
+  
+  // For extremely long URLs, only process the first part to avoid performance issues
+  const maxProcessLength = 2000; // Safety limit for URL processing
+  const urlToProcess = url.length > maxProcessLength 
+    ? url.substring(0, maxProcessLength) 
+    : url;
+  
   let domain;
   try {
-    // replace any custom scheme (e.g. notion://) with https://
-    // use the URL constructor to get the hostname
-    domain = new URL(url.replace(/^[a-zA-Z]+:\/\//, "https://")).hostname;
+    // First try with standard URL parsing
+    // Replace any custom scheme (e.g. notion://) with https://
+    domain = new URL(urlToProcess.replace(/^[a-zA-Z]+:\/\//, "https://")).hostname;
   } catch (e) {
-    return "";
+    // If URL parsing fails, try to extract the domain with regex
+    try {
+      // Look for something that looks like a domain in the URL
+      const domainMatch = urlToProcess.match(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9-.]+)/i);
+      if (domainMatch && domainMatch[1]) {
+        domain = domainMatch[1];
+      } else {
+        // Try to handle common URL formats without protocol
+        if (!urlToProcess.includes('://') && !urlToProcess.startsWith('www.')) {
+          const domainCandidate = urlToProcess.split('/')[0];
+          if (domainCandidate.includes('.')) {
+            domain = domainCandidate;
+          }
+        }
+      }
+      
+      // If we still don't have a domain, return empty string
+      if (!domain) {
+        return "";
+      }
+    } catch (regexError) {
+      return "";
+    }
   }
+  
+  // Special case for YouTube shortened URLs
   if (domain === "youtu.be") return "youtube.com";
 
+  // Process the domain to extract the apex domain
   const parts = domain.split(".");
+  
+  // Handle IP addresses
+  if (parts.length === 4 && parts.every(part => !isNaN(parseInt(part)))) {
+    return domain; // This is an IP address
+  }
+  
   if (parts.length > 2) {
     if (
       // if this is a second-level TLD (e.g. co.uk, .com.ua, .org.tt), we need to return the last 3 parts
@@ -69,17 +115,49 @@ export const getApexDomain = (url: string) => {
   return domain;
 };
 
+/**
+ * Get the domain without www prefix
+ * Works with URLs with or without protocol
+ * 
+ * @param url The URL to process
+ * @returns The domain without www or null if extraction fails
+ */
 export const getDomainWithoutWWW = (url: string) => {
-  if (isValidUrl(url)) {
-    return new URL(url).hostname.replace(/^www\./, "");
+  if (!url) return null;
+  
+  // For extremely long URLs, only process the first part
+  const maxProcessLength = 2000;
+  const urlToProcess = url.length > maxProcessLength 
+    ? url.substring(0, maxProcessLength) 
+    : url;
+  
+  if (isValidUrl(urlToProcess)) {
+    return new URL(urlToProcess).hostname.replace(/^www\./, "");
   }
+  
   try {
-    if (url.includes(".") && !url.includes(" ")) {
-      return new URL(`https://${url}`).hostname.replace(/^www\./, "");
+    // Handle URLs without protocol
+    if (urlToProcess.includes(".") && !urlToProcess.includes(" ")) {
+      // Check first if it's already a domain without protocol
+      if (!urlToProcess.includes("/")) {
+        return urlToProcess.replace(/^www\./, "");
+      }
+      return new URL(`https://${urlToProcess}`).hostname.replace(/^www\./, "");
     }
   } catch (e) {
+    // Try a more lenient approach for edge cases
+    try {
+      const domainMatch = urlToProcess.match(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z0-9-.]+)/i);
+      if (domainMatch && domainMatch[1]) {
+        return domainMatch[1].replace(/^www\./, "");
+      }
+    } catch (regexError) {
+      // Ignore regex errors
+    }
     return null;
   }
+  
+  return null;
 };
 
 export const isDubDomain = (domain: string) => {

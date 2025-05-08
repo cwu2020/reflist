@@ -1,32 +1,61 @@
-import { customAlphabet } from 'nanoid';
 import { getApexDomain, getDomainWithoutWWW } from '@dub/utils';
-import { prisma } from '@dub/prisma';
-import { fetchShopMyMerchantData } from '@/lib/shopmy';
-import { CommissionType } from '@dub/prisma/client';
-import { createId } from '../api/create-id';
 
-// Alphanumeric characters without lookalikes (0/O, 1/I/l, etc.)
+/**
+ * Test script to verify URL processing improvements.
+ * This is a standalone version that uses mocks for Next.js-specific dependencies.
+ * Run with:
+ * npx tsx apps/web/scripts/test-url-processing.ts
+ */
+
+// Define constants for URL processing
+const MAX_URL_LENGTH = 1000;
 const TOKEN_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
 const TOKEN_LENGTH = 6;
 
-// Maximum URL length to store in the database
-const MAX_URL_LENGTH = 1000; // Increased from 500 to handle longer URLs
+// Mock functions for dependencies
+const mockFetchShopMyMerchantData = async (url) => {
+  console.log(`[MOCK] Fetching ShopMy data for: ${url.substring(0, 50)}...`);
+  // Return mock merchant data
+  return {
+    name: "Example Store",
+    domain: getApexDomain(url),
+    fullPayout: 15, // 15% commission
+    rateType: "percentage"
+  };
+};
 
-/**
- * Safely truncates a URL to a maximum length
- * Ensures the URL remains valid by keeping the protocol and domain
- * Removes unnecessary query parameters if possible
- * 
- * @param url The URL to truncate
- * @param maxLength Maximum length allowed
- * @returns Truncated URL
- */
-function truncateUrl(url: string, maxLength: number = MAX_URL_LENGTH): string {
+const mockPrisma = {
+  $transaction: async (callback) => {
+    // Mock program with ID
+    const mockProgram = { 
+      id: `prog_${Math.random().toString(36).substring(2, 10)}`,
+      name: "Mock Program",
+    };
+    return await callback({ 
+      program: {
+        create: async () => mockProgram,
+        update: async () => mockProgram
+      },
+      reward: {
+        create: async () => ({ 
+          id: `rw_${Math.random().toString(36).substring(2, 10)}`
+        })
+      }
+    });
+  }
+};
+
+const mockCreateId = ({ prefix }) => {
+  return `${prefix}${Math.random().toString(36).substring(2, 10)}`;
+};
+
+// Implementation of required functions from program.ts
+function truncateUrl(url, maxLength = MAX_URL_LENGTH) {
   if (!url || url.length <= maxLength) {
     return url;
   }
   
-  console.log(`Truncating long URL (${url.length} chars): ${url.substring(0, 100)}...`);
+  console.log(`Truncating long URL (${url.length} chars): ${url.substring(0, 50)}...`);
   
   try {
     // Try to clean the URL by removing common tracking parameters
@@ -58,7 +87,6 @@ function truncateUrl(url: string, maxLength: number = MAX_URL_LENGTH): string {
         console.log(`Removed tracking parameters, new length: ${cleanUrl.length}`);
       }
     } catch (cleanError) {
-      // If cleaning fails, continue with original URL
       console.warn('Error cleaning URL parameters:', cleanError);
     }
     
@@ -98,7 +126,6 @@ function truncateUrl(url: string, maxLength: number = MAX_URL_LENGTH): string {
     console.log(`Successfully truncated URL to ${truncatedUrl.length} chars`);
     return truncatedUrl;
   } catch (error) {
-    // If URL parsing fails, do a simple truncation but try to preserve a valid URL structure
     console.error("Error truncating URL:", error);
     
     // Try to extract domain without URL parsing
@@ -128,33 +155,19 @@ function truncateUrl(url: string, maxLength: number = MAX_URL_LENGTH): string {
   }
 }
 
-/**
- * Generates a deterministic token for a domain
- * The token is a 6-character string of alphanumeric characters
- * 
- * @param domain The domain to generate a token for
- * @returns A 6-character token
- */
-export function generateDomainToken(domain: string): string {
-  const nanoid = customAlphabet(TOKEN_ALPHABET, TOKEN_LENGTH);
-  return nanoid();
+function generateDomainToken(domain) {
+  // Simple implementation for testing
+  return Math.random().toString(36).substring(2, 2 + TOKEN_LENGTH).toUpperCase();
 }
 
-/**
- * Extracts domain from URL with enhanced error handling
- * Fallback to simpler extraction methods if the primary method fails
- * 
- * @param url The URL to extract domain from
- * @returns The apex domain or a fallback value
- */
-export function extractDomainSafely(url: string): string {
+function extractDomainSafely(url) {
   // First try the standard method
   const domain = getApexDomain(url);
   if (domain) {
     return domain;
   }
 
-  console.warn(`Standard domain extraction failed for URL: ${url.substring(0, 100)}...`);
+  console.warn(`Standard domain extraction failed for URL: ${url.substring(0, 50)}...`);
   
   // Fallback method 1: Try getting domain without www
   const domainWithoutWWW = getDomainWithoutWWW(url);
@@ -179,7 +192,7 @@ export function extractDomainSafely(url: string): string {
     }
     return hostname;
   } catch (e) {
-    console.error(`All domain extraction methods failed for URL: ${url.substring(0, 100)}...`);
+    console.error(`All domain extraction methods failed for URL: ${url.substring(0, 50)}...`);
     
     // Last resort: Try to find anything that looks like a domain
     const domainRegex = /[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/;
@@ -194,73 +207,24 @@ export function extractDomainSafely(url: string): string {
   }
 }
 
-/**
- * Creates a programId from a product URL
- * Format: {domain}_{TOKEN}
- * Example: cultgaia_ABC123
- * 
- * @param url The product URL
- * @returns The generated programId
- */
-export function generateProgramId(url: string): string {
+async function getOrCreateProgramByUrl(url, workspaceId, shopmyMetadata) {
   try {
-    // Extract domain from URL
-    const domain = extractDomainSafely(url);
-    
-    // Sanitize domain (remove special characters, keep only alphanumeric)
-    const sanitizedDomain = domain
-      .split('.')[0] // Take only the first part of the domain (e.g., 'cultgaia' from 'cultgaia.com')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '');
-    
-    // Generate token
-    const token = generateDomainToken(domain);
-    
-    // Return programId in the format {domain}_{TOKEN}
-    return `${sanitizedDomain}_${token}`;
-  } catch (error) {
-    console.error('Error generating programId:', error);
-    // Fallback to a generic format if there's an error
-    return `program_${generateDomainToken('fallback')}`;
-  }
-}
-
-/**
- * Creates a new program for a URL
- * This is meant to be used during link creation
- * Updated to always create a new program for each link
- * 
- * @param url The product URL
- * @param workspaceId The workspace ID
- * @param shopmyMetadata Optional ShopMy merchant data passed from link creation
- * @returns Promise resolving to the program information
- */
-export async function getOrCreateProgramByUrl(
-  url: string, 
-  workspaceId: string,
-  shopmyMetadata?: any
-): Promise<{
-  programId: string;
-  isNewProgram: boolean;
-}> {
-  try {
-    console.log(`Processing URL for program creation: ${url.substring(0, 100)}${url.length > 100 ? '...' : ''}`);
+    console.log(`Processing URL for program creation: ${url.substring(0, 50)}...`);
     
     // Extract domain from URL with enhanced error handling
     const domain = extractDomainSafely(url);
     console.log(`Extracted domain: ${domain}`);
     
     // Create a new program regardless of existing programs with the same domain
-    console.log(`Creating new program for URL: ${url.substring(0, 100)}${url.length > 100 ? '...' : ''}`);
+    console.log(`Creating new program for URL: ${url.substring(0, 50)}...`);
     
     // Default commission data
     let commissionData = {
-      type: 'percentage' as CommissionType,
+      type: 'percentage',
       amount: 10, // Default 10%
     };
     
     // Use the original URL if it exists (from ShopMy integration)
-    // This ensures we're using the merchant's actual URL, not ShopMy's tracking URL
     let originalUrl = (shopmyMetadata && 'originalUrl' in shopmyMetadata) ? 
       shopmyMetadata.originalUrl : 
       (url.includes('shopmy.us') ? null : url);
@@ -282,7 +246,7 @@ export async function getOrCreateProgramByUrl(
         
         // ShopMy uses 'percentage' or 'flat' for rateType
         commissionData.type = shopmyMetadata.rateType === 'percentage' ? 
-          CommissionType.percentage : CommissionType.flat;
+          'percentage' : 'flat';
         
         console.log(`Set commission from metadata: ${commissionData.amount}% (${commissionData.type})`);
       }
@@ -291,9 +255,9 @@ export async function getOrCreateProgramByUrl(
       console.log('No ShopMy metadata provided, fetching from API');
       try {
         const urlToFetch = originalUrl || safeUrl;
-        console.log(`Fetching ShopMy data for: ${urlToFetch.substring(0, 100)}${urlToFetch.length > 100 ? '...' : ''}`);
+        console.log(`Fetching ShopMy data for: ${urlToFetch.substring(0, 50)}...`);
         
-        const merchantData = await fetchShopMyMerchantData(urlToFetch);
+        const merchantData = await mockFetchShopMyMerchantData(urlToFetch);
         if (merchantData) {
           console.log('Successfully fetched ShopMy merchant data');
           // Convert commission data from ShopMy format to our format
@@ -303,7 +267,7 @@ export async function getOrCreateProgramByUrl(
             
             // ShopMy uses 'percentage' or 'flat' for rateType
             commissionData.type = merchantData.rateType === 'percentage' ? 
-              CommissionType.percentage : CommissionType.flat;
+              'percentage' : 'flat';
             
             console.log(`Set commission from API: ${commissionData.amount}% (${commissionData.type})`);
           }
@@ -313,7 +277,6 @@ export async function getOrCreateProgramByUrl(
       } catch (error) {
         console.error('Error fetching ShopMy merchant data:', error);
         console.log('Using default commission data due to ShopMy API error');
-        // Continue with default commission data
       }
     }
     
@@ -325,12 +288,12 @@ export async function getOrCreateProgramByUrl(
     
     console.log(`Creating program with unique slug: ${slug}`);
     
-    // Create program with default commission structure
-    const newProgram = await prisma.$transaction(async (tx) => {
+    // Create program with mock transaction
+    const newProgram = await mockPrisma.$transaction(async (tx) => {
       // Create the program
       const program = await tx.program.create({
         data: {
-          id: createId({ prefix: "prog_" }),
+          id: mockCreateId({ prefix: "prog_" }),
           name: `${domain} (${uniqueToken})`, // Add unique identifier to name
           slug,
           domain,
@@ -347,7 +310,7 @@ export async function getOrCreateProgramByUrl(
       // Create default reward for the program
       const reward = await tx.reward.create({
         data: {
-          id: createId({ prefix: "rw_" }),
+          id: mockCreateId({ prefix: "rw_" }),
           programId: program.id,
           name: `Default ${domain} Commission`,
           event: 'sale', // Default to sale event
@@ -398,12 +361,12 @@ export async function getOrCreateProgramByUrl(
         console.error('Error extracting domain for fallback:', e);
       }
       
-      // Create fallback program
-      const fallbackProgram = await prisma.$transaction(async (tx) => {
+      // Create fallback program with mock transaction
+      const fallbackProgram = await mockPrisma.$transaction(async (tx) => {
         // Create the program
         const program = await tx.program.create({
           data: {
-            id: createId({ prefix: "prog_" }),
+            id: mockCreateId({ prefix: "prog_" }),
             name: `Unknown Program (${new Date().toISOString().substring(0, 10)}) ${uniqueToken}`,
             slug,
             domain: domain.toLowerCase().replace(/[^a-z0-9\.\-]/g, ''),
@@ -418,11 +381,11 @@ export async function getOrCreateProgramByUrl(
         // Create default reward for the program
         const reward = await tx.reward.create({
           data: {
-            id: createId({ prefix: "rw_" }),
+            id: mockCreateId({ prefix: "rw_" }),
             programId: program.id,
             name: `Default Commission`,
             event: 'sale',
-            type: CommissionType.percentage,
+            type: 'percentage',
             amount: 10, // Default 10%
           },
         });
@@ -447,4 +410,150 @@ export async function getOrCreateProgramByUrl(
       throw error; // Throw the original error
     }
   }
-} 
+}
+
+// Test cases
+const testCases = [
+  // Normal URLs
+  {
+    name: "Standard URL",
+    url: "https://example.com/product/123",
+    expectedDomain: "example.com",
+  },
+  {
+    name: "URL with www",
+    url: "https://www.example.com/product/123",
+    expectedDomain: "example.com",
+  },
+  {
+    name: "URL with subdomain",
+    url: "https://shop.example.com/product/123",
+    expectedDomain: "example.com",
+  },
+  
+  // URLs with tracking parameters
+  {
+    name: "URL with tracking parameters",
+    url: "https://example.com/product/123?utm_source=google&utm_medium=cpc&utm_campaign=spring_sale",
+    expectedDomain: "example.com",
+  },
+  
+  // Very long URLs
+  {
+    name: "Very long URL with tracking parameters",
+    url: "https://example.com/product/really/long/path/with/many/segments/123?utm_source=google&utm_medium=cpc&utm_campaign=spring_sale&utm_content=" + "x".repeat(500) + "&fbclid=" + "y".repeat(200),
+    expectedDomain: "example.com",
+  },
+  
+  // Malformed URLs
+  {
+    name: "URL without protocol",
+    url: "example.com/product/123",
+    expectedDomain: "example.com",
+  },
+  {
+    name: "Just the domain",
+    url: "example.com",
+    expectedDomain: "example.com",
+  },
+  
+  // Edge cases
+  {
+    name: "URL with query fragment only",
+    url: "https://example.com?q=test",
+    expectedDomain: "example.com",
+  },
+  {
+    name: "URL with special characters in path",
+    url: "https://example.com/product/special_&*%$#@!_chars",
+    expectedDomain: "example.com",
+  }
+];
+
+// Additional test cases for extreme situations
+const extremeTestCases = [
+  {
+    name: "Extremely long URL (5000+ characters)",
+    url: "https://example.com/product/123?" + Array(50).fill("param" + "x".repeat(100) + "=value" + "y".repeat(100)).join("&"),
+    expectedDomain: "example.com", 
+  },
+  {
+    name: "URL with invalid characters in domain",
+    url: "https://exa mple.com/product/123",
+    expectedDomain: "unknown-domain.com", // This should use our fallback domain
+  },
+  {
+    name: "Completely malformed URL",
+    url: "not a url at all just some text",
+    expectedDomain: "unknown-domain.com", // This should use our fallback domain
+  },
+  {
+    name: "Empty URL",
+    url: "",
+    expectedDomain: "unknown-domain.com", // This should use our fallback domain
+  }
+];
+
+async function runTests() {
+  console.log("\n=== Testing URL Processing Functions ===\n");
+  
+  // Test original getApexDomain function
+  console.log("Testing getApexDomain function:");
+  for (const testCase of [...testCases, ...extremeTestCases]) {
+    try {
+      const result = getApexDomain(testCase.url);
+      const passed = result === testCase.expectedDomain;
+      console.log(`  ${passed ? '✅' : '❌'} ${testCase.name}: ${result} ${!passed ? `(expected: ${testCase.expectedDomain})` : ''}`);
+    } catch (error) {
+      console.log(`  ❌ ${testCase.name}: Threw an error - ${error.message}`);
+    }
+  }
+  
+  // Test our enhanced extractDomainSafely function
+  console.log("\nTesting extractDomainSafely function:");
+  for (const testCase of [...testCases, ...extremeTestCases]) {
+    try {
+      const result = extractDomainSafely(testCase.url);
+      const passed = result === testCase.expectedDomain;
+      console.log(`  ${passed ? '✅' : '❌'} ${testCase.name}: ${result} ${!passed ? `(expected: ${testCase.expectedDomain})` : ''}`);
+    } catch (error) {
+      console.log(`  ❌ ${testCase.name}: Threw an error - ${error.message}`);
+    }
+  }
+  
+  // Test program creation with extreme URLs
+  console.log("\nTesting getOrCreateProgramByUrl function with extreme cases:");
+  for (const testCase of extremeTestCases) {
+    try {
+      // Using a mock workspace ID for testing
+      const result = await getOrCreateProgramByUrl(testCase.url, "ws_test", null);
+      console.log(`  ✅ ${testCase.name}: Successfully created program: ${result.programId}`);
+    } catch (error) {
+      console.log(`  ❌ ${testCase.name}: Failed to create program - ${error.message}`);
+    }
+  }
+  
+  // Test creating multiple programs with the same URL
+  console.log("\nTesting unique program creation for identical URLs:");
+  try {
+    const testUrl = "https://example.com/product/123";
+    console.log(`Creating two programs with the same URL: ${testUrl}`);
+    
+    const result1 = await getOrCreateProgramByUrl(testUrl, "ws_test", null);
+    const result2 = await getOrCreateProgramByUrl(testUrl, "ws_test", null);
+    
+    if (result1.programId !== result2.programId) {
+      console.log(`  ✅ Different programs created successfully:`);
+      console.log(`     - First program: ${result1.programId}`);
+      console.log(`     - Second program: ${result2.programId}`);
+    } else {
+      console.log(`  ❌ Same program created for both calls: ${result1.programId}`);
+    }
+  } catch (error) {
+    console.log(`  ❌ Error testing unique program creation: ${error.message}`);
+  }
+  
+  console.log("\n=== Test complete ===\n");
+}
+
+runTests().catch(console.error); 
