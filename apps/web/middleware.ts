@@ -118,6 +118,12 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
 
     // App routes
     if (APP_HOSTNAMES.has(domain)) {
+      // Special handling for claim path to prevent it from being captured by [slug] route
+      if (path === "/claim" || path.startsWith("/claim/")) {
+        console.log(`Middleware: Special handling for claim path: ${path}`);
+        return NextResponse.rewrite(new URL(`/app.thereflist.com/claim${path.replace("/claim", "")}${req.nextUrl.search}`, req.url));
+      }
+      
       // In development mode, don't redirect login/register requests to production
       if (process.env.NODE_ENV === 'development' && (path.includes('/login') || path.includes('/register'))) {
         console.log(`Development mode: bypassing redirect for authentication path: ${path}`);
