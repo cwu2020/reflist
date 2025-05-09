@@ -81,6 +81,12 @@ export default async function AppMiddleware(req: NextRequest) {
         return NextResponse.redirect(new URL("/onboarding/link", req.url));
       }
 
+      // Special handling for /claim path
+    } else if (path === "/claim") {
+      // Rewrite to the claim page instead of treating it as a workspace
+      console.log(`User ${user.id} accessing /claim - rewriting to claim page`);
+      return NextResponse.rewrite(new URL("/app.thereflist.com/claim", req.url));
+
       // if the path is / or /login or /register, redirect to the default workspace
     } else if (
       [

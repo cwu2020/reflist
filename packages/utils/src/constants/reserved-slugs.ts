@@ -21,6 +21,8 @@ export const RESERVED_SLUGS = [
   "changelog",
   "atom",
   "careers",
+  "claim",
+  "legal",
   "docs",
   "features",
   "contact",
