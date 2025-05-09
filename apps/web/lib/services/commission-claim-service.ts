@@ -293,7 +293,7 @@ export class CommissionClaimService {
    */
   private async ensureUserHasWorkspace(tx: any, userId: string) {
     // First check if the user already has any workspaces
-    const userProjects = await tx.projectUser.findMany({
+    const userProjects = await tx.projectUsers.findMany({
       where: { userId },
       include: { project: true }
     });
