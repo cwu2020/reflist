@@ -38,6 +38,7 @@ export interface ButtonProps
   shortcut?: string;
   right?: ReactNode;
   disabledTooltip?: string | ReactNode;
+  children?: ReactNode;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -53,6 +54,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       shortcut,
       disabledTooltip,
       right,
+      children,
       ...props
     }: ButtonProps,
     forwardedRef,
@@ -71,7 +73,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           >
             {icon}
-            {text && (
+            {(text || children) && (
               <div
                 className={cn(
                   "min-w-0 truncate",
@@ -79,7 +81,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   textWrapperClassName,
                 )}
               >
-                {text}
+                {text || children}
               </div>
             )}
             {shortcut && (
@@ -115,7 +117,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading ? <LoadingSpinner /> : icon ? icon : null}
-        {text && (
+        {(text || children) && (
           <div
             className={cn(
               "min-w-0 truncate",
@@ -123,7 +125,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               textWrapperClassName,
             )}
           >
-            {text}
+            {text || children}
           </div>
         )}
         {shortcut && (

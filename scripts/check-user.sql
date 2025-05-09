@@ -1,0 +1,1 @@
+SELECT id, email, name FROM User WHERE id = 'user_1JTSSPKYQRPC9XPRAKBSTKT3W';
