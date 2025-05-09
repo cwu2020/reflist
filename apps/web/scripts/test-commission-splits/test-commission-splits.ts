@@ -1,4 +1,10 @@
+//cd web && echo 'DATABASE_URL="mysql://root:@localhost:3306/planetscale"' > .env && DATABASE_URL="mysql://root:@localhost:3306/planetscale" npm run script -- test-commission-splits/test-commission-splits
+
+
+
+
 // Script to test commission splits functionality by mimicking the admin sales form submission
+
 import { PrismaClient, EventType, Prisma } from '@prisma/client';
 import { createId } from '../../lib/api/create-id';
 import { nanoid } from '@dub/utils';
@@ -36,7 +42,7 @@ function generateRandomId(prefix: string): string {
 // Default test configuration - using the specific link from the request
 const defaultConfig: TestConfig = {
   findLinkBy: 'key',
-  linkKey: 'zngfoIX',
+  linkKey: 'T9KqcfU',
   amount: 10000, // $100.00
   currency: 'usd',
   paymentProcessor: 'custom',
