@@ -16,12 +16,6 @@ export default async function AppMiddleware(req: NextRequest) {
   const host = req.headers.get("host") || "";
   const isLocalhost = host.includes("localhost");
 
-  // Bypass processing for auth routes in local development
-  if (isLocalhost && (path === "/login" || path === "/register" || path.startsWith("/api/auth"))) {
-    console.log(`Local development: bypassing App middleware for auth path: ${path}`);
-    return NextResponse.next();
-  }
-
   const user = await getUserViaToken(req);
   const isWorkspaceInvite =
     req.nextUrl.searchParams.get("invite") || path.startsWith("/invites/");
@@ -35,10 +29,11 @@ export default async function AppMiddleware(req: NextRequest) {
     path !== "/auth/saml" &&
     path !== "/claim" &&
     !path.startsWith("/auth/reset-password/") &&
-    !path.startsWith("/share/")
+    !path.startsWith("/share/") &&
+    !(isLocalhost && path === "/app.thereflist.com/login")
   ) {
     // In development mode, use the correct path for login
-    const loginPath = process.env.NODE_ENV === 'development' 
+    const loginPath = isLocalhost
       ? `/app.thereflist.com/login${path === "/" ? "" : `?next=${encodeURIComponent(fullPath)}`}`
       : `/login${path === "/" ? "" : `?next=${encodeURIComponent(fullPath)}`}`;
       
@@ -113,18 +108,10 @@ export default async function AppMiddleware(req: NextRequest) {
   }
 
   // otherwise, rewrite the path to /app
-  // For local development, use proper path handling
-  if (isLocalhost) {
-    if (path === "/login" || path === "/register" || path.startsWith("/api/auth")) {
-      console.log(`Local development: not rewriting auth path: ${path}`);
-      return NextResponse.next();
-    }
-    
-    // For other paths in localhost, use the proper app subdomain path
-    console.log(`Local development: rewriting path to app subdomain: ${path}`);
-    return NextResponse.rewrite(new URL(`/app.thereflist.com${fullPath}`, req.url));
+  // Always rewrite to the app subdomain path structure
+  // For localhost, avoid double-prefixing the path
+  if (isLocalhost && path.startsWith("/app.thereflist.com")) {
+    return NextResponse.rewrite(new URL(path, req.url));
   }
-  
-  // In production, just do the normal rewrite
   return NextResponse.rewrite(new URL(`/app.thereflist.com${fullPath}`, req.url));
 }

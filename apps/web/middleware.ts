@@ -40,12 +40,49 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     
     // Check if we're in localhost environment
     const host = req.headers.get("host");
-    const isLocalhost = host?.includes("localhost");
     
-    // Handle local dev mode auth routes - completely bypass middleware for auth paths
-    if (isLocalhost && (pathname.includes("/login") || pathname.includes("/register") || pathname.startsWith("/api/auth"))) {
-      console.log(`Localhost environment: bypassing middleware for auth path: ${pathname}`);
+    // All other requests proceed with normal middleware
+    if (!host) {
+      console.error("No host header found in request");
       return NextResponse.next();
+    }
+
+    AxiomMiddleware(req, ev);
+    const { domain, path, key, fullKey } = parse(req);
+    console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
+
+    // App routes - treat localhost:8888 as equivalent to app.thereflist.com
+    if (APP_HOSTNAMES.has(domain)) {
+      return AppMiddleware(req);
+    }
+
+    // Localhost debugging for app subdomain paths
+    if (domain.includes("localhost") && path.startsWith("/app.thereflist.com")) {
+      console.log(`Detected app path on localhost: ${path} - handling via AppMiddleware`);
+      return AppMiddleware(req);
+    }
+
+    // Handle special paths on the main domain
+    if (domain === process.env.NEXT_PUBLIC_APP_DOMAIN) {
+      // Serve the homepage for the root path
+      if (path === "/") {
+        return NextResponse.rewrite(new URL("/", req.url));
+      }
+      
+      // Serve legal pages directly from the top-level legal directory
+      if (path.startsWith("/legal/")) {
+        return NextResponse.rewrite(new URL(`/legal${path.replace("/legal", "")}`, req.url));
+      }
+      
+      // Redirect /claim to app subdomain where the claim functionality lives
+      if (path === "/claim") {
+        return NextResponse.redirect(new URL(`https://app.${process.env.NEXT_PUBLIC_APP_DOMAIN}/claim`, req.url));
+      }
+    }
+
+    // Non-built-in API on custom domain
+    if (API_HOSTNAMES.has(domain)) {
+      return ApiMiddleware(req);
     }
 
     // Handle API routes that need CORS (add specific routes as needed)
@@ -68,75 +105,6 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
       return response;
     }
 
-    // All other requests proceed with normal middleware
-    if (!host) {
-      console.error("No host header found in request");
-      return NextResponse.next();
-    }
-
-    AxiomMiddleware(req, ev);
-    const { domain, path, key, fullKey } = parse(req);
-    console.log(`Middleware processing: domain=${domain}, path=${path}, key=${key}`);
-
-    // Handle special paths on the main domain
-    if (domain === process.env.NEXT_PUBLIC_APP_DOMAIN || domain === "localhost:8888") {
-      // Special handling for login/register in development mode
-      if (domain === "localhost:8888" && (path === "/login" || path === "/register" || path.startsWith("/api/auth"))) {
-        console.log(`Development mode on localhost: rewriting auth path to app subdomain: ${path}`);
-        // Direct rewrite of auth paths to app.thereflist.com/ paths
-        const authPath = path === "/login" ? "/login" : path === "/register" ? "/register" : path;
-        return NextResponse.rewrite(new URL(`/app.thereflist.com${authPath}${req.nextUrl.search}`, req.url));
-      }
-      
-      // Special handling for login/register in development mode with params
-      if (domain === "localhost:8888" && process.env.NODE_ENV === 'development' && 
-          (path.includes('/login') || path.includes('/register'))) {
-        console.log(`Development mode on localhost: bypassing middleware for auth path: ${path}`);
-        return NextResponse.rewrite(new URL(`/app.thereflist.com${path}${req.nextUrl.search}`, req.url));
-      }
-      
-      // Serve the homepage for the root path
-      if (path === "/") {
-        return NextResponse.rewrite(new URL("/", req.url));
-      }
-      
-      // Serve legal pages directly from the top-level legal directory
-      if (path.startsWith("/legal/")) {
-        return NextResponse.rewrite(new URL(`/legal${path.replace("/legal", "")}`, req.url));
-      }
-      
-      // Redirect /claim to app subdomain where the claim functionality lives
-      if (path === "/claim" && domain !== "localhost:8888") {
-        return NextResponse.redirect(new URL(`https://app.${process.env.NEXT_PUBLIC_APP_DOMAIN}/claim`, req.url));
-      }
-
-      // For localhost testing: direct rewrite of /claim to app.thereflist.com/claim
-      if (path === "/claim" && domain === "localhost:8888") {
-        return NextResponse.rewrite(new URL(`/app.thereflist.com/claim`, req.url));
-      }
-    }
-
-    // App routes
-    if (APP_HOSTNAMES.has(domain)) {
-      // Special handling for claim path to prevent it from being captured by [slug] route
-      if (path === "/claim" || path.startsWith("/claim/")) {
-        console.log(`Middleware: Special handling for claim path: ${path}`);
-        return NextResponse.rewrite(new URL(`/app.thereflist.com/claim${path.replace("/claim", "")}${req.nextUrl.search}`, req.url));
-      }
-      
-      // In development mode, don't redirect login/register requests to production
-      if (process.env.NODE_ENV === 'development' && (path.includes('/login') || path.includes('/register'))) {
-        console.log(`Development mode: bypassing redirect for authentication path: ${path}`);
-        return NextResponse.next();
-      }
-      return AppMiddleware(req);
-    }
-
-    // Non-built-in API on custom domain
-    if (API_HOSTNAMES.has(domain)) {
-      return ApiMiddleware(req);
-    }
-
     // Public stats pages
     if (path.startsWith("/stats/")) {
       return NextResponse.rewrite(new URL(`/${domain}${path}`, req.url));
@@ -151,11 +119,6 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
         );
       }
     }
-
-    // // Default redirects for dub.sh
-    // if (domain === "dub.sh" && DEFAULT_REDIRECTS[key]) {
-    //   return NextResponse.redirect(DEFAULT_REDIRECTS[key]);
-    // }
 
     // Admin panel
     if (ADMIN_HOSTNAMES.has(domain)) {

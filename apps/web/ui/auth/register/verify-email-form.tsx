@@ -1,7 +1,7 @@
 "use client";
 
 import { createUserAccountAction } from "@/lib/actions/create-user-account";
-import { AnimatedSizeContainer, Button, useMediaQuery } from "@dub/ui";
+import { AnimatedSizeContainer, Button, useMediaQuery, Wordmark } from "@dub/ui";
 import { cn } from "@dub/utils";
 import { OTPInput, SlotProps } from "input-otp";
 import { signIn } from "next-auth/react";
@@ -19,6 +19,7 @@ export const VerifyEmailForm = () => {
   const { email, password, phoneNumber, claim } = useRegisterContext();
   const [isInvalidCode, setIsInvalidCode] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
   const { executeAsync, isPending } = useAction(createUserAccountAction, {
     async onSuccess() {
@@ -31,6 +32,7 @@ export const VerifyEmailForm = () => {
       
       setIsRedirecting(true);
 
+      // Sign in to create session
       const response = await signIn("credentials", {
         email,
         password,
@@ -39,8 +41,36 @@ export const VerifyEmailForm = () => {
 
       if (response?.ok) {
         if (claim && phoneNumber) {
-          router.push("/workspaces"); // Direct claimed users to their dashboard
+          // For claim users, the ClaimCommissionService creates a workspace asynchronously
+          // Show loading animation while waiting
+          setIsCreatingWorkspace(true);
+          
+          // Add a small delay to allow the async operation to complete
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          try {
+            // Try to fetch the user's workspace directly
+            const workspacesResponse = await fetch('/api/workspaces');
+            
+            if (workspacesResponse.ok) {
+              const workspaces = await workspacesResponse.json();
+              
+              if (workspaces && workspaces.length > 0 && workspaces[0].slug) {
+                // Direct redirect to the user's workspace if found
+                console.log(`Redirecting user to workspace: /${workspaces[0].slug}`);
+                router.push(`/${workspaces[0].slug}`);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching workspaces:", error);
+          }
+          
+          // Fallback if the direct fetch fails
+          console.log("Fallback to /workspaces redirect");
+          router.push("/workspaces");
         } else {
+          // Normal users go through regular onboarding
           router.push("/onboarding");
         }
       } else {
@@ -64,64 +94,85 @@ export const VerifyEmailForm = () => {
   return (
     <>
       <AnimatedSizeContainer>
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            executeAsync({
-              email,
-              password,
-              code,
-              phoneNumber,
-              claim,
-            });
-          }}
-        >
-          <div>
-            <div className="pb-2 text-sm font-medium">
-              We've sent a verification code to <b>{email}</b>
-            </div>
-            <OTPInput
-              maxLength={6}
-              containerClassName="flex justify-center gap-2 pb-2"
-              value={code}
-              onChange={(value) => {
-                setCode(value);
-                setIsInvalidCode(false);
-              }}
-              render={({ slots }) => (
-                <>
-                  {slots.map((slot, idx) => (
-                    <div 
-                      key={idx}
-                      className={cn(
-                        "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
-                        {
-                          "border-red-500": isInvalidCode,
-                        }
-                      )}
-                    >
-                      {slot.char}
-                    </div>
-                  ))}
-                </>
-              )}
-            />
-            {isInvalidCode && (
-              <div className="text-center text-xs font-normal leading-none text-red-500">
-                Invalid code, please try again.
+        {isCreatingWorkspace ? (
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="relative flex w-auto items-center justify-center px-6 py-2 [--offset:20px] [animation-duration:1.3s] [animation-fill-mode:both]">
+              <div className="absolute inset-0 opacity-10">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse-scale absolute inset-0 rounded-full mix-blend-color-burn"
+                    style={{
+                      animationDelay: `${i * -2}s`,
+                      backgroundImage: `linear-gradient(90deg, #000, transparent, #000)`,
+                    }}
+                  />
+                ))}
               </div>
-            )}
+              <Wordmark className="relative h-12" />
+            </div>
+            <p className="text-sm text-neutral-500">Setting up your account...</p>
           </div>
-          <Button
-            text={isPending || isRedirecting ? "Verifying..." : "Verify Email"}
-            className="w-full"
-            type="submit"
-            loading={isPending || isRedirecting}
-            disabled={isPending || isRedirecting || code.length < 6}
-          />
-          <ResendOtp email={email} />
-        </form>
+        ) : (
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              executeAsync({
+                email,
+                password,
+                code,
+                phoneNumber,
+                claim,
+              });
+            }}
+          >
+            <div>
+              <div className="pb-2 text-sm font-medium">
+                We've sent a verification code to <b>{email}</b>
+              </div>
+              <OTPInput
+                maxLength={6}
+                containerClassName="flex justify-center gap-2 pb-2"
+                value={code}
+                onChange={(value) => {
+                  setCode(value);
+                  setIsInvalidCode(false);
+                }}
+                render={({ slots }) => (
+                  <>
+                    {slots.map((slot, idx) => (
+                      <div 
+                        key={idx}
+                        className={cn(
+                          "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
+                          {
+                            "border-red-500": isInvalidCode,
+                          }
+                        )}
+                      >
+                        {slot.char}
+                      </div>
+                    ))}
+                  </>
+                )}
+              />
+              {isInvalidCode && (
+                <div className="text-center text-xs font-normal leading-none text-red-500">
+                  Invalid code, please try again.
+                </div>
+              )}
+            </div>
+            <Button
+              text={isPending || isRedirecting ? "Verifying..." : "Verify Email"}
+              className="w-full"
+              type="submit"
+              loading={isPending || isRedirecting}
+              disabled={isPending || isRedirecting || code.length < 6}
+            />
+            <ResendOtp email={email} />
+          </form>
+        )}
       </AnimatedSizeContainer>
     </>
   );
