@@ -2,7 +2,7 @@ import { getStartEndDates } from "@/lib/analytics/utils/get-start-end-dates";
 import { withWorkspace } from "@/lib/auth";
 import { getWorkspaceEarningsCountQuerySchema } from "@/lib/zod/schemas/earnings";
 import { prisma } from "@dub/prisma";
-import { CommissionStatus } from "@dub/prisma/client";
+import { CommissionStatus, Prisma } from "@dub/prisma/client";
 import { NextResponse } from "next/server";
 
 // GET /api/workspace/[slug]/earnings/count - get earnings counts and totals
@@ -14,21 +14,8 @@ export const GET = withWorkspace(
 
       const { startDate, endDate } = getStartEndDates(parsed);
 
-      // Initialize base OR conditions
-      const baseOrCondition = [
-        // Include commissions from programs belonging to this workspace
-        {
-          program: {
-            workspaceId: workspace.id,
-          },
-        },
-        // Include commissions from links directly created in this workspace
-        {
-          link: {
-            projectId: workspace.id,
-          },
-        }
-      ];
+      // Initialize base OR conditions - empty array as we'll only include user's partner IDs
+      const baseOrCondition: Prisma.CommissionWhereInput[] = [];
 
       // Only attempt to add partner conditions if we have a user session
       if (session?.user?.id) {
@@ -60,12 +47,38 @@ export const GET = withWorkspace(
               partnerId: {
                 in: partnerIds
               }
-            } as any);
+            });
           }
         } catch (partnerError) {
           console.error("Error fetching partner IDs:", partnerError);
           // Continue without partner filtering if there's an error
         }
+      }
+
+      // If there are no conditions, return empty counts
+      if (baseOrCondition.length === 0) {
+        const emptyResult = {
+          counts: Object.values(CommissionStatus).reduce(
+            (acc, status) => {
+              acc[status] = {
+                count: 0,
+                amount: 0,
+                earnings: 0,
+              };
+              return acc;
+            },
+            {
+              all: { count: 0, amount: 0, earnings: 0 },
+            } as Record<
+              CommissionStatus | "all",
+              { count: number; amount: number; earnings: number }
+            >
+          ),
+          monthlyEarnings: 0,
+          availableBalance: 0,
+          pendingEarnings: 0,
+        };
+        return NextResponse.json(emptyResult);
       }
 
       const commissionsCount = await prisma.commission.groupBy({

@@ -307,18 +307,18 @@ export const createPartnerCommission = async ({
           // If the partner is already associated with a user (isClaimed is true),
           // mark the split as automatically claimed
           await tx.$executeRaw`
-            INSERT INTO "CommissionSplit" (
-              "id", 
-              "commissionId", 
-              "partnerId", 
-              "phoneNumber", 
-              "splitPercent", 
-              "earnings", 
-              "claimed", 
-              "claimedAt", 
-              "claimedById", 
-              "createdAt", 
-              "updatedAt"
+            INSERT INTO CommissionSplit (
+              id, 
+              commissionId, 
+              partnerId, 
+              phoneNumber, 
+              splitPercent, 
+              earnings, 
+              claimed, 
+              claimedAt, 
+              claimedByPartnerId, 
+              createdAt, 
+              updatedAt
             ) 
             VALUES (
               ${splitId}, 

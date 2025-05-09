@@ -12,8 +12,14 @@ import WorkspacesMiddleware from "./workspaces";
 export default async function AppMiddleware(req: NextRequest) {
   const { path, fullPath, searchParamsString } = parse(req);
 
-  if (path.startsWith("/embed")) {
-    return EmbedMiddleware(req);
+  // Check if we're in local development mode
+  const host = req.headers.get("host") || "";
+  const isLocalhost = host.includes("localhost");
+
+  // Bypass processing for auth routes in local development
+  if (isLocalhost && (path === "/login" || path === "/register" || path.startsWith("/api/auth"))) {
+    console.log(`Local development: bypassing App middleware for auth path: ${path}`);
+    return NextResponse.next();
   }
 
   const user = await getUserViaToken(req);
@@ -31,12 +37,12 @@ export default async function AppMiddleware(req: NextRequest) {
     !path.startsWith("/auth/reset-password/") &&
     !path.startsWith("/share/")
   ) {
-    return NextResponse.redirect(
-      new URL(
-        `/login${path === "/" ? "" : `?next=${encodeURIComponent(fullPath)}`}`,
-        req.url,
-      ),
-    );
+    // In development mode, use the correct path for login
+    const loginPath = process.env.NODE_ENV === 'development' 
+      ? `/app.thereflist.com/login${path === "/" ? "" : `?next=${encodeURIComponent(fullPath)}`}`
+      : `/login${path === "/" ? "" : `?next=${encodeURIComponent(fullPath)}`}`;
+      
+    return NextResponse.redirect(new URL(loginPath, req.url));
 
     // if there's a user
   } else if (user) {
@@ -107,5 +113,18 @@ export default async function AppMiddleware(req: NextRequest) {
   }
 
   // otherwise, rewrite the path to /app
+  // For local development, use proper path handling
+  if (isLocalhost) {
+    if (path === "/login" || path === "/register" || path.startsWith("/api/auth")) {
+      console.log(`Local development: not rewriting auth path: ${path}`);
+      return NextResponse.next();
+    }
+    
+    // For other paths in localhost, use the proper app subdomain path
+    console.log(`Local development: rewriting path to app subdomain: ${path}`);
+    return NextResponse.rewrite(new URL(`/app.thereflist.com${fullPath}`, req.url));
+  }
+  
+  // In production, just do the normal rewrite
   return NextResponse.rewrite(new URL(`/app.thereflist.com${fullPath}`, req.url));
 }

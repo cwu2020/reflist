@@ -37,6 +37,16 @@ const CORS_HEADERS = {
 export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
   try {
     const { pathname } = req.nextUrl;
+    
+    // Check if we're in localhost environment
+    const host = req.headers.get("host");
+    const isLocalhost = host?.includes("localhost");
+    
+    // Handle local dev mode auth routes - completely bypass middleware for auth paths
+    if (isLocalhost && (pathname.includes("/login") || pathname.includes("/register") || pathname.startsWith("/api/auth"))) {
+      console.log(`Localhost environment: bypassing middleware for auth path: ${pathname}`);
+      return NextResponse.next();
+    }
 
     // Handle API routes that need CORS (add specific routes as needed)
     // Since the matcher now excludes /api/ routes, we'll handle only the ones we explicitly want
@@ -59,7 +69,6 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
     }
 
     // All other requests proceed with normal middleware
-    const host = req.headers.get("host");
     if (!host) {
       console.error("No host header found in request");
       return NextResponse.next();
@@ -71,6 +80,21 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
 
     // Handle special paths on the main domain
     if (domain === process.env.NEXT_PUBLIC_APP_DOMAIN || domain === "localhost:8888") {
+      // Special handling for login/register in development mode
+      if (domain === "localhost:8888" && (path === "/login" || path === "/register" || path.startsWith("/api/auth"))) {
+        console.log(`Development mode on localhost: rewriting auth path to app subdomain: ${path}`);
+        // Direct rewrite of auth paths to app.thereflist.com/ paths
+        const authPath = path === "/login" ? "/login" : path === "/register" ? "/register" : path;
+        return NextResponse.rewrite(new URL(`/app.thereflist.com${authPath}${req.nextUrl.search}`, req.url));
+      }
+      
+      // Special handling for login/register in development mode with params
+      if (domain === "localhost:8888" && process.env.NODE_ENV === 'development' && 
+          (path.includes('/login') || path.includes('/register'))) {
+        console.log(`Development mode on localhost: bypassing middleware for auth path: ${path}`);
+        return NextResponse.rewrite(new URL(`/app.thereflist.com${path}${req.nextUrl.search}`, req.url));
+      }
+      
       // Serve the homepage for the root path
       if (path === "/") {
         return NextResponse.rewrite(new URL("/", req.url));
@@ -94,6 +118,11 @@ export default async function middleware(req: NextRequest, ev: NextFetchEvent) {
 
     // App routes
     if (APP_HOSTNAMES.has(domain)) {
+      // In development mode, don't redirect login/register requests to production
+      if (process.env.NODE_ENV === 'development' && (path.includes('/login') || path.includes('/register'))) {
+        console.log(`Development mode: bypassing redirect for authentication path: ${path}`);
+        return NextResponse.next();
+      }
       return AppMiddleware(req);
     }
 

@@ -15,6 +15,24 @@ export const SignUpOAuth = ({
   const [clickedGoogle, setClickedGoogle] = useState(false);
   const [clickedGithub, setClickedGithub] = useState(false);
 
+  // Determine the correct callback URL for development mode
+  const getCallbackUrl = () => {
+    if (!next || next.length === 0) return undefined;
+    
+    // In development mode, make sure URLs are properly formatted for local environment
+    if (process.env.NODE_ENV === 'development') {
+      // If it's an absolute URL to the production environment, convert to local
+      if (next.startsWith('https://app.thereflist.com')) {
+        return next.replace('https://app.thereflist.com', 'http://localhost:8888/app.thereflist.com');
+      }
+      // If it's a relative URL, prefix with the app subdomain path
+      if (next.startsWith('/') && !next.startsWith('/app.thereflist.com')) {
+        return `/app.thereflist.com${next}`;
+      }
+    }
+    return next;
+  };
+
   useEffect(() => {
     // when leave page, reset state
     return () => {
@@ -32,7 +50,7 @@ export const SignUpOAuth = ({
           onClick={() => {
             setClickedGoogle(true);
             signIn("google", {
-              ...(next && next.length > 0 ? { callbackUrl: next } : {}),
+              callbackUrl: getCallbackUrl(),
             });
           }}
           loading={clickedGoogle}
@@ -46,7 +64,7 @@ export const SignUpOAuth = ({
           onClick={() => {
             setClickedGithub(true);
             signIn("github", {
-              ...(next && next.length > 0 ? { callbackUrl: next } : {}),
+              callbackUrl: getCallbackUrl(),
             });
           }}
           loading={clickedGithub}

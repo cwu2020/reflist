@@ -36,6 +36,24 @@ export const EmailSignIn = ({ next }: { next?: string }) => {
     },
   });
 
+  // Determine the correct callback URL for development mode
+  const getCallbackUrl = () => {
+    if (!finalNext || finalNext.length === 0) return "/workspaces";
+    
+    // In development mode, make sure URLs are properly formatted for local environment
+    if (process.env.NODE_ENV === 'development') {
+      // If it's an absolute URL to the production environment, convert to local
+      if (finalNext.startsWith('https://app.thereflist.com')) {
+        return finalNext.replace('https://app.thereflist.com', 'http://localhost:8888/app.thereflist.com');
+      }
+      // If it's a relative URL, prefix with the app subdomain path
+      if (finalNext.startsWith('/') && !finalNext.startsWith('/app.thereflist.com')) {
+        return `/app.thereflist.com${finalNext}`;
+      }
+    }
+    return finalNext;
+  };
+
   return (
     <>
       <form
@@ -85,7 +103,7 @@ export const EmailSignIn = ({ next }: { next?: string }) => {
           const response = await signIn(provider, {
             email,
             redirect: false,
-            callbackUrl: finalNext || "/workspaces",
+            callbackUrl: getCallbackUrl(),
             ...(password && { password }),
           });
 

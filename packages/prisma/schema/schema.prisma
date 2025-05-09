@@ -224,6 +224,7 @@ model User {
   folderAccessRequests  FolderAccessRequest[]
   utmTemplates          UtmTemplate[]
   payouts               Payout[]
+  claimedSplits         CommissionSplit[]     @relation("ClaimedSplits")
 
   @@index([source])
   @@index([defaultWorkspace])

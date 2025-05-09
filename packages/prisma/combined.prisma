@@ -825,6 +825,7 @@ model User {
   folderAccessRequests  FolderAccessRequest[]
   utmTemplates          UtmTemplate[]
   payouts               Payout[]
+  claimedSplits         CommissionSplit[]     @relation("ClaimedSplits")
 
   @@index(source)
   @@index(defaultWorkspace)
@@ -1154,4 +1155,30 @@ model NotificationPreference {
   newPartnerApplication      Boolean @default(true)
 
   projectUser ProjectUsers @relation(fields: [projectUserId], references: [id], onDelete: Cascade)
+}
+
+model CommissionSplit {
+  id                String    @id @default(cuid())
+  commissionId      String
+  partnerId         String?   // Can be null for unregistered recipients (by phone number)
+  phoneNumber       String?   // Store phone number for unregistered users
+  splitPercent      Int       // Percentage (0-100) of commission share
+  earnings          Int       // Actual earnings amount
+  claimed           Boolean   @default(false)
+  claimedAt         DateTime?
+  claimedByPartnerId String?   // Legacy field - Partner ID who claimed this split (kept for backward compatibility)
+  claimedByUserId    String?   // User ID who claimed this split
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  commission        Commission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  partner           Partner?   @relation(fields: [partnerId], references: [id])
+  claimedByPartner  Partner?   @relation("ClaimedSplits", fields: [claimedByPartnerId], references: [id])
+  claimedByUser     User?      @relation("ClaimedSplits", fields: [claimedByUserId], references: [id])
+
+  @@unique([commissionId, partnerId])
+  @@unique([commissionId, phoneNumber])
+  @@index([partnerId])
+  @@index([phoneNumber])
+  @@index([commissionId])
+  @@index([claimedByUserId])
 }

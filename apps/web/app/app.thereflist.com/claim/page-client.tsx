@@ -35,10 +35,12 @@ export default function PhoneVerificationPageClient() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [phase, setPhase] = useState("VERIFY_PHONE");
 
   // Remove auto-claim functionality from the useEffect
   useEffect(() => {
-    // No longer auto-claim on login - just prepare to display claim button
+    // If user is authenticated and we have verified unclaimed commissions, 
+    // make the claim button ready but don't auto-claim
     if (status === "authenticated" && verified && !alreadyClaimed && 
         session?.user && unclaimedCommissions.length > 0) {
       setReadyToClaim(true);
@@ -80,45 +82,140 @@ export default function PhoneVerificationPageClient() {
     } else if (status === "authenticated" && verified && !alreadyClaimed && unclaimedCommissions.length > 0) {
       console.log("User authenticated, enabling claim button");
       setReadyToClaim(true);
+      
+      // No auto-claiming - user must click the claim button manually
+      console.log("User must click claim button manually - no auto-claiming");
     }
-  }, [status, verified, alreadyClaimed, unclaimedCommissions.length]);
+  }, [status, verified, alreadyClaimed, unclaimedCommissions.length, session?.user, verifiedPhone, router]);
 
-  const handleVerificationSuccess = (
-    phoneNumber: string,
-    commissions: any[],
-    alreadyClaimed: boolean = false,
-    claimedCommissions: any[] = []
-  ) => {
-    setVerified(true);
-    setVerifiedPhone(phoneNumber);
-    setUnclaimedCommissions(commissions);
-    setClaimedCommissions(claimedCommissions || []);
-    setAlreadyClaimed(alreadyClaimed);
-
-    if (commissions.length > 0) {
-      if (status === "authenticated") {
-        setReadyToClaim(true);
+  // Add an effect to detect if we've just logged in with pendingPhoneVerification
+  useEffect(() => {
+    // Check if we have pendingPhoneVerification in URL and we're authenticated
+    if (typeof window !== 'undefined' && status === "authenticated" && session?.user) {
+      const url = new URL(window.location.href);
+      let pendingPhoneParam = url.searchParams.get('pendingPhoneVerification');
+      
+      // If not found in URL, check sessionStorage as fallback
+      if (!pendingPhoneParam) {
+        pendingPhoneParam = sessionStorage.getItem('pendingPhoneVerification');
+        if (pendingPhoneParam) {
+          console.log(`Found pendingPhoneVerification in sessionStorage: ${pendingPhoneParam}`);
+          // Clear from sessionStorage to prevent reuse
+          sessionStorage.removeItem('pendingPhoneVerification');
+        }
       } else {
-        setReadyToClaim(false);
-        // Store verification data in localStorage
-        localStorage.setItem(
-          `verification-data-${phoneNumber}`,
-          JSON.stringify({
-            verified: true,
-            phoneNumber,
-            unclaimedCommissions: commissions,
-            expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
-          })
-        );
-        console.log("User needs to sign in before claiming");
+        console.log(`Found pendingPhoneVerification in URL: ${pendingPhoneParam}`);
+      }
+      
+      if (pendingPhoneParam) {
+        console.log(`Found pendingPhoneVerification: ${pendingPhoneParam} - but NOT auto-claiming - user must click the claim button`);
+        
+        // Set state for verification if not already set
+        const storageKey = `verification-data-${pendingPhoneParam}`;
+        const savedData = localStorage.getItem(storageKey);
+        
+        if (savedData) {
+          try {
+            const data = JSON.parse(savedData);
+            if (!verified && data.unclaimedCommissions) {
+              console.log(`Restoring verification data for ${pendingPhoneParam}`);
+              setVerified(true);
+              setVerifiedPhone(pendingPhoneParam);
+              setUnclaimedCommissions(data.unclaimedCommissions || []);
+              setPhase("SHOW_COMMISSIONS");
+            }
+          } catch (e) {
+            console.error("Error parsing verification data:", e);
+          }
+        }
       }
     }
+  }, [status, session?.user, router, verified]);
+
+  const handleVerificationSuccess = async (phone: string, commissions: any[], alreadyClaimed: boolean) => {
+    console.log(`Phone ${phone} verified successfully, found ${commissions.length} unclaimed commissions`);
+    console.log("Unclaimed commissions data:", JSON.stringify(commissions, null, 2));
+    
+    // Update all state values in one batch
+    setVerifiedPhone(phone);
+    setUnclaimedCommissions(commissions);
+    setAlreadyClaimed(alreadyClaimed);
+    setVerified(true); // Make sure verified is explicitly set to true
+    
+    console.log("State after verification success:", {
+      verifiedPhone: phone,
+      unclaimedCommissions: commissions.length,
+      alreadyClaimed,
+      verified: true
+    });
+    
+    if (commissions.length === 0) {
+      console.log("No commissions found, setting phase to NO_COMMISSIONS");
+      setPhase("NO_COMMISSIONS");
+    } else if (alreadyClaimed) {
+      console.log("Commissions already claimed, setting phase to ALREADY_CLAIMED");
+      setPhase("ALREADY_CLAIMED");
+    } else {
+      console.log("Unclaimed commissions found, setting phase to SHOW_COMMISSIONS");
+      setPhase("SHOW_COMMISSIONS");
+      
+      // Look up the partner ID associated with this phone number
+      try {
+        const response = await fetch(`/api/partners/lookup?phone=${encodeURIComponent(phone)}`);
+        const data = await response.json();
+        
+        if (data.success && data.partnerId) {
+          console.log(`Found partner ID ${data.partnerId} for phone ${phone}`);
+          // Store the partner ID in state for later use during sign-in
+          localStorage.setItem(`partner-id-${phone}`, data.partnerId);
+        } else if (data.success && data.created) {
+          console.log(`Created new partner with ID ${data.partnerId} for phone ${phone}`);
+          localStorage.setItem(`partner-id-${phone}`, data.partnerId);
+        } else {
+          console.error(`Could not find or create partner for phone ${phone}`);
+        }
+      } catch (error) {
+        console.error('Error looking up partner ID:', error);
+      }
+
+      // Also keep the localStorage backup for now (legacy approach)
+      if (typeof window !== 'undefined') {
+        const storageKey = `verification-data-${phone}`;
+        const verificationData = {
+          verified: true,
+          phoneNumber: phone,
+          unclaimedCommissions: commissions,
+          expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+          claimed: false
+        };
+        
+        localStorage.setItem(storageKey, JSON.stringify(verificationData));
+        console.log(`Saved verification data to localStorage with key: ${storageKey}`, verificationData);
+      }
+    }
+    
+    // Force a re-render to ensure all state updates are applied
+    setTimeout(() => {
+      console.log("Forcing re-render with current state:", {
+        verified: true,
+        unclaimedCommissions: commissions.length,
+        verifiedPhone: phone,
+        alreadyClaimed,
+        phase
+      });
+    }, 0);
   };
 
-  // This function is now redundant since we're using explicit claims
+  // This function is now a placeholder that simply prepares the UI
+  // The actual claiming now happens through the handleClaim function
+  // using the explicit /api/commissions/claim endpoint
   const claimAfterLogin = async () => {
     console.log("Setting readyToClaim to true for the claim button");
     setReadyToClaim(true);
+    
+    // Note: We no longer use the AUTO_CLAIM_AFTER_LOGIN token
+    // Claiming is now handled explicitly by the user pressing the claim button
+    // or automatically via the LOGIN event handler in the backend
   };
 
   // Function to handle the claim button press
@@ -132,36 +229,55 @@ export default function PhoneVerificationPageClient() {
       console.log("User is not authenticated, redirecting to sign in");
       alert("Your session has expired. Please sign in again to claim your commissions.");
       
-      // Save verification data
-      localStorage.setItem(
-        `verification-data-${verifiedPhone}`,
-        JSON.stringify({
-          verified: true,
-          unclaimedCommissions,
-          phoneNumber: verifiedPhone,
-          expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
-        })
-      );
+      // Get the partner ID if previously looked up
+      const partnerId = localStorage.getItem(`partner-id-${verifiedPhone}`);
       
-      // Redirect to sign in
-      signIn();
+      // Create a state object for the OAuth flow
+      const stateObj = {
+        pid: partnerId || "unknown",
+        phn: verifiedPhone
+      };
+      
+      // Serialize to JSON
+      const stateParam = JSON.stringify(stateObj);
+      console.log(`Using state parameter for sign in: ${stateParam}`);
+      
+      // Save verification data in localStorage as fallback
+      const storageKey = `verification-data-${verifiedPhone}`;
+      const verificationData = {
+        verified: true,
+        phoneNumber: verifiedPhone,
+        unclaimedCommissions,
+        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+        claimed: false
+      };
+      
+      localStorage.setItem(storageKey, JSON.stringify(verificationData));
+      console.log(`Saved verification data to localStorage with key: ${storageKey}`);
+      
+      // Redirect to sign in with state parameter containing partner ID
+      const callbackUrl = `/claim`;
+      console.log(`Signing in with Google, callbackUrl=${callbackUrl}, state contains partnerId=${partnerId}`);
+      
+      signIn("google", { 
+        callbackUrl: `${window.location.origin}${callbackUrl}`,
+        state: stateParam
+      });
       return;
     }
 
     setIsProcessing(true);
     
     try {
-      // Use the verify-code-only endpoint with the special claim code
+      // Use the new commissions claim endpoint 
       console.log(`Sending claim request for phone: ${verifiedPhone}`);
-      const response = await fetch("/api/phone-verification/verify-code-only", {
+      const response = await fetch("/api/commissions/claim", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumber: verifiedPhone,
-          code: "CLAIM_COMMISSIONS",
-          doClaim: true
+          phoneNumber: verifiedPhone
         }),
       });
 
@@ -196,9 +312,12 @@ export default function PhoneVerificationPageClient() {
       const data = await response.json();
       console.log("Claim response:", data);
 
-      if (data.data.claimedCount && data.data.claimedCount > 0) {
+      // Access the claimedCount from the data.data object
+      const claimedCount = data.data?.claimedCount || 0;
+      
+      if (claimedCount > 0) {
         // Show success message
-        alert(`Successfully claimed ${data.data.claimedCount} commissions!`);
+        alert(`Successfully claimed ${claimedCount} commissions!`);
         
         // Clean up localStorage
         localStorage.removeItem(`verification-data-${verifiedPhone}`);
@@ -243,7 +362,7 @@ export default function PhoneVerificationPageClient() {
     }
   };
 
-  // Function to verify the code, now with a fallback to verify-code-only endpoint
+  // Function to verify the code
   const verifyCode = async () => {
     if (!phoneNumber || !verificationCode) {
       console.error("Missing phone number or verification code");
@@ -253,8 +372,8 @@ export default function PhoneVerificationPageClient() {
     setIsVerifying(true);
     
     try {
-      // First try the regular verification endpoint
-      let response = await fetch("/api/phone-verification/verify", {
+      // Use the verification endpoint
+      const response = await fetch("/api/phone-verification/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -264,22 +383,6 @@ export default function PhoneVerificationPageClient() {
           code: verificationCode,
         }),
       });
-
-      // If we get an auth error, fall back to the code-only verification endpoint
-      if (response.status === 401) {
-        console.log("Auth error from main endpoint, trying fallback endpoint");
-        
-        response = await fetch("/api/phone-verification/verify-code-only", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phoneNumber,
-            code: verificationCode,
-          }),
-        });
-      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -300,7 +403,7 @@ export default function PhoneVerificationPageClient() {
         const { verified, alreadyClaimed, unclaimedCommissions = [], claimedCommissions = [] } = data.data || {};
         
         // Call the parent handler with all the relevant data
-        handleVerificationSuccess(phoneNumber, unclaimedCommissions, alreadyClaimed, claimedCommissions);
+        handleVerificationSuccess(phoneNumber, unclaimedCommissions, alreadyClaimed);
         
         setErrorMessage("");
       } else {
@@ -315,13 +418,80 @@ export default function PhoneVerificationPageClient() {
   };
 
   const handleSignUp = () => {
-    // Navigate to sign up page with phone number pre-filled
-    router.push(`/register?phoneNumber=${encodeURIComponent(verifiedPhone)}&claim=true`);
+    // Save verification data to localStorage before redirecting
+    if (verifiedPhone) {
+      const storageKey = `verification-data-${verifiedPhone}`;
+      const verificationData = {
+        verified: true,
+        phoneNumber: verifiedPhone,
+        unclaimedCommissions,
+        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+        claimed: false
+      };
+      
+      localStorage.setItem(storageKey, JSON.stringify(verificationData));
+      console.log(`Saved verification data to localStorage with key: ${storageKey}`, verificationData);
+      
+      // Navigate to sign up page with phone number pre-filled
+      const registerUrl = `/register?phoneNumber=${encodeURIComponent(verifiedPhone)}&pendingPhoneVerification=${encodeURIComponent(verifiedPhone)}&claim=true`;
+      console.log(`Navigating to register: ${registerUrl}`);
+      router.push(registerUrl);
+    } else {
+      router.push('/register');
+    }
   };
 
-  const handleSignIn = () => {
-    // Navigate to sign in page, the verification data is already saved in localStorage
-    router.push(`/signin?next=${encodeURIComponent('/claim')}`);
+  const handleSignIn = async () => {
+    if (!verifiedPhone) {
+      console.log("No verified phone, proceeding with standard sign in");
+      signIn("google");
+      return;
+    }
+    
+    // Get the partner ID from localStorage if it exists
+    const partnerId = localStorage.getItem(`partner-id-${verifiedPhone}`);
+    
+    if (!partnerId) {
+      console.warn(`No partner ID found for phone ${verifiedPhone}, using fallback methods`);
+    } else {
+      console.log(`Using partner ID ${partnerId} for phone ${verifiedPhone} in OAuth state`);
+    }
+    
+    // Create a minimal state object with just the partner ID
+    // This should be small enough to pass through any OAuth provider's state parameter
+    const stateObj = {
+      pid: partnerId || "unknown",
+      phn: verifiedPhone
+    };
+    
+    // Serialize to JSON string
+    const stateParam = JSON.stringify(stateObj);
+    console.log(`Using state parameter: ${stateParam} (${stateParam.length} chars)`);
+    
+    // Save verification data in localStorage for fallback
+    const storageKey = `verification-data-${verifiedPhone}`;
+    const verificationData = {
+      verified: true,
+      phoneNumber: verifiedPhone,
+      unclaimedCommissions,
+      expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+      claimed: false
+    };
+    
+    localStorage.setItem(storageKey, JSON.stringify(verificationData));
+    console.log(`Saved verification data to localStorage with key: ${storageKey}`);
+    
+    // Use a simple callback URL
+    const callbackUrl = `/claim`;
+    
+    // Log what we're doing for debugging
+    console.log(`Signing in with Google, callbackUrl=${callbackUrl}, state contains partnerId=${partnerId}`);
+    
+    // Sign in with state parameter containing partner ID
+    signIn("google", { 
+      callbackUrl: `${window.location.origin}${callbackUrl}`,
+      state: stateParam
+    });
   };
 
   const calculateTotalAmount = (commissions) => {
@@ -344,10 +514,66 @@ export default function PhoneVerificationPageClient() {
       .join(" + ");
   };
 
+  // Add an effect to ensure verified state is set when unclaimedCommissions change
+  useEffect(() => {
+    if (unclaimedCommissions.length > 0 && !verified) {
+      console.log("Commissions found but verified state is false - fixing state");
+      setVerified(true);
+    }
+  }, [unclaimedCommissions, verified]);
+
+  // Add an effect to debug state changes
+  useEffect(() => {
+    console.log("State values updated:", {
+      verified,
+      unclaimedCommissions: unclaimedCommissions.length,
+      verifiedPhone,
+      alreadyClaimed,
+      phase,
+      readyToClaim
+    });
+  }, [verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase, readyToClaim]);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+      {/* Debug info - only visible in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-0 right-0 bg-black bg-opacity-75 text-white p-2 text-xs max-w-xs overflow-auto max-h-60 z-50">
+          <div>Phase: {phase}</div>
+          <div>Verified: {verified ? 'Yes' : 'No'}</div>
+          <div>Commissions: {unclaimedCommissions.length}</div>
+          <div>Already Claimed: {alreadyClaimed ? 'Yes' : 'No'}</div>
+          <div>Ready to Claim: {readyToClaim ? 'Yes' : 'No'}</div>
+          <div>Phone: {verifiedPhone || 'Not set'}</div>
+          <div className="flex gap-1 mt-2">
+            <button 
+              onClick={() => console.log('Current state:', { 
+                verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase
+              })}
+              className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
+            >
+              Log State
+            </button>
+            <button 
+              onClick={() => {
+                setVerified(false);
+                setUnclaimedCommissions([]);
+                setVerifiedPhone("");
+                setAlreadyClaimed(false);
+                setPhase("VERIFY_PHONE");
+                setReadyToClaim(false);
+                console.log("State reset");
+              }}
+              className="px-2 py-1 bg-red-500 text-white rounded text-xs"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
       <div className="w-full max-w-md">
-        {!verified ? (
+        {/* Using explicit conditions instead of relying solely on verified */}
+        {phase === "VERIFY_PHONE" && !verified ? (
           <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="mb-6">
               <h2 className="text-xl font-bold">Verify Your Phone Number</h2>
@@ -390,7 +616,19 @@ export default function PhoneVerificationPageClient() {
               )}
             </div>
             <div className="mb-6">
-              {!alreadyClaimed && unclaimedCommissions.length > 0 ? (
+              {!alreadyClaimed && unclaimedCommissions.length === 0 && (
+                <div className="text-center">
+                  <p>
+                    We couldn't find any unclaimed commissions associated with this phone number. 
+                    If you believe this is an error, please contact support.
+                  </p>
+                  <Link href="/" className="text-blue-600 hover:underline mt-4 inline-block">
+                    Return to Home
+                  </Link>
+                </div>
+              )}
+              
+              {!alreadyClaimed && unclaimedCommissions.length > 0 && (
                 <div className="space-y-4">
                   <p>Total unclaimed amount: {calculateTotalAmount(unclaimedCommissions)}</p>
                   <div className="bg-gray-100 p-4 rounded-md">
@@ -398,7 +636,12 @@ export default function PhoneVerificationPageClient() {
                     <ul className="space-y-2">
                       {unclaimedCommissions.map((commission, index) => (
                         <li key={index} className="text-sm">
-                          <span className="font-medium">{commission.linkTitle}</span>:{" "}
+                          {commission.linkTitle ? (
+                            <span className="font-medium">{commission.linkTitle || commission.linkKey}</span>
+                          ) : (
+                            <span className="font-medium">{commission.programName || 'Commission'}</span>
+                          )}
+                          :{" "}
                           {formatAmount(commission.earnings, commission.currency)} (
                           {new Date(commission.date).toLocaleDateString()})
                         </li>
@@ -406,13 +649,6 @@ export default function PhoneVerificationPageClient() {
                     </ul>
                   </div>
                 </div>
-              ) : (
-                !alreadyClaimed && (
-                  <p>
-                    We couldn't find any unclaimed commissions associated with this phone number. 
-                    If you believe this is an error, please contact support.
-                  </p>
-                )
               )}
               
               {alreadyClaimed && (
@@ -455,15 +691,6 @@ export default function PhoneVerificationPageClient() {
                     </>
                   )}
                 </>
-              )}
-              {!alreadyClaimed && unclaimedCommissions.length === 0 && (
-                <div className="text-center text-sm text-gray-500">
-                  <p>
-                    <Link href="/" className="text-blue-600 hover:underline">
-                      Return to Home
-                    </Link>
-                  </p>
-                </div>
               )}
             </div>
           </div>

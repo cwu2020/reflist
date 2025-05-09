@@ -36,7 +36,7 @@ function generateRandomId(prefix: string): string {
 // Default test configuration - using the specific link from the request
 const defaultConfig: TestConfig = {
   findLinkBy: 'key',
-  linkKey: '9k21feQ',
+  linkKey: 'zngfoIX',
   amount: 10000, // $100.00
   currency: 'usd',
   paymentProcessor: 'custom',

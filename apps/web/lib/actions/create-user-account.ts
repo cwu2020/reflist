@@ -10,6 +10,9 @@ import z from "../zod";
 import { signUpSchema } from "../zod/schemas/auth";
 import { throwIfAuthenticated } from "./auth/throw-if-authenticated";
 import { actionClient } from "./safe-action";
+import { emitEvent } from "../events/emitter";
+import { EventType, UserCreatedEvent } from "../events/types";
+import { registerEventHandlers } from "../events/register-handlers";
 
 const schema = signUpSchema.extend({
   code: z.string().min(6, "OTP must be 6 characters long."),
@@ -100,15 +103,29 @@ export const createUserAccountAction = actionClient
           data: { defaultPartnerId: partner.id },
         });
 
-        // If user is claiming commissions, process unclaimed commissions
+        // If user is claiming commissions, emit a USER_CREATED event
         if (claim && phoneNumber) {
-          await claimUnclaimedCommissions(tx, phoneNumber, partnerId);
+          // Register event handlers to ensure they're set up
+          registerEventHandlers();
+          
+          // Emit USER_CREATED event for asynchronous commission claiming
+          emitEvent(EventType.USER_CREATED, {
+            userId: newUser.id,
+            email: email,
+            phoneNumber: phoneNumber
+          } as Omit<UserCreatedEvent, 'type' | 'timestamp'>);
+          
+          console.log(`Emitted USER_CREATED event for new user ${newUser.id} with phone ${phoneNumber}`);
         }
       });
     }
   });
 
+// DEPRECATED: This function is replaced by CommissionClaimService
 // Helper function to claim unclaimed commissions
+// This is only kept for reference and will be removed in future updates
+// Use commissionClaimService.claimCommissions() instead
+/* 
 async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId: string) {
   console.log(`Starting commission claiming process for phone: ${phoneNumber}, partnerId: ${partnerId}`);
   
@@ -238,3 +255,4 @@ async function claimUnclaimedCommissions(tx: any, phoneNumber: string, partnerId
   
   console.log(`Commission claiming process completed for ${phoneNumber}`);
 }
+*/

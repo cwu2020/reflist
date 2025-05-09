@@ -2,6 +2,7 @@ import LoginForm from "@/ui/auth/login/login-form";
 import { AuthLayout } from "@/ui/layout/auth-layout";
 import { APP_DOMAIN, constructMetadata } from "@dub/utils";
 import Link from "next/link";
+import { headers } from "next/headers";
 
 export const metadata = constructMetadata({
   title: `Sign in to ${process.env.NEXT_PUBLIC_APP_NAME}`,
@@ -9,6 +10,14 @@ export const metadata = constructMetadata({
 });
 
 export default function LoginPage() {
+  // Check if we're in localhost environment 
+  const headersList = headers();
+  const host = headersList.get("host") || "";
+  const isLocalhost = host.includes("localhost");
+  
+  // Generate the correct register link for localhost environment
+  const registerLink = isLocalhost ? "/app.thereflist.com/register" : "register";
+  
   return (
     <AuthLayout>
       <div className="w-full max-w-md overflow-hidden border-y border-neutral-200 sm:rounded-2xl sm:border sm:shadow-sm">
@@ -22,7 +31,7 @@ export default function LoginPage() {
       <p className="mt-4 text-center text-sm text-neutral-500">
         Don't have an account?&nbsp;
         <Link
-          href="register"
+          href={registerLink}
           className="font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black"
         >
           Sign up

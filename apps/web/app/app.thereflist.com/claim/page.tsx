@@ -1,4 +1,5 @@
 import PhoneVerificationPageClient from "./page-client";
+import ParamPersistClient from "./param-persist-client";
 
 export const metadata = {
   title: "Claim Your Commissions - Reflist",
@@ -6,5 +7,10 @@ export const metadata = {
 };
 
 export default function ClaimPage() {
-  return <PhoneVerificationPageClient />;
+  return (
+    <>
+      <ParamPersistClient />
+      <PhoneVerificationPageClient />
+    </>
+  );
 } 

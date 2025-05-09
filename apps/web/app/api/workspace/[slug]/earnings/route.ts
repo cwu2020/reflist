@@ -3,6 +3,7 @@ import { withWorkspace } from "@/lib/auth";
 import z from "@/lib/zod";
 import { getWorkspaceEarningsQuerySchema } from "@/lib/zod/schemas/earnings";
 import { prisma } from "@dub/prisma";
+import { Prisma } from "@dub/prisma/client";
 import { NextResponse } from "next/server";
 
 // GET /api/workspace/[slug]/earnings - get earnings for a workspace
@@ -30,21 +31,8 @@ export const GET = withWorkspace(
         end,
       });
 
-      // Initialize with just workspace-related conditions
-      const orConditions = [
-        // Include commissions from programs belonging to this workspace
-        // {
-        //   program: {
-        //     workspaceId: workspace.id,
-        //   },
-        // },
-        // Include commissions from links directly created in this workspace
-        {
-          link: {
-            projectId: workspace.id,
-          },
-        },
-      ];
+      // Initialize with an empty array - we will only show commissions for the user's partnerIds
+      const orConditions: Prisma.CommissionWhereInput[] = [];
 
       // Only attempt to add partner conditions if we have a user session
       if (session?.user?.id) {
@@ -76,12 +64,17 @@ export const GET = withWorkspace(
               partnerId: {
                 in: partnerIds
               }
-            } as any); // Use type assertion to avoid TypeScript errors
+            });
           }
         } catch (partnerError) {
           console.error("Error fetching partner IDs:", partnerError);
           // Continue without partner filtering if there's an error
         }
+      }
+
+      // If orConditions is empty, return empty array
+      if (orConditions.length === 0) {
+        return NextResponse.json([]);
       }
 
       const earnings = await prisma.commission.findMany({

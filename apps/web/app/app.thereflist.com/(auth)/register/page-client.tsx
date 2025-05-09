@@ -27,6 +27,15 @@ const SignUp = () => {
   const searchParams = useSearchParams();
   const phoneNumber = searchParams?.get("phoneNumber");
   const claim = searchParams?.get("claim") === "true";
+  
+  // Check if we're in localhost environment
+  const isLocalhost = typeof window !== 'undefined' && window.location.hostname.includes("localhost");
+  
+  // Generate the correct login link for localhost environment
+  const loginBasePath = isLocalhost ? "/app.thereflist.com/login" : "/login";
+  const loginLink = `${loginBasePath}${
+    phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}&claim=${claim}` : ""
+  }`;
 
   return (
     <>
@@ -54,9 +63,7 @@ const SignUp = () => {
       <p className="mt-4 text-center text-sm text-neutral-500">
         Already have an account?&nbsp;
         <Link
-          href={`/login${
-            phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}&claim=${claim}` : ""
-          }`}
+          href={loginLink}
           className="font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black"
         >
           Sign in

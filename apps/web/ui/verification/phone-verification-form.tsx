@@ -64,8 +64,9 @@ export default function PhoneVerificationForm({ onVerificationSuccess }: PhoneVe
     setIsVerifying(true);
     
     try {
-      // First try the regular verify endpoint
-      let response = await fetch("/api/phone-verification/verify", {
+      // Use the verification endpoint
+      console.log(`Verifying phone ${phoneNumber} with code ${verificationCode}`);
+      const response = await fetch("/api/phone-verification/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,22 +77,6 @@ export default function PhoneVerificationForm({ onVerificationSuccess }: PhoneVe
         }),
       });
       
-      // If we get an authentication error, use the fallback endpoint
-      if (response.status === 401) {
-        console.log("Auth error from regular endpoint, trying fallback endpoint");
-        
-        response = await fetch("/api/phone-verification/verify-code-only", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phoneNumber,
-            code: verificationCode,
-          }),
-        });
-      }
-      
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Verification failed:", errorData);
@@ -101,31 +86,47 @@ export default function PhoneVerificationForm({ onVerificationSuccess }: PhoneVe
       }
       
       const data = await response.json();
-      console.log("Verification response:", data);
+      console.log("Full verification API response:", JSON.stringify(data, null, 2));
       
       if (data.success) {
-        toast.success("Phone number verified successfully!");
+        toast.success("Phone number verified successfully");
         
-        // Extract data we need
-        const alreadyClaimed = data.data?.alreadyClaimed || false;
-        const unclaimedCommissions = data.data?.unclaimedCommissions || [];
-        const claimedCommissions = data.data?.claimedCommissions || [];
+        // Extract relevant data
+        const { 
+          verified = true, 
+          unclaimedCommissions = [], 
+          alreadyClaimed = false, 
+          claimedCommissions = [] 
+        } = data.data || {};
         
-        console.log("Verification success data:", { 
-          alreadyClaimed, 
-          unclaimedCommissions, 
-          claimedCommissions 
+        console.log(`Extracted data from API response: 
+          verified: ${verified}
+          unclaimedCommissions: ${unclaimedCommissions.length} items
+          alreadyClaimed: ${alreadyClaimed}
+          claimedCommissions: ${claimedCommissions.length} items
+        `);
+        
+        // Call the success handler
+        console.log("Calling onVerificationSuccess with:", {
+          phoneNumber,
+          unclaimedCommissionsCount: unclaimedCommissions.length,
+          alreadyClaimed,
+          claimedCommissionsCount: claimedCommissions.length
         });
         
-        // Pass the verification result to the parent component
-        onVerificationSuccess(phoneNumber, unclaimedCommissions, alreadyClaimed, claimedCommissions);
+        onVerificationSuccess?.(phoneNumber, unclaimedCommissions, alreadyClaimed, claimedCommissions);
+        
+        // Reset the form
+        setIsVerifying(false);
+        setCodeSent(false);
+        setVerificationCode("");
       } else {
         toast.error(data.error || "Verification failed");
+        setIsVerifying(false);
       }
     } catch (error) {
       console.error("Error verifying code:", error);
-      toast.error("Error verifying code. Please try again.");
-    } finally {
+      toast.error("Failed to verify code. Please try again.");
       setIsVerifying(false);
     }
   };

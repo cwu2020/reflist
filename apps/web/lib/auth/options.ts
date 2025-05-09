@@ -32,6 +32,7 @@ import { trackLead } from "./track-lead";
 import { nanoid, generateRandomString } from "@dub/utils";
 import { redis } from "../upstash";
 import { Prisma } from "@dub/prisma/client";
+import { EventType, LoginEvent } from "@/lib/events/types";
 
 const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 
@@ -170,7 +171,7 @@ export const authOptions: NextAuthOptions = {
       version: "2.0",
       checks: ["pkce", "state"],
       authorization: {
-        url: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/authorize`,
+        url: `${process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8888' : 'https://app.thereflist.com')}/api/auth/saml/authorize`,
         params: {
           scope: "",
           response_type: "code",
@@ -178,10 +179,10 @@ export const authOptions: NextAuthOptions = {
         },
       },
       token: {
-        url: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/token`,
+        url: `${process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8888' : 'https://app.thereflist.com')}/api/auth/saml/token`,
         params: { grant_type: "authorization_code" },
       },
-      userinfo: `${process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com'}/api/auth/saml/userinfo`,
+      userinfo: `${process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8888' : 'https://app.thereflist.com')}/api/auth/saml/userinfo`,
       profile: async (profile) => {
         let existingUser = await prisma.user.findUnique({
           where: { email: profile.email },
@@ -238,7 +239,7 @@ export const authOptions: NextAuthOptions = {
         const { access_token } = await oauthController.token({
           code,
           grant_type: "authorization_code",
-          redirect_uri: process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL : 'https://app.thereflist.com',
+          redirect_uri: process.env.NEXTAUTH_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8888' : 'https://app.thereflist.com'),
           client_id: "dummy",
           client_secret: process.env.NEXTAUTH_SECRET as string,
         });
@@ -412,8 +413,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
-    error: "/login",
+    signIn: process.env.NODE_ENV === 'development' ? '/app.thereflist.com/login' : '/login',
+    error: process.env.NODE_ENV === 'development' ? '/app.thereflist.com/login' : '/login',
   },
   callbacks: {
     signIn: async ({ user, account, profile }) => {
@@ -540,6 +541,170 @@ export const authOptions: NextAuthOptions = {
 
         return true;
       }
+
+      // After sign-in, we register event handlers and emit LOGIN event with other callbacks
+      try {
+        // Import here to avoid circular dependency
+        const { registerEventHandlers } = await import('@/lib/events/register-handlers');
+        const { emitEvent } = await import('@/lib/events/emitter');
+        const { EventType } = await import('@/lib/events/types');
+        
+        // Make sure handlers are registered
+        registerEventHandlers();
+        
+        // Log the full account object for debugging
+        console.log("Auth callback account object:", {
+          provider: account?.provider,
+          callbackUrl: account?.callbackUrl,
+          state: account?.state,
+          redirect: (account as any)?.redirect,
+          referer: (account as any)?.referer,
+        });
+        
+        // Look for pending phone verification in partner ID from state
+        let phoneNumberPendingClaim: string | undefined;
+        let partnerId: string | undefined;
+        
+        try {
+          // Try to extract partner info from state parameter first (most reliable)
+          if (account?.state && typeof account.state === 'string') {
+            try {
+              // Parse state as JSON
+              const stateData = JSON.parse(account.state);
+              if (stateData && stateData.pid && stateData.pid !== 'unknown') {
+                partnerId = stateData.pid;
+                console.log(`Found partner ID in state: ${partnerId}`);
+                
+                // If we have both partner ID and phone number, we're good
+                if (stateData.phn) {
+                  phoneNumberPendingClaim = stateData.phn;
+                  console.log(`Found phone number in state: ${phoneNumberPendingClaim}`);
+                } else {
+                  // Look up the partner to get the phone number
+                  // Use a raw query since phoneNumber might not be in the type
+                  const partners = await prisma.$queryRaw`
+                    SELECT phoneNumber FROM Partner WHERE id = ${partnerId} LIMIT 1
+                  `;
+                  
+                  if (Array.isArray(partners) && partners.length > 0 && partners[0].phoneNumber) {
+                    phoneNumberPendingClaim = partners[0].phoneNumber;
+                    console.log(`Retrieved phone number ${phoneNumberPendingClaim} from partner ${partnerId}`);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing state JSON:', e);
+            }
+          }
+          
+          // If we couldn't get the info from state, try legacy methods as fallback
+          if (!phoneNumberPendingClaim) {
+            // Legacy extraction code
+            let pendingPhone: string | undefined;
+            
+            // First try the state parameter (Google sign-in doesn't support custom state params)
+            if (account?.state && typeof account.state === 'string') {
+              try {
+                // Try parsing as JSON first
+                const stateData = JSON.parse(account.state);
+                if (stateData && stateData.pendingPhoneVerification) {
+                  pendingPhone = stateData.pendingPhoneVerification;
+                  console.log(`Found pending phone verification in state as JSON: ${pendingPhone}`);
+                }
+              } catch (e) {
+                // If it's not valid JSON, check if it contains the parameter directly
+                console.log('State parameter is not valid JSON');
+                
+                // It could be a URL-encoded string, try to extract directly
+                if (account.state.includes('pendingPhoneVerification=')) {
+                  try {
+                    // Try to extract from URL-encoded string
+                    const match = account.state.match(/pendingPhoneVerification=([^&]+)/);
+                    if (match && match[1]) {
+                      pendingPhone = decodeURIComponent(match[1]);
+                      console.log(`Found pending phone verification in state as URL param: ${pendingPhone}`);
+                    }
+                  } catch (e2) {
+                    console.log('Could not extract phone from state as URL param', e2);
+                  }
+                }
+              }
+            }
+            
+            // If not found in state, check in callbackUrl, redirect or referer
+            if (!pendingPhone) {
+              const urlString = account?.callbackUrl || (account as any)?.redirect || (account as any)?.referer || '';
+              console.log('Checking for phone in URL:', urlString);
+              
+              if (urlString && typeof urlString === 'string') {
+                // Try to parse URL without throwing
+                try {
+                  const url = new URL(urlString);
+                  const pendingPhoneParam = url.searchParams.get('pendingPhoneVerification');
+                  
+                  if (pendingPhoneParam) {
+                    pendingPhone = pendingPhoneParam;
+                    console.log(`Found pending phone verification in URL params: ${pendingPhone}`);
+                  }
+                } catch (e) {
+                  console.log('Could not parse URL:', urlString);
+                  
+                  // Try direct regex extraction as fallback
+                  try {
+                    const match = urlString.match(/pendingPhoneVerification=([^&]+)/);
+                    if (match && match[1]) {
+                      pendingPhone = decodeURIComponent(match[1]);
+                      console.log(`Found pending phone verification via regex in URL: ${pendingPhone}`);
+                    }
+                  } catch (e2) {
+                    console.log('Regex extraction failed:', e2);
+                  }
+                }
+              }
+            }
+            
+            // If found in alternate ways, assign to phoneNumberPendingClaim
+            if (pendingPhone) {
+              phoneNumberPendingClaim = pendingPhone;
+            }
+          }
+        } catch (e) {
+          console.error('Error extracting partner/phone verification data:', e);
+        }
+        
+        // Create the event payload based on whether we have a pending phone verification
+        if (phoneNumberPendingClaim) {
+          console.log(`Emitting LOGIN event with pending phone ${phoneNumberPendingClaim} for user ${user.id}`);
+          if (partnerId) {
+            console.log(`Including partner ID ${partnerId} in LOGIN event`);
+            emitEvent(EventType.LOGIN, {
+              userId: user.id,
+              phoneNumberPendingClaim,
+              partnerId
+            } as Omit<LoginEvent, 'type' | 'timestamp'>);
+          } else {
+            emitEvent(EventType.LOGIN, {
+              userId: user.id,
+              phoneNumberPendingClaim
+            } as Omit<LoginEvent, 'type' | 'timestamp'>);
+          }
+        } else {
+          console.log(`Emitting LOGIN event without pending phone for user ${user.id}`);
+          emitEvent(EventType.LOGIN, {
+            userId: user.id
+          } as Omit<LoginEvent, 'type' | 'timestamp'>);
+        }
+        
+        // Log what happened for debugging
+        if (phoneNumberPendingClaim) {
+          console.log(`Login event emitted for user ${user.id} with phone verification ${phoneNumberPendingClaim}`);
+        } else {
+          console.log(`Login event for user ${user.id} has no pending phone verification to claim`);
+        }
+      } catch (error) {
+        console.error("Error emitting LOGIN event:", error);
+      }
+
       return true;
     },
     jwt: async ({
@@ -652,3 +817,4 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+

@@ -12,3 +12,19 @@ model YearInReview {
 
   @@index([workspaceId])
 }
+
+model PendingPhoneVerification {
+  id              String    @id @default(cuid())
+  token           String    @unique
+  phoneNumber     String
+  unclaimedCount  Int       @default(0)
+  totalEarnings   Float     @default(0)
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime
+  claimed         Boolean   @default(false)
+  claimedByUserId String?
+
+  @@index([token])
+  @@index([phoneNumber])
+  @@index([expiresAt])
+}

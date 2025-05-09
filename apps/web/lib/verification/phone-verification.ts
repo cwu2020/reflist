@@ -92,15 +92,6 @@ export async function verifyPhoneNumber(
       // Use our own database-backed solution
       console.log(`Using database verification for ${formattedNumber}`);
       
-      // First check if token is the special auto-claim token
-      if (token === "AUTO_CLAIM_AFTER_LOGIN") {
-        console.log(`Received AUTO_CLAIM_AFTER_LOGIN token for ${formattedNumber} - skipping verification check`);
-        return { 
-          success: true, 
-          message: "Auto-claim verification bypassed" 
-        };
-      }
-      
       const verificationToken = await (prisma as any).phoneVerificationToken.findFirst({
         where: {
           identifier: formattedNumber,
