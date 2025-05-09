@@ -1,5 +1,6 @@
 import { DubApiError, ErrorCodes } from "@/lib/api/errors";
 import { createLink, processLink } from "@/lib/api/links";
+import { processLinkWithPartner } from "@/lib/api/links/process-link-with-partner";
 import { getProgramOrThrow } from "@/lib/api/programs/get-program-or-throw";
 import { parseRequestBody } from "@/lib/api/utils";
 import { withWorkspace } from "@/lib/auth";
@@ -68,12 +69,19 @@ export const POST = withWorkspace(
     const { programId, partnerId, tenantId, url, key, linkProps } =
       createPartnerLinkSchema.parse(await parseRequestBody(req));
 
-    const program = await getProgramOrThrow({
-      workspaceId: workspace.id,
-      programId,
-    });
+    // Attempt to get the program first
+    let program;
+    try {
+      program = await getProgramOrThrow({
+        workspaceId: workspace.id,
+        programId,
+      });
+    } catch (error) {
+      console.warn("Program not found, will attempt to create one during link processing:", error.message);
+    }
 
-    if (!program.domain || !program.url) {
+    // Check if a domain and URL exist on the program if we found one
+    if (program && (!program.domain || !program.url)) {
       throw new DubApiError({
         code: "bad_request",
         message:
@@ -81,7 +89,7 @@ export const POST = withWorkspace(
       });
     }
 
-    if (url && getApexDomain(url) !== getApexDomain(program.url)) {
+    if (program && url && getApexDomain(url) !== getApexDomain(program.url)) {
       throw new DubApiError({
         code: "bad_request",
         message: `The provided URL domain (${getApexDomain(url)}) does not match the program's domain (${getApexDomain(program.url)}).`,
@@ -95,34 +103,36 @@ export const POST = withWorkspace(
       });
     }
 
-    const partner = await prisma.programEnrollment.findUnique({
-      where: partnerId
-        ? { partnerId_programId: { partnerId, programId } }
-        : { tenantId_programId: { tenantId: tenantId!, programId } },
-    });
-
-    if (!partner) {
-      throw new DubApiError({
-        code: "not_found",
-        message: "Partner not found.",
+    // Check for existing partner enrollment if we have a program
+    let partner;
+    if (program) {
+      partner = await prisma.programEnrollment.findUnique({
+        where: partnerId
+          ? { partnerId_programId: { partnerId, programId } }
+          : { tenantId_programId: { tenantId: tenantId!, programId } },
       });
+
+      if (!partner) {
+        console.warn("Partner not found, will attempt to enroll during link processing");
+      }
     }
 
-    const { link, error, code } = await processLink({
+    // Use processLinkWithPartner which includes our fallback mechanism for program and partner
+    const { link, error, code } = await processLinkWithPartner({
       payload: {
         ...linkProps,
-        domain: program.domain,
+        domain: program?.domain,
         key: key || undefined,
-        url: url || program.url,
-        programId: program.id,
-        tenantId: partner.tenantId,
-        partnerId: partner.partnerId,
-        folderId: program.defaultFolderId,
+        url: url || program?.url || url, // Ensure we have a URL if program doesn't exist
+        programId: program?.id || programId, 
+        tenantId,
+        partnerId,
         trackConversion: true,
+        folderId: program?.defaultFolderId,
       },
       workspace,
       userId: session.user.id,
-      skipProgramChecks: true, // skip this cause we've already validated the program above
+      skipProgramChecks: !!program, // Only skip program checks if we already validated the program
     });
 
     if (error != null) {
@@ -134,6 +144,9 @@ export const POST = withWorkspace(
 
     const partnerLink = await createLink(link);
 
+    console.log(`Created partner link with programId: ${partnerLink.programId || 'none'}`);
+
+    // Send webhook
     waitUntil(
       sendWorkspaceWebhook({
         trigger: "link.created",

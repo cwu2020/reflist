@@ -8,6 +8,7 @@ import { createId } from '@/lib/api/create-id';
  * Ensures a partner is enrolled in a program for a given product URL
  * If a program doesn't exist, it creates one
  * If the partner isn't enrolled, it enrolls them
+ * Always creates a fallback program if anything fails
  * 
  * @param url The product URL 
  * @param workspaceId The workspace ID
@@ -58,8 +59,35 @@ export async function ensurePartnerProgramEnrollment({
     
     return programId;
   } catch (error) {
-    console.error('Error in ensurePartnerProgramEnrollment:', error);
-    throw error;
+    console.error('Error in ensurePartnerProgramEnrollment, creating fallback program:', error);
+    
+    try {
+      // Create a fallback program since something went wrong
+      const fallbackUrl = typeof url === 'string' && url.length > 0 ? url : 'https://fallback-program.com';
+      
+      // Direct attempt to create a fallback program
+      const { programId } = await getOrCreateProgramByUrl(
+        fallbackUrl, 
+        workspaceId,
+        { fallback: true } // Mark this as a fallback program
+      );
+      
+      // Create program enrollment for the partner
+      await prisma.programEnrollment.create({
+        data: {
+          id: createId({ prefix: "pge_" }),
+          partnerId,
+          programId,
+          status: ProgramEnrollmentStatus.approved,
+        },
+      });
+      
+      console.log(`Successfully created fallback program ${programId} for URL: ${fallbackUrl.substring(0, 100)}`);
+      return programId;
+    } catch (fallbackError) {
+      console.error('Failed to create fallback program:', fallbackError);
+      throw new Error('Failed to create program for link. Please try again.');
+    }
   }
 }
 

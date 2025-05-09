@@ -17,6 +17,7 @@ import { prisma } from "@dub/prisma";
 import { deepEqual, getApexDomain } from "@dub/utils";
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
+import { processLinkWithPartner } from "@/lib/api/links/process-link-with-partner";
 
 // PUT /api/partners/links/upsert – update or create a partner link
 export const PUT = withWorkspace(
@@ -181,7 +182,7 @@ export const PUT = withWorkspace(
       }
     } else {
       // proceed with /api/partners/links POST logic
-      const { link, error, code } = await processLink({
+      const { link, error, code } = await processLinkWithPartner({
         payload: {
           ...linkProps,
           domain: program.domain,
@@ -206,6 +207,8 @@ export const PUT = withWorkspace(
       }
 
       const partnerLink = await createLink(link);
+      
+      console.log(`Created partner link via upsert with programId: ${partnerLink.programId || 'none'}`);
 
       waitUntil(
         sendWorkspaceWebhook({

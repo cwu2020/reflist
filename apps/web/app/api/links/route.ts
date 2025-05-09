@@ -124,6 +124,7 @@ export const POST = withWorkspace(
         }
       }
 
+      // Use processLinkWithPartner which includes our fallback mechanism
       const { link, error, code } = await processLinkWithPartner({
         payload: body,
         workspace,
@@ -138,8 +139,20 @@ export const POST = withWorkspace(
       }
 
       try {
+        console.log(`Creating link with programId: ${link.programId || 'none'}`);
+        
+        // Create the link with our enhanced data
         const response = await createLink(link);
+        
+        // Track link usage
+        if (workspace) {
+          waitUntil(updateLinksUsage({ 
+            workspaceId: workspace.id,
+            increment: 1
+          }));
+        }
 
+        // Send webhook if applicable
         if (response.projectId && response.userId) {
           waitUntil(
             sendWorkspaceWebhook({
@@ -157,7 +170,7 @@ export const POST = withWorkspace(
         console.error("Error creating link:", error);
         throw new DubApiError({
           code: "unprocessable_entity",
-          message: error.message,
+          message: error.message || "Failed to create link",
         });
       }
     } catch (error) {
