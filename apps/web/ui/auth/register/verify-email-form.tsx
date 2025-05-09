@@ -45,30 +45,44 @@ export const VerifyEmailForm = () => {
           // Show loading animation while waiting
           setIsCreatingWorkspace(true);
           
-          // Add a small delay to allow the async operation to complete
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          try {
-            // Try to fetch the user's workspace directly
-            const workspacesResponse = await fetch('/api/workspaces');
-            
-            if (workspacesResponse.ok) {
-              const workspaces = await workspacesResponse.json();
-              
-              if (workspaces && workspaces.length > 0 && workspaces[0].slug) {
-                // Direct redirect to the user's workspace if found
-                console.log(`Redirecting user to workspace: /${workspaces[0].slug}`);
-                router.push(`/${workspaces[0].slug}`);
-                return;
+          // Function to fetch workspaces with retry logic
+          const getWorkspaceWithRetry = async (maxRetries = 5, delayMs = 1000) => {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+              try {
+                console.log(`Attempt ${attempt} to fetch user workspaces...`);
+                // Wait a bit longer with each attempt
+                await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+                
+                const workspacesResponse = await fetch('/api/workspaces');
+                
+                if (workspacesResponse.ok) {
+                  const workspaces = await workspacesResponse.json();
+                  
+                  if (workspaces && workspaces.length > 0 && workspaces[0].slug) {
+                    console.log(`Found workspace: ${workspaces[0].slug} on attempt ${attempt}`);
+                    return workspaces[0];
+                  }
+                }
+                console.log(`No workspace found on attempt ${attempt}, retrying...`);
+              } catch (error) {
+                console.error(`Error fetching workspaces on attempt ${attempt}:`, error);
               }
             }
-          } catch (error) {
-            console.error("Error fetching workspaces:", error);
-          }
+            return null;
+          };
           
-          // Fallback if the direct fetch fails
-          console.log("Fallback to /workspaces redirect");
-          router.push("/workspaces");
+          // Try to fetch the user's workspace with retries
+          const workspace = await getWorkspaceWithRetry();
+          
+          if (workspace && workspace.slug) {
+            // Direct redirect to the user's workspace if found
+            console.log(`Redirecting user to workspace: /${workspace.slug}`);
+            router.push(`/${workspace.slug}`);
+          } else {
+            // Fallback if the workspace still can't be found after retries
+            console.log("No workspace found after retries, redirecting to /workspaces");
+            router.push("/workspaces");
+          }
         } else {
           // Normal users go through regular onboarding
           router.push("/onboarding");

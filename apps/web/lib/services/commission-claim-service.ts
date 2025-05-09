@@ -48,7 +48,13 @@ export class CommissionClaimService {
     
     return await prisma.$transaction(async (tx) => {
       // 0. Ensure user has a workspace by checking if they have one already
-      await this.ensureUserHasWorkspace(tx, options.userId);
+      const workspace = await this.ensureUserHasWorkspace(tx, options.userId);
+      
+      // Verify that a workspace was created if one didn't exist already
+      if (!workspace && !(await tx.projectUsers.findFirst({ where: { userId: options.userId } }))) {
+        console.error(`Failed to create or find workspace for user ${options.userId}. Aborting commission claim.`);
+        throw new Error(`Failed to ensure workspace exists for user ${options.userId}`);
+      }
       
       // 1. Find unclaimed commission splits for this phone
       const splits = await this.findUnclaimedSplits(tx, options.phoneNumber);
@@ -298,10 +304,10 @@ export class CommissionClaimService {
       include: { project: true }
     });
     
-    // If they already have projects, no need to create one
+    // If they already have projects, return the first one
     if (userProjects.length > 0) {
       console.log(`User ${userId} already has ${userProjects.length} workspaces, no need to create a new one`);
-      return;
+      return userProjects[0].project;
     }
     
     // Get user info to create a personalized workspace
@@ -312,7 +318,7 @@ export class CommissionClaimService {
     
     if (!user) {
       console.error(`User ${userId} not found, cannot create workspace`);
-      return;
+      return null;
     }
     
     // Create workspace name based on user info

@@ -14,6 +14,10 @@ import { emitEvent } from "../events/emitter";
 import { EventType, UserCreatedEvent } from "../events/types";
 import { registerEventHandlers } from "../events/register-handlers";
 import { partnerManagementService } from "../services/partner-management-service";
+import { generateRandomString } from "@dub/utils";
+import { nanoid } from "nanoid";
+import { redis } from "@/lib/upstash/redis";
+import { createWorkspaceId } from "../api/workspace-id";
 
 const schema = signUpSchema.extend({
   code: z.string().min(6, "OTP must be 6 characters long."),
@@ -65,7 +69,6 @@ export const createUserAccountAction = actionClient
     });
 
     if (!user) {
-      // Create user and corresponding partner record in a transaction
       const userId = createId({ prefix: "user_" });
       
       await prisma.$transaction(async (tx) => {
@@ -79,17 +82,10 @@ export const createUserAccountAction = actionClient
           },
         });
         
-        // Check if a partner with this phone number already exists
-        let partner;
-        if (phoneNumber) {
-          console.log(`Checking if partner with phone ${phoneNumber} already exists`);
-          partner = await partnerManagementService.findPartnerByPhone(phoneNumber);
-          if (partner) {
-            console.log(`Found existing partner with id ${partner.id} for phone ${phoneNumber}`);
-          } else {
-            console.log(`No existing partner found for phone ${phoneNumber}, will create new one`);
-          }
-        }
+        // Find partner by email
+        let partner = await prisma.partner.findFirst({
+          where: { email },
+        });
         
         // If partner doesn't exist, create a new one
         if (!partner) {
@@ -124,8 +120,71 @@ export const createUserAccountAction = actionClient
           where: { id: newUser.id },
           data: { defaultPartnerId: partner.id },
         });
+        
+        // Create a workspace synchronously for all users
+        // This ensures every user has a workspace from the start
+        const workspaceName = email.split('@')[0] + "'s Workspace";
+        const baseSlug = workspaceName.toLowerCase()
+          .replace(/[^a-z0-9]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+        
+        let slug = baseSlug;
+        let counter = 1;
+        
+        // Check if slug exists and add a number if necessary
+        while (true) {
+          const existingWorkspace = await tx.project.findUnique({
+            where: { slug },
+          });
+          
+          if (!existingWorkspace) break;
+          
+          // If exists, try with a number suffix
+          slug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+        
+        console.log(`Creating personal workspace for user ${newUser.id} with slug: ${slug}`);
+        
+        const workspace = await tx.project.create({
+          data: {
+            id: createWorkspaceId(),
+            name: workspaceName,
+            slug,
+            linksLimit: 1000000,
+            foldersLimit: 10,
+            users: {
+              create: {
+                userId: newUser.id,
+                role: "owner",
+                notificationPreference: {
+                  create: {},
+                },
+              },
+            },
+            billingCycleStart: new Date().getDate(),
+            invoicePrefix: generateRandomString(8),
+            inviteCode: nanoid(24),
+            defaultDomains: {
+              create: {},
+            },
+          },
+        });
+        
+        // Set this workspace as the user's default
+        await tx.user.update({
+          where: { id: newUser.id },
+          data: { defaultWorkspace: workspace.slug },
+        });
+        
+        // Set onboarding step to completed
+        await redis.set(`onboarding-step:${newUser.id}`, "completed");
+        
+        console.log(`Successfully created workspace with ID ${workspace.id} and slug ${workspace.slug}`);
 
         // If user is claiming commissions, emit a USER_CREATED event
+        // But now the workspace is already created synchronously
         if (claim && phoneNumber) {
           // Register event handlers to ensure they're set up
           registerEventHandlers();
@@ -141,6 +200,8 @@ export const createUserAccountAction = actionClient
         }
       });
     }
+    
+    return { success: true };
   });
 
 // DEPRECATED: This function is replaced by CommissionClaimService
