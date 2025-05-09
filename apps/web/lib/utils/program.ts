@@ -331,7 +331,7 @@ export async function getOrCreateProgramByUrl(
       const program = await tx.program.create({
         data: {
           id: createId({ prefix: "prog_" }),
-          name: `${domain} (${uniqueToken})`, // Add unique identifier to name
+          name: `${domain} (${uniqueToken})`.substring(0, 60), // Limit name length
           slug,
           domain,
           url: originalUrl || safeUrl, // Use original URL if available
@@ -404,9 +404,9 @@ export async function getOrCreateProgramByUrl(
         const program = await tx.program.create({
           data: {
             id: createId({ prefix: "prog_" }),
-            name: `Unknown Program (${new Date().toISOString().substring(0, 10)}) ${uniqueToken}`,
+            name: `Unknown Program (${new Date().toISOString().substring(0, 10)}) ${uniqueToken}`.substring(0, 60),
             slug,
-            domain: domain.toLowerCase().replace(/[^a-z0-9\.\-]/g, ''),
+            domain: domain.toLowerCase().replace(/[^a-z0-9\.\-]/g, '').substring(0, 50),
             url: truncateUrl(url), 
             workspaceId,
             cookieLength: 90,

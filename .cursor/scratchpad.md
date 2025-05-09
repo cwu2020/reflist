@@ -399,16 +399,12 @@ We have successfully implemented the core architecture for improving the commiss
 
 ## Lessons
 
-- PlanetScale doesn't support foreign key constraints, so we had to modify our migration approach for production
-- The event-driven approach provides better decoupling between verification and claiming
-- The new architecture makes it easier to test and debug the claiming process
-- The explicit tracking of which user claimed each commission provides better accountability
-- Removing deprecated endpoints and consolidating on a single claim service pattern reduces confusion and improves maintainability
-- Program IDs should use the prefix "prog_" not "prg_" when creating test data or referencing programs
-- Commission splits should use the prefix "cus_" not "cs_" when creating test data
-- When creating Commission records, the fields 'linkId' and 'quantity' are required
-- PhoneVerifiedEvent has specific field requirements (phoneNumber, userId) with no wrapper object
-- When using emitEvent(), event data must be properly typed with a type assertion like `as Omit<PhoneVerifiedEvent, 'type' | 'timestamp'>`
+- We need to handle error cases more gracefully, especially in critical flows like link creation
+- Fallback mechanisms are essential for maintaining data integrity in multi-entity systems
+- Enhanced logging helps with debugging complex flows
+- When creating database records with user-provided data, we must be careful with field lengths to avoid database column limit errors
+- For fallback mechanisms, use minimal hard-coded data rather than trying to reuse potentially problematic user input
+- The Program model has column size limits that need to be respected when creating new programs
 
 ## API Endpoints
 
@@ -573,6 +569,9 @@ We need to create a fallback mechanism to ensure a program always gets created w
 - We need to handle error cases more gracefully, especially in critical flows like link creation
 - Fallback mechanisms are essential for maintaining data integrity in multi-entity systems
 - Enhanced logging helps with debugging complex flows
+- When creating database records with user-provided data, we must be careful with field lengths to avoid database column limit errors
+- For fallback mechanisms, use minimal hard-coded data rather than trying to reuse potentially problematic user input
+- The Program model has column size limits that need to be respected when creating new programs
 
 ## Implementation Details
 
