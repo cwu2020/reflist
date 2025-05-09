@@ -87,6 +87,16 @@ export const createUserAccountAction = actionClient
           where: { email },
         });
         
+        // If claim flag is set and phone number provided, also check for partner by phone number
+        if (!partner && claim && phoneNumber) {
+          console.log(`Looking for existing partner with phone number ${phoneNumber}`);
+          partner = await partnerManagementService.findPartnerByPhone(phoneNumber);
+          
+          if (partner) {
+            console.log(`Found existing partner ${partner.id} for phone ${phoneNumber}`);
+          }
+        }
+        
         // If partner doesn't exist, create a new one
         if (!partner) {
           const partnerId = createId({ prefix: "pn_" });
