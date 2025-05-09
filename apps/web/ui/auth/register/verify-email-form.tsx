@@ -153,15 +153,17 @@ export const VerifyEmailForm = () => {
                   setCode(value);
                   setIsInvalidCode(false);
                 }}
-                render={({ slots }) => (
+                render={({ slots, isFocused }) => (
                   <>
                     {slots.map((slot, idx) => (
                       <div 
                         key={idx}
                         className={cn(
-                          "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center",
+                          "outline-none ring-offset-background rounded-md appearance-none h-9 aspect-square bg-transparent border border-neutral-300 flex items-center justify-center transition-colors",
                           {
                             "border-red-500": isInvalidCode,
+                            "border-blue-500 bg-blue-50": isFocused && idx === slots.findIndex(s => !s.char),
+                            "border-neutral-400": slot.char
                           }
                         )}
                       >
@@ -170,6 +172,7 @@ export const VerifyEmailForm = () => {
                     ))}
                   </>
                 )}
+                autoFocus
               />
               {isInvalidCode && (
                 <div className="text-center text-xs font-normal leading-none text-red-500">
