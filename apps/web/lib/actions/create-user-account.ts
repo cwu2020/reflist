@@ -13,6 +13,7 @@ import { actionClient } from "./safe-action";
 import { emitEvent } from "../events/emitter";
 import { EventType, UserCreatedEvent } from "../events/types";
 import { registerEventHandlers } from "../events/register-handlers";
+import { partnerManagementService } from "../services/partner-management-service";
 
 const schema = signUpSchema.extend({
   code: z.string().min(6, "OTP must be 6 characters long."),
@@ -78,26 +79,47 @@ export const createUserAccountAction = actionClient
           },
         });
         
-        // Create partner record
-        const partnerId = createId({ prefix: "pn_" });
-        const partner = await tx.partner.create({
-          data: {
-            id: partnerId,
-            name: email.split('@')[0], // Default name from email
-            email,
-            // Add partner-user relationship
-            users: {
-              create: {
-                userId: newUser.id,
-                role: 'owner', // Set user as partner owner
+        // Check if a partner with this phone number already exists
+        let partner;
+        if (phoneNumber) {
+          console.log(`Checking if partner with phone ${phoneNumber} already exists`);
+          partner = await partnerManagementService.findPartnerByPhone(phoneNumber);
+          if (partner) {
+            console.log(`Found existing partner with id ${partner.id} for phone ${phoneNumber}`);
+          } else {
+            console.log(`No existing partner found for phone ${phoneNumber}, will create new one`);
+          }
+        }
+        
+        // If partner doesn't exist, create a new one
+        if (!partner) {
+          const partnerId = createId({ prefix: "pn_" });
+          console.log(`Creating new partner with id ${partnerId} for user ${newUser.id}`);
+          partner = await tx.partner.create({
+            data: {
+              id: partnerId,
+              name: email.split('@')[0], // Default name from email
+              email,
+              // Add partner-user relationship
+              users: {
+                create: {
+                  userId: newUser.id,
+                  role: 'owner', // Set user as partner owner
+                },
               },
+              // If phone number is provided, save it to partner
+              ...(phoneNumber && { phoneNumber: phoneNumber }),
             },
-            // If phone number is provided, save it to partner
-            ...(phoneNumber && { phoneNumber: phoneNumber }),
-          },
-        });
+          });
+          console.log(`Successfully created new partner with id ${partner.id}`);
+        } else {
+          // If partner already exists, connect user to existing partner
+          console.log(`Associating user ${newUser.id} with existing partner ${partner.id}`);
+          await partnerManagementService.associateUserWithPartner(newUser.id, partner.id, 'owner');
+        }
         
         // Update user with defaultPartnerId
+        console.log(`Setting partner ${partner.id} as default for user ${newUser.id}`);
         await tx.user.update({
           where: { id: newUser.id },
           data: { defaultPartnerId: partner.id },
