@@ -1,5 +1,9 @@
 import { prisma } from "@dub/prisma";
 import { createId } from "../api/create-id";
+import { createWorkspaceId, prefixWorkspaceId } from "../api/workspace-id";
+import { nanoid, generateRandomString } from "@dub/utils";
+import { redis } from "../upstash";
+import { Prisma } from "@dub/prisma/client";
 
 /**
  * Represents a partner information object
@@ -43,6 +47,9 @@ export class CommissionClaimService {
     console.log(`Starting commission claim for user ${options.userId} with phone ${options.phoneNumber}`);
     
     return await prisma.$transaction(async (tx) => {
+      // 0. Ensure user has a workspace by checking if they have one already
+      await this.ensureUserHasWorkspace(tx, options.userId);
+      
       // 1. Find unclaimed commission splits for this phone
       const splits = await this.findUnclaimedSplits(tx, options.phoneNumber);
       
@@ -277,6 +284,112 @@ export class CommissionClaimService {
     }
     
     return { count, totalEarnings };
+  }
+
+  /**
+   * Ensure the user has at least one workspace
+   * This is needed because users coming through the claim flow might not have gone through
+   * the normal signup flow that creates a workspace automatically
+   */
+  private async ensureUserHasWorkspace(tx: any, userId: string) {
+    // First check if the user already has any workspaces
+    const userProjects = await tx.projectUser.findMany({
+      where: { userId },
+      include: { project: true }
+    });
+    
+    // If they already have projects, no need to create one
+    if (userProjects.length > 0) {
+      console.log(`User ${userId} already has ${userProjects.length} workspaces, no need to create a new one`);
+      return;
+    }
+    
+    // Get user info to create a personalized workspace
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { name: true, email: true }
+    });
+    
+    if (!user) {
+      console.error(`User ${userId} not found, cannot create workspace`);
+      return;
+    }
+    
+    // Create workspace name based on user info
+    const workspaceName = user.name 
+      ? `${user.name}'s Workspace` 
+      : user.email 
+        ? `${user.email.split('@')[0]}'s Workspace` 
+        : 'Personal Workspace';
+    
+    // Generate a slug from the workspace name
+    const baseSlug = workspaceName.toLowerCase()
+      .replace(/[^a-z0-9]/g, '-') // Replace non-alphanumeric chars with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with a single one
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    
+    let slug = baseSlug;
+    let counter = 1;
+    
+    // Check if slug exists and add a number if necessary
+    while (true) {
+      const existingWorkspace = await tx.project.findUnique({
+        where: { slug },
+      });
+      
+      if (!existingWorkspace) break;
+      
+      // If exists, try with a number suffix
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    console.log(`Creating personal workspace for user ${userId} with slug: ${slug}`);
+    
+    try {
+      // Create the workspace
+      const workspace = await tx.project.create({
+        data: {
+          id: createWorkspaceId(),
+          name: workspaceName,
+          slug,
+          // Set high limits for creators
+          linksLimit: 1000000, // Effectively unlimited links
+          foldersLimit: 10, // Allow folders for creators
+          users: {
+            create: {
+              userId,
+              role: "owner",
+              notificationPreference: {
+                create: {},
+              },
+            },
+          },
+          billingCycleStart: new Date().getDate(),
+          invoicePrefix: generateRandomString(8),
+          inviteCode: nanoid(24),
+          defaultDomains: {
+            create: {}, // by default, we give users all the default domains
+          },
+        },
+      });
+      
+      console.log(`Successfully created workspace with ID ${workspace.id} and slug ${workspace.slug}`);
+      
+      // Set this workspace as the user's default
+      await tx.user.update({
+        where: { id: userId },
+        data: { defaultWorkspace: workspace.slug },
+      });
+      
+      // Set onboarding step to completed
+      await redis.set(`onboarding-step:${userId}`, "completed");
+      
+      return workspace;
+    } catch (error) {
+      console.error("Error creating personal workspace:", error);
+      return null;
+    }
   }
 }
 

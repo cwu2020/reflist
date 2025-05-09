@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@dub/ui";
+import { Button, Wordmark } from "@dub/ui";
 import PhoneVerificationForm from "@/ui/verification/phone-verification-form";
 import { useSession, signIn } from "next-auth/react";
+import { NewBackground } from "@/ui/shared/new-background";
+import Toolbar from "@/ui/layout/toolbar/toolbar";
 
 // Key for storing verification data in localStorage
 const VERIFICATION_STORAGE_KEY = "reflist_phone_verification_data";
@@ -206,19 +208,11 @@ export default function PhoneVerificationPageClient() {
     }, 0);
   };
 
-  // This function is now a placeholder that simply prepares the UI
-  // The actual claiming now happens through the handleClaim function
-  // using the explicit /api/commissions/claim endpoint
   const claimAfterLogin = async () => {
     console.log("Setting readyToClaim to true for the claim button");
     setReadyToClaim(true);
-    
-    // Note: We no longer use the AUTO_CLAIM_AFTER_LOGIN token
-    // Claiming is now handled explicitly by the user pressing the claim button
-    // or automatically via the LOGIN event handler in the backend
   };
 
-  // Function to handle the claim button press
   const handleClaim = async () => {
     if (!verifiedPhone) {
       console.error("Missing verified phone number for claiming");
@@ -362,7 +356,6 @@ export default function PhoneVerificationPageClient() {
     }
   };
 
-  // Function to verify the code
   const verifyCode = async () => {
     if (!phoneNumber || !verificationCode) {
       console.error("Missing phone number or verification code");
@@ -535,167 +528,186 @@ export default function PhoneVerificationPageClient() {
   }, [verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase, readyToClaim]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
-      {/* Debug info - only visible in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-0 right-0 bg-black bg-opacity-75 text-white p-2 text-xs max-w-xs overflow-auto max-h-60 z-50">
-          <div>Phase: {phase}</div>
-          <div>Verified: {verified ? 'Yes' : 'No'}</div>
-          <div>Commissions: {unclaimedCommissions.length}</div>
-          <div>Already Claimed: {alreadyClaimed ? 'Yes' : 'No'}</div>
-          <div>Ready to Claim: {readyToClaim ? 'Yes' : 'No'}</div>
-          <div>Phone: {verifiedPhone || 'Not set'}</div>
-          <div className="flex gap-1 mt-2">
-            <button 
-              onClick={() => console.log('Current state:', { 
-                verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase
-              })}
-              className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
-            >
-              Log State
-            </button>
-            <button 
-              onClick={() => {
-                setVerified(false);
-                setUnclaimedCommissions([]);
-                setVerifiedPhone("");
-                setAlreadyClaimed(false);
-                setPhase("VERIFY_PHONE");
-                setReadyToClaim(false);
-                console.log("State reset");
-              }}
-              className="px-2 py-1 bg-red-500 text-white rounded text-xs"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="w-full max-w-md">
-        {/* Using explicit conditions instead of relying solely on verified */}
-        {phase === "VERIFY_PHONE" && !verified ? (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold">Verify Your Phone Number</h2>
-              <p className="text-gray-500 text-sm mt-1">
+    <>
+      <Toolbar />
+      <NewBackground />
+      <div className="relative flex min-h-screen w-full justify-center">
+        <Link href="/" className="absolute left-4 top-3 z-10">
+          <Wordmark className="h-6" />
+        </Link>
+        <div className="w-full max-w-md flex items-center justify-center">
+          {/* Debug info - only visible in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="fixed top-0 right-0 bg-black bg-opacity-75 text-white p-2 text-xs max-w-xs overflow-auto max-h-60 z-50">
+              <div>Phase: {phase}</div>
+              <div>Verified: {verified ? 'Yes' : 'No'}</div>
+              <div>Commissions: {unclaimedCommissions.length}</div>
+              <div>Already Claimed: {alreadyClaimed ? 'Yes' : 'No'}</div>
+              <div>Ready to Claim: {readyToClaim ? 'Yes' : 'No'}</div>
+              <div>Phone: {verifiedPhone || 'Not set'}</div>
+              <div className="flex gap-1 mt-2">
+                <button 
+                  onClick={() => console.log('Current state:', { 
+                    verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase
+                  })}
+                  className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
+                >
+                  Log State
+                </button>
+                <button 
+                  onClick={() => {
+                    setVerified(false);
+                    setUnclaimedCommissions([]);
+                    setVerifiedPhone("");
+                    setAlreadyClaimed(false);
+                    setPhase("VERIFY_PHONE");
+                    setReadyToClaim(false);
+                    console.log("State reset");
+                  }}
+                  className="px-2 py-1 bg-red-500 text-white rounded text-xs"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Using explicit conditions instead of relying solely on verified */}
+          {phase === "VERIFY_PHONE" && !verified ? (
+            <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
+              <h1 className="text-lg font-medium text-neutral-800">
+                Verify Your Phone Number
+              </h1>
+              <p className="mt-2 text-sm text-neutral-500">
                 Enter your phone number to check if you have any unclaimed commissions.
               </p>
               {verificationExpired && (
-                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-sm">
+                <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 text-sm">
                   Your previous verification has expired. Please verify your phone number again.
                 </div>
               )}
+              <div className="mt-8">
+                <PhoneVerificationForm onVerificationSuccess={handleVerificationSuccess} />
+              </div>
             </div>
-            <PhoneVerificationForm onVerificationSuccess={handleVerificationSuccess} />
-          </div>
-        ) : (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold">Verification Successful</h2>
-              {alreadyClaimed ? (
-                <>
-                  <p className="text-green-600 font-medium mt-2">
-                    Your commissions have been successfully claimed to your account!
+          ) : (
+            <>
+              <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
+                <h1 className="text-lg font-medium text-neutral-800">
+                  Commission Verification
+                </h1>
+                {alreadyClaimed ? (
+                  <>
+                    <p className="mt-2 text-sm text-green-600 font-medium">
+                      Your commissions have been successfully claimed to your account!
+                    </p>
+                    {claimedCommissions.length > 0 && (
+                      <div className="mt-4 bg-green-50 p-3 rounded-md border border-green-100">
+                        <p className="text-green-800 font-medium">
+                          You claimed {claimedCommissions.length} commission{claimedCommissions.length !== 1 ? 's' : ''} worth {calculateTotalAmount(claimedCommissions)}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-2 text-sm text-neutral-500">
+                    {unclaimedCommissions.length > 0
+                      ? `You have ${unclaimedCommissions.length} unclaimed commission${
+                          unclaimedCommissions.length === 1 ? "" : "s"
+                        }!`
+                      : "No unclaimed commissions found for this phone number."}
                   </p>
-                  {claimedCommissions.length > 0 && (
-                    <div className="mt-3 bg-green-50 p-3 rounded-md border border-green-200">
-                      <p className="text-green-800 font-medium">
-                        You claimed {claimedCommissions.length} commission{claimedCommissions.length !== 1 ? 's' : ''} worth {calculateTotalAmount(claimedCommissions)}
+                )}
+                
+                <div className="mt-4">
+                  {!alreadyClaimed && unclaimedCommissions.length === 0 && (
+                    <div className="text-center">
+                      <p className="text-sm text-neutral-500">
+                        We couldn't find any unclaimed commissions associated with this phone number. 
+                        If you believe this is an error, please contact support.
+                      </p>
+                      <Link href="/" className="mt-4 inline-block font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black">
+                        Return to Home
+                      </Link>
+                    </div>
+                  )}
+                  
+                  {!alreadyClaimed && unclaimedCommissions.length > 0 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-neutral-500">Total unclaimed amount: {calculateTotalAmount(unclaimedCommissions)}</p>
+                      <div className="mt-4 rounded-md bg-neutral-50 p-4">
+                        <h3 className="text-sm font-semibold mb-2 text-neutral-800">Commission Details:</h3>
+                        <ul className="space-y-2">
+                          {unclaimedCommissions.map((commission, index) => (
+                            <li key={index} className="text-sm text-neutral-600">
+                              {commission.linkTitle ? (
+                                <span className="font-medium">{commission.linkTitle || commission.linkKey}</span>
+                              ) : (
+                                <span className="font-medium">{commission.programName || 'Commission'}</span>
+                              )}
+                              :{" "}
+                              {formatAmount(commission.earnings, commission.currency)} (
+                              {new Date(commission.date).toLocaleDateString()})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {alreadyClaimed && (
+                    <div className="my-4">
+                      <p className="text-sm text-neutral-500">
+                        You'll be redirected to your dashboard in a moment...
                       </p>
                     </div>
                   )}
-                </>
-              ) : (
-                <p className="text-gray-500 text-sm mt-1">
-                  {unclaimedCommissions.length > 0
-                    ? `You have ${unclaimedCommissions.length} unclaimed commission${
-                        unclaimedCommissions.length === 1 ? "" : "s"
-                      }!`
-                    : "No unclaimed commissions found for this phone number."}
-                </p>
-              )}
-            </div>
-            <div className="mb-6">
-              {!alreadyClaimed && unclaimedCommissions.length === 0 && (
-                <div className="text-center">
-                  <p>
-                    We couldn't find any unclaimed commissions associated with this phone number. 
-                    If you believe this is an error, please contact support.
-                  </p>
-                  <Link href="/" className="text-blue-600 hover:underline mt-4 inline-block">
-                    Return to Home
-                  </Link>
+                  
+                  {isProcessing && (
+                    <div className="my-4">
+                      <p className="text-sm text-blue-600">
+                        Processing your commissions...
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              {!alreadyClaimed && unclaimedCommissions.length > 0 && (
-                <div className="space-y-4">
-                  <p>Total unclaimed amount: {calculateTotalAmount(unclaimedCommissions)}</p>
-                  <div className="bg-gray-100 p-4 rounded-md">
-                    <h3 className="text-sm font-semibold mb-2">Commission Details:</h3>
-                    <ul className="space-y-2">
-                      {unclaimedCommissions.map((commission, index) => (
-                        <li key={index} className="text-sm">
-                          {commission.linkTitle ? (
-                            <span className="font-medium">{commission.linkTitle || commission.linkKey}</span>
-                          ) : (
-                            <span className="font-medium">{commission.programName || 'Commission'}</span>
-                          )}
-                          :{" "}
-                          {formatAmount(commission.earnings, commission.currency)} (
-                          {new Date(commission.date).toLocaleDateString()})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-              
-              {alreadyClaimed && (
-                <div className="my-4">
-                  <p className="text-gray-600">
-                    You'll be redirected to your dashboard in a moment...
-                  </p>
-                </div>
-              )}
-              
-              {isProcessing && (
-                <div className="my-4">
-                  <p className="text-blue-600">
-                    Processing your commissions...
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-4">
-              {!alreadyClaimed && unclaimedCommissions.length > 0 && (
-                <>
-                  {status === "authenticated" && readyToClaim ? (
-                    // Claim button for logged-in users
-                    <Button 
-                      onClick={handleClaim} 
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? "Processing..." : `Claim ${calculateTotalAmount(unclaimedCommissions)} Now`}
-                    </Button>
-                  ) : (
-                    // Sign up/sign in options for non-logged in users
+                
+                <div className="mt-8">
+                  {!alreadyClaimed && unclaimedCommissions.length > 0 && (
                     <>
-                      <Button onClick={handleSignUp} className="w-full">
-                        Create an Account to Claim
-                      </Button>
-                      <Button onClick={handleSignIn} variant="outline" className="w-full">
-                        Sign In to Existing Account
-                      </Button>
+                      {status === "authenticated" && readyToClaim ? (
+                        // Claim button for logged-in users
+                        <Button 
+                          onClick={handleClaim} 
+                          className="w-full"
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? "Processing..." : `Claim ${calculateTotalAmount(unclaimedCommissions)} Now`}
+                        </Button>
+                      ) : (
+                        // Sign up/sign in options for non-logged in users
+                        <div className="space-y-3">
+                          <Button onClick={handleSignUp} className="w-full">
+                            Create an Account to Claim
+                          </Button>
+                          <p className="text-center text-sm text-neutral-500">
+                            Already have an account?&nbsp;
+                            <button
+                              onClick={handleSignIn}
+                              className="font-semibold text-neutral-500 underline underline-offset-2 transition-colors hover:text-black"
+                            >
+                              Sign in
+                            </button>
+                          </p>
+                        </div>
+                      )}
                     </>
                   )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 } 
