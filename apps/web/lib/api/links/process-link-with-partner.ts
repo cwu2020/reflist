@@ -4,6 +4,7 @@ import { getDefaultPartnerForUser, ensurePartnerProgramEnrollment } from "./part
 import { isValidUrl } from "@dub/utils";
 import { createId } from '@/lib/api/create-id';
 import { prisma } from '@dub/prisma';
+import { partnerManagementService } from '@/lib/services/partner-management-service';
 
 /**
  * Wrapper around processLink that adds partner functionality
@@ -52,43 +53,28 @@ export async function processLinkWithPartner<T extends Record<string, any>>({
 
       // If no partnerId is specified, try to get the user's default partner
       let partnerId = link.partnerId;
-      try {
-        if (!partnerId) {
-          partnerId = await getDefaultPartnerForUser(userId);
-        }
-      } catch (partnerError) {
-        console.warn("Could not get default partner, will create one:", partnerError);
-        
-        // Create a fallback partner if none exists
+      
+      // Only try to get or create a partner if none was explicitly provided
+      if (!partnerId) {
         try {
-          const fallbackPartner = await prisma.partner.create({
-            data: {
-              id: createId({ prefix: "pn_" }),
-              name: `User Partner ${userId.slice(-5)}`,
-              email: null,
+          // First try to get the user's default partner
+          partnerId = await getDefaultPartnerForUser(userId);
+        } catch (partnerError) {
+          console.warn("Could not get default partner, will create one:", partnerError);
+          
+          // Use the partnerManagementService to create a partner
+          // This ensures consistency with the OAuth flow partner creation
+          try {
+            partnerId = await partnerManagementService.createPartnerForUser(userId);
+            if (partnerId) {
+              console.log(`Created/retrieved partner ${partnerId} for user ${userId}`);
+            } else {
+              console.warn(`Failed to create/retrieve partner for user ${userId}`);
             }
-          });
-          
-          // Connect this partner to the user
-          await prisma.partnerUser.create({
-            data: {
-              userId,
-              partnerId: fallbackPartner.id,
-              role: 'owner'
-            }
-          });
-          
-          // Update user's default partner
-          await prisma.user.update({
-            where: { id: userId },
-            data: { defaultPartnerId: fallbackPartner.id }
-          });
-          
-          partnerId = fallbackPartner.id;
-          console.log(`Created fallback partner: ${partnerId}`);
-        } catch (createPartnerError) {
-          console.error("Failed to create fallback partner:", createPartnerError);
-          // Continue without partner if we can't create one
+          } catch (createPartnerError) {
+            console.error("Failed to create partner:", createPartnerError);
+            // Continue without partner if we can't create one
+          }
         }
       }
       

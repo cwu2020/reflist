@@ -764,6 +764,23 @@ export const authOptions: NextAuthOptions = {
         // Create a personal workspace for new users
         await createPersonalWorkspace(user.id, user.name, user.email);
         
+        // Create a partner for new OAuth users
+        try {
+          // Lazy import to avoid circular dependencies
+          const { partnerManagementService } = await import('@/lib/services/partner-management-service');
+          
+          // Create a partner for the user if they don't already have one
+          await partnerManagementService.createPartnerForUser(
+            user.id,
+            user.name,
+            user.email
+          );
+          
+          console.log(`Partner creation process completed for new OAuth user ${user.id}`);
+        } catch (error) {
+          console.error("Error creating partner for new OAuth user:", error);
+        }
+        
         // only send the welcome email if the user was created in the last 10s
         // (this is a workaround because the `isNewUser` flag is triggered when a user does `dangerousEmailAccountLinking`)
         if (

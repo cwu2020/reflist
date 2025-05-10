@@ -1,4 +1,5 @@
 import { prisma } from "@dub/prisma";
+import { createId } from "../api/create-id";
 
 /**
  * Service responsible for managing partner relationships
@@ -194,6 +195,87 @@ export class PartnerManagementService {
     } catch (error) {
       console.error(`Error associating user ${userId} with partner ${partnerId}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Create a partner for a user if they don't already have one
+   * @param userId The user ID to create a partner for
+   * @param userName Optional user name to use for partner name
+   * @param userEmail Optional user email to use for partner email
+   * @returns The created or existing partner ID
+   */
+  async createPartnerForUser(
+    userId: string,
+    userName?: string | null,
+    userEmail?: string | null
+  ): Promise<string | null> {
+    try {
+      // First check if user already has a default partner
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { defaultPartnerId: true, email: true, name: true }
+      });
+      
+      // If user already has a default partner, return that ID
+      if (user?.defaultPartnerId) {
+        console.log(`User ${userId} already has default partner ${user.defaultPartnerId}`);
+        return user.defaultPartnerId;
+      }
+      
+      // If email is provided, check if a partner with that email already exists
+      const email = userEmail || user?.email;
+      if (email) {
+        const existingPartner = await prisma.partner.findUnique({
+          where: { email }
+        });
+        
+        if (existingPartner) {
+          // Associate user with this partner
+          await this.associateUserWithPartner(userId, existingPartner.id, 'owner');
+          
+          // Set as default partner
+          await prisma.user.update({
+            where: { id: userId },
+            data: { defaultPartnerId: existingPartner.id }
+          });
+          
+          console.log(`Associated user ${userId} with existing partner ${existingPartner.id} by email`);
+          return existingPartner.id;
+        }
+      }
+      
+      // Create new partner
+      const partnerId = createId({ prefix: "pn_" });
+      const name = userName || user?.name || (email ? email.split('@')[0] : `User ${userId.slice(-5)}`);
+      
+      console.log(`Creating new partner with id ${partnerId} for user ${userId}`);
+      
+      const partner = await prisma.partner.create({
+        data: {
+          id: partnerId,
+          name,
+          email: email || null,
+          users: {
+            create: {
+              userId,
+              role: 'owner',
+            },
+          },
+        },
+      });
+      
+      // Set as default partner
+      await prisma.user.update({
+        where: { id: userId },
+        data: { defaultPartnerId: partner.id }
+      });
+      
+      console.log(`Successfully created new partner with id ${partner.id} for user ${userId}`);
+      return partner.id;
+    } catch (error) {
+      console.error(`Error creating partner for user ${userId}:`, error);
+      return null;
     }
   }
 }
