@@ -13,7 +13,7 @@ export const SignUpOAuth = ({
   const searchParams = useSearchParams();
   const next = searchParams?.get("next");
   const [clickedGoogle, setClickedGoogle] = useState(false);
-  const [clickedGithub, setClickedGithub] = useState(false);
+  // const [clickedGithub, setClickedGithub] = useState(false);
 
   // Determine the correct callback URL for development mode
   const getCallbackUrl = () => {
@@ -37,7 +37,7 @@ export const SignUpOAuth = ({
     // when leave page, reset state
     return () => {
       setClickedGoogle(false);
-      setClickedGithub(false);
+      // setClickedGithub(false);
     };
   }, []);
 
@@ -57,7 +57,7 @@ export const SignUpOAuth = ({
           icon={<Google className="h-4 w-4" />}
         />
       )}
-      {methods.includes("github") && (
+      {/* {methods.includes("github") && (
         <Button
           variant="secondary"
           text="Continue with GitHub"
@@ -70,7 +70,7 @@ export const SignUpOAuth = ({
           loading={clickedGithub}
           icon={<Github className="h-4 w-4" />}
         />
-      )}
+      )} */}
     </>
   );
 };
