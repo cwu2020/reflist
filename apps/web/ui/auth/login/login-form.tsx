@@ -80,6 +80,10 @@ export default function LoginForm({
     undefined,
   );
 
+  // Check for users coming from the claim process
+  const phoneNumber = searchParams?.get("phoneNumber");
+  const fromClaim = searchParams?.get("claim") === "true";
+
   const [lastUsedAuthMethodLive, setLastUsedAuthMethod] = useLocalStorage<
     AuthMethod | undefined
   >("last-used-auth-method", undefined);
@@ -87,9 +91,11 @@ export default function LoginForm({
     lastUsedAuthMethodLive,
   );
 
-  const [authMethod, setAuthMethod] = useState<AuthMethod | undefined>(
-    authMethods.find((m) => m === lastUsedAuthMethodLive) ?? "email",
-  );
+  // For claim process, prioritize email method
+  const defaultMethod = fromClaim ? "email" : 
+    authMethods.find((m) => m === lastUsedAuthMethodLive) ?? "email";
+
+  const [authMethod, setAuthMethod] = useState<AuthMethod | undefined>(defaultMethod);
 
   useEffect(() => {
     const error = searchParams?.get("error");
@@ -103,6 +109,9 @@ export default function LoginForm({
 
   // Reset the state when leaving the page
   useEffect(() => () => setClickedMethod(undefined), []);
+
+  // For users coming from claim process, only show email option
+  const effectiveMethods = fromClaim ? ["email"] : methods;
 
   const authProviders: {
     method: AuthMethod;
@@ -151,6 +160,16 @@ export default function LoginForm({
         setShowSSOOption,
       }}
     >
+      {fromClaim && (
+        <div className="mb-4 rounded-md bg-blue-50 p-3 text-sm text-blue-700 border border-blue-100">
+          <p className="font-medium mb-1">Signing in to claim your earnings</p>
+          <p>
+            Sign in with your existing account to associate it with your verified phone number 
+            and claim your earnings.
+          </p>
+        </div>
+      )}
+      
       <div className="flex flex-col gap-3">
         <AnimatedSizeContainer height>
           <div className="flex flex-col gap-3 p-1">
@@ -161,7 +180,8 @@ export default function LoginForm({
                 )}
 
                 {!showEmailPasswordOnly &&
-                  authMethod === lastUsedAuthMethod && (
+                  authMethod === lastUsedAuthMethod && 
+                  !fromClaim && (
                     <div className="text-center text-xs">
                       <span className="text-neutral-500">
                         You signed in with{" "}
@@ -171,32 +191,37 @@ export default function LoginForm({
                       </span>
                     </div>
                   )}
-                <div className="my-2 flex flex-shrink items-center justify-center gap-2">
-                  <div className="grow basis-0 border-b border-neutral-300" />
-                  <span className="text-xs font-normal uppercase leading-none text-neutral-500">
-                    or
-                  </span>
-                  <div className="grow basis-0 border-b border-neutral-300" />
-                </div>
+                
+                {!fromClaim && (
+                  <div className="my-2 flex flex-shrink items-center justify-center gap-2">
+                    <div className="grow basis-0 border-b border-neutral-300" />
+                    <span className="text-xs font-normal uppercase leading-none text-neutral-500">
+                      or
+                    </span>
+                    <div className="grow basis-0 border-b border-neutral-300" />
+                  </div>
+                )}
               </div>
             )}
 
             {showEmailPasswordOnly ? (
-              <div className="mt-2 text-center text-sm text-neutral-500">
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordField(false)}
-                  className="font-semibold text-neutral-500 transition-colors hover:text-black"
-                >
-                  Continue with another method
-                </button>
-              </div>
+              !fromClaim && (
+                <div className="mt-2 text-center text-sm text-neutral-500">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordField(false)}
+                    className="font-semibold text-neutral-500 transition-colors hover:text-black"
+                  >
+                    Continue with another method
+                  </button>
+                </div>
+              )
             ) : (
-              authProviders
+              !fromClaim && authProviders
                 .filter(
                   (provider) =>
                     provider.method !== authMethod &&
-                    methods.includes(provider.method),
+                    effectiveMethods.includes(provider.method),
                 )
                 .map((provider) => (
                   <div key={provider.method}>

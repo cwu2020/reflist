@@ -37,7 +37,7 @@ export default function PhoneVerificationPageClient() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [phase, setPhase] = useState("VERIFY_PHONE");
+  const [phase, setPhase] = useState(status === "authenticated" ? "VERIFY_PHONE" : "SELECT_OPTION");
 
   // Remove auto-claim functionality from the useEffect
   useEffect(() => {
@@ -134,6 +134,15 @@ export default function PhoneVerificationPageClient() {
     }
   }, [status, session?.user, router, verified]);
 
+  // Add effect to handle authentication status changes
+  useEffect(() => {
+    if (status === "authenticated") {
+      setPhase("VERIFY_PHONE");
+    } else if (status === "unauthenticated") {
+      setPhase("SELECT_OPTION");
+    }
+  }, [status]);
+
   const handleVerificationSuccess = async (phone: string, commissions: any[], alreadyClaimed: boolean) => {
     console.log(`Phone ${phone} verified successfully, found ${commissions.length} unclaimed commissions`);
     console.log("Unclaimed commissions data:", JSON.stringify(commissions, null, 2));
@@ -226,37 +235,21 @@ export default function PhoneVerificationPageClient() {
       // Get the partner ID if previously looked up
       const partnerId = localStorage.getItem(`partner-id-${verifiedPhone}`);
       
-      // Create a state object for the OAuth flow
-      const stateObj = {
-        pid: partnerId || "unknown",
-        phn: verifiedPhone
-      };
-      
-      // Serialize to JSON
-      const stateParam = JSON.stringify(stateObj);
-      console.log(`Using state parameter for sign in: ${stateParam}`);
-      
       // Save verification data in localStorage as fallback
       const storageKey = `verification-data-${verifiedPhone}`;
       const verificationData = {
         verified: true,
         phoneNumber: verifiedPhone,
         unclaimedCommissions,
-        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
+        expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour,
         claimed: false
       };
       
       localStorage.setItem(storageKey, JSON.stringify(verificationData));
       console.log(`Saved verification data to localStorage with key: ${storageKey}`);
       
-      // Redirect to sign in with state parameter containing partner ID
-      const callbackUrl = `/claim`;
-      console.log(`Signing in with Google, callbackUrl=${callbackUrl}, state contains partnerId=${partnerId}`);
-      
-      signIn("google", { 
-        callbackUrl: `${window.location.origin}${callbackUrl}`,
-        state: stateParam
-      });
+      // Redirect to login page
+      router.push(`/login?phoneNumber=${encodeURIComponent(verifiedPhone)}&claim=true`);
       return;
     }
 
@@ -425,7 +418,7 @@ export default function PhoneVerificationPageClient() {
       localStorage.setItem(storageKey, JSON.stringify(verificationData));
       console.log(`Saved verification data to localStorage with key: ${storageKey}`, verificationData);
       
-      // Navigate to sign up page with phone number pre-filled
+      // Navigate to sign up page with phone number pre-filled (only email signup, not OAuth)
       const registerUrl = `/register?phoneNumber=${encodeURIComponent(verifiedPhone)}&pendingPhoneVerification=${encodeURIComponent(verifiedPhone)}&claim=true`;
       console.log(`Navigating to register: ${registerUrl}`);
       router.push(registerUrl);
@@ -437,7 +430,8 @@ export default function PhoneVerificationPageClient() {
   const handleSignIn = async () => {
     if (!verifiedPhone) {
       console.log("No verified phone, proceeding with standard sign in");
-      signIn("google");
+      // Redirect to sign in page, not directly to OAuth
+      router.push('/login');
       return;
     }
     
@@ -447,19 +441,8 @@ export default function PhoneVerificationPageClient() {
     if (!partnerId) {
       console.warn(`No partner ID found for phone ${verifiedPhone}, using fallback methods`);
     } else {
-      console.log(`Using partner ID ${partnerId} for phone ${verifiedPhone} in OAuth state`);
+      console.log(`Using partner ID ${partnerId} for phone ${verifiedPhone} in session storage`);
     }
-    
-    // Create a minimal state object with just the partner ID
-    // This should be small enough to pass through any OAuth provider's state parameter
-    const stateObj = {
-      pid: partnerId || "unknown",
-      phn: verifiedPhone
-    };
-    
-    // Serialize to JSON string
-    const stateParam = JSON.stringify(stateObj);
-    console.log(`Using state parameter: ${stateParam} (${stateParam.length} chars)`);
     
     // Save verification data in localStorage for fallback
     const storageKey = `verification-data-${verifiedPhone}`;
@@ -474,17 +457,11 @@ export default function PhoneVerificationPageClient() {
     localStorage.setItem(storageKey, JSON.stringify(verificationData));
     console.log(`Saved verification data to localStorage with key: ${storageKey}`);
     
-    // Use a simple callback URL
-    const callbackUrl = `/claim`;
+    // Also save phone number to sessionStorage for recovery after login
+    sessionStorage.setItem('pendingPhoneVerification', verifiedPhone);
     
-    // Log what we're doing for debugging
-    console.log(`Signing in with Google, callbackUrl=${callbackUrl}, state contains partnerId=${partnerId}`);
-    
-    // Sign in with state parameter containing partner ID
-    signIn("google", { 
-      callbackUrl: `${window.location.origin}${callbackUrl}`,
-      state: stateParam
-    });
+    // Redirect to sign in page instead of triggering OAuth directly
+    router.push(`/login?phoneNumber=${encodeURIComponent(verifiedPhone)}&claim=true`);
   };
 
   const calculateTotalAmount = (commissions) => {
@@ -527,14 +504,23 @@ export default function PhoneVerificationPageClient() {
     });
   }, [verified, unclaimedCommissions, verifiedPhone, alreadyClaimed, phase, readyToClaim]);
 
+  const handleNewUser = () => {
+    setPhase("VERIFY_PHONE");
+  };
+
+  const handleExistingUser = () => {
+    // Use next parameter instead of callbackUrl for OAuth redirects
+    router.push('/login?next=/claim');
+  };
+
   return (
     <>
       <Toolbar />
       <NewBackground />
       <div className="relative flex min-h-screen w-full justify-center">
-        <Link href="/" className="absolute left-4 top-3 z-10">
+        {/* <Link href="/" className="absolute left-4 top-3 z-10">
           <Wordmark className="h-6" />
-        </Link>
+        </Link> */}
         <div className="w-full max-w-md flex items-center justify-center">
           {/* Debug info - only visible in development */}
           {process.env.NODE_ENV === 'development' && (
@@ -571,7 +557,38 @@ export default function PhoneVerificationPageClient() {
               </div>
             </div>
           )}
-          {/* Using explicit conditions instead of relying solely on verified */}
+
+          {phase === "SELECT_OPTION" && (
+            <div className="w-full max-w-md">
+              <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
+                <h1 className="text-lg font-medium text-neutral-800">
+                  Claim Your Commissions
+                </h1>
+                <p className="mt-2 text-sm text-neutral-500">
+                  Choose how you'd like to proceed with claiming your commissions.
+                </p>
+                
+                <div className="mt-8 space-y-4">
+                  <Button 
+                    onClick={handleNewUser}
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                  >
+                    <span className="text-lg font-medium">New Here</span>
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleExistingUser}
+                    variant="secondary"
+                    className="w-full h-24 flex flex-col items-center justify-center gap-2"
+                  >
+                    <span className="text-lg font-medium">I Have an Account</span>
+                    {/* <span className="text-sm text-neutral-500">Sign in to your existing account</span> */}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {phase === "VERIFY_PHONE" && !verified ? (
             <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
               <h1 className="text-lg font-medium text-neutral-800">
@@ -589,7 +606,7 @@ export default function PhoneVerificationPageClient() {
                 <PhoneVerificationForm onVerificationSuccess={handleVerificationSuccess} />
               </div>
             </div>
-          ) : (
+          ) : phase !== "SELECT_OPTION" && (
             <>
               <div className="rounded-lg border border-neutral-200 bg-white p-8 pb-10">
                 <h1 className="text-lg font-medium text-neutral-800">
