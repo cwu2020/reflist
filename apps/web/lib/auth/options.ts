@@ -40,12 +40,39 @@ const CustomPrismaAdapter = (p: PrismaClient) => {
   return {
     ...PrismaAdapter(p),
     createUser: async (data: any) => {
-      return p.user.create({
+      // Create the user first
+      const user = await p.user.create({
         data: {
           ...data,
           id: createId({ prefix: "user_" }),
         },
       });
+
+      // Create workspace and partner synchronously with user creation
+      try {
+        // Create workspace first
+        const workspace = await createPersonalWorkspace(user.id, user.name, user.email);
+        
+        if (!workspace) {
+          console.error(`Failed to create workspace for new user ${user.id}`);
+          // Don't throw here, we still want the user to be created
+        } else {
+          // Then create partner
+          const { partnerManagementService } = await import('@/lib/services/partner-management-service');
+          await partnerManagementService.createPartnerForUser(
+            user.id,
+            user.name,
+            user.email
+          );
+          
+          console.log(`Successfully created workspace and partner for new user ${user.id}`);
+        }
+      } catch (error) {
+        console.error("Error in new user setup:", error);
+        // Don't throw here, we still want the user to be created
+      }
+
+      return user;
     },
   };
 };
@@ -93,7 +120,7 @@ async function createPersonalWorkspace(userId: string, userName?: string | null,
             slug,
             // Set high limits for creators
             linksLimit: 1000000, // Effectively unlimited links
-            foldersLimit: 10, // Allow folders for creators
+            foldersLimit: 100, // Allow folders for creators
             users: {
               create: {
                 userId,
@@ -761,28 +788,7 @@ export const authOptions: NextAuthOptions = {
           return;
         }
         
-        // Create a personal workspace for new users
-        await createPersonalWorkspace(user.id, user.name, user.email);
-        
-        // Create a partner for new OAuth users
-        try {
-          // Lazy import to avoid circular dependencies
-          const { partnerManagementService } = await import('@/lib/services/partner-management-service');
-          
-          // Create a partner for the user if they don't already have one
-          await partnerManagementService.createPartnerForUser(
-            user.id,
-            user.name,
-            user.email
-          );
-          
-          console.log(`Partner creation process completed for new OAuth user ${user.id}`);
-        } catch (error) {
-          console.error("Error creating partner for new OAuth user:", error);
-        }
-        
         // only send the welcome email if the user was created in the last 10s
-        // (this is a workaround because the `isNewUser` flag is triggered when a user does `dangerousEmailAccountLinking`)
         if (
           user.createdAt &&
           new Date(user.createdAt).getTime() > Date.now() - 10000 &&
@@ -799,7 +805,6 @@ export const authOptions: NextAuthOptions = {
                   email,
                   name: user.name || null,
                 }),
-                // send the welcome email 5 minutes after the user signed up
                 scheduledAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
                 variant: "marketing",
               }),

@@ -84,8 +84,16 @@ export const VerifyEmailForm = () => {
             router.push("/workspaces");
           }
         } else {
-          // Normal users go through regular onboarding
-          router.push("/onboarding");
+          // Normal users - workspace is created automatically during account creation
+          const workspacesResponse = await fetch('/api/workspaces');
+          if (workspacesResponse.ok) {
+            const workspaces = await workspacesResponse.json();
+            // Since workspace is created automatically, we can safely access the first workspace
+            router.push(`/${workspaces[0].slug}`);
+          } else {
+            console.error("Failed to fetch workspaces after account creation");
+            toast.error("Something went wrong. Please try again or contact support.");
+          }
         }
       } else {
         toast.error(
