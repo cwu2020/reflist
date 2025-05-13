@@ -44,6 +44,7 @@
   "dependencies": {
     "@planetscale/database": "^1.18.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "react-phone-number-input": "^3.4.12"
   }
 }

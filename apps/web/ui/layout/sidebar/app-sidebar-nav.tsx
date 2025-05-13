@@ -18,7 +18,9 @@ import {
   Users2,
   Users6,
   Webhook,
+  ShoppingBag,
 } from "@dub/ui/icons";
+import { Store } from "lucide-react";
 import { Session } from "next-auth";
 import { useSession } from "next-auth/react";
 import { useParams, usePathname } from "next/navigation";
@@ -52,6 +54,11 @@ const NAV_AREAS: SidebarNavAreas<{
             name: "Links",
             icon: Hyperlink,
             href: `/${slug}/links${pathname === `/${slug}/links` ? "" : queryString}`,
+          },
+          {
+            name: "Shop",
+            icon: Store,
+            href: `/${slug}/shop${pathname === `/${slug}/shop` ? "" : queryString}`,
           },
           {
             name: "Analytics",

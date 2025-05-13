@@ -7,7 +7,6 @@ import useWorkspace from "@/lib/swr/use-workspace";
 import { DOMAINS_MAX_PAGE_SIZE } from "@/lib/zod/schemas/domains";
 import DomainCard from "@/ui/domains/domain-card";
 import DomainCardPlaceholder from "@/ui/domains/domain-card-placeholder";
-import { FreeDotLinkBanner } from "@/ui/domains/free-dot-link-banner";
 import { useAddEditDomainModal } from "@/ui/modals/add-edit-domain-modal";
 import { useRegisterDomainModal } from "@/ui/modals/register-domain-modal";
 import { useRegisterDomainSuccessModal } from "@/ui/modals/register-domain-success-modal";
@@ -207,8 +206,6 @@ export default function WorkspaceDomainsClient() {
             <RegisterDomainModal />
           </>
         )}
-
-        {!dotLinkClaimed && <FreeDotLinkBanner />}
 
         <div key={archived} className="animate-fade-in">
           {!loading ? (

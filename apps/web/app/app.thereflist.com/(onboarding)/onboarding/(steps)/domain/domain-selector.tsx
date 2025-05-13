@@ -9,43 +9,24 @@ import { cn } from "@dub/utils";
 import { Crown } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { LaterButton } from "../../later-button";
-import { useOnboardingProgress } from "../../use-onboarding-progress";
+import { useOnboardingProgress } from "../../onboarding-progress";
+import { DomainOption } from "./domain-option";
 
 export function DomainSelector() {
   const { loading: isWorkspaceLoading } = useWorkspace();
-  const { continueTo, isLoading, isSuccessful } = useOnboardingProgress();
+  const { continueTo } = useOnboardingProgress();
+  const [selectedOption, setSelectedOption] = useState<"custom" | "register">("custom");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccessful, setIsSuccessful] = useState(false);
 
-  const [selectedOption, setSelectedOption] = useState<"custom" | "register">(
-    "custom",
-  );
-
-  return isWorkspaceLoading ? (
-    <div className="mt-12 flex w-full justify-center">
-      <LoadingSpinner />
-    </div>
-  ) : (
+  return (
     <>
-      <div className="animate-fade-in mx-auto grid w-full max-w-[312px] gap-4 sm:max-w-2xl sm:grid-cols-2">
+      <div className="animate-fade-in mx-auto grid w-full max-w-[312px] gap-4 sm:max-w-2xl sm:grid-cols-1">
         <DomainOption
           title="Connect a custom domain"
           example="acme.com"
           onClick={() => setSelectedOption("custom")}
           isSelected={selectedOption === "custom"}
-        />
-        <DomainOption
-          title={
-            <>
-              Claim a free{" "}
-              <span className="rounded border border-green-800/10 bg-lime-100 p-1 font-mono text-xs">
-                .link
-              </span>{" "}
-              domain
-            </>
-          }
-          example="acme.link"
-          onClick={() => setSelectedOption("register")}
-          isSelected={selectedOption === "register"}
-          paidPlanRequired={true}
         />
       </div>
       <div className="mx-auto mt-8 w-full max-w-sm">

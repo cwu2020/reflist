@@ -3,63 +3,31 @@ import { Grid, useLocalStorage } from "@dub/ui";
 import { LinkBroken } from "@dub/ui/icons";
 import { useRegisterDomainModal } from "../modals/register-domain-modal";
 import { X } from "../shared/icons";
+import { Button } from "@dub/ui";
+import { Star } from "lucide-react";
+import Link from "next/link";
 
+// Temporarily disabled for regular users, but kept for future brand partner use
 export function FreeDotLinkBanner() {
-  const { id: workspaceId } = useWorkspace();
-  const [show, setShow] = useLocalStorage(
-    `show-free-dot-link-banner:${workspaceId}`,
-    true,
-  );
+  // Return null to hide the banner
+  return null;
 
-  const { RegisterDomainModal, setShowRegisterDomainModal } =
-    useRegisterDomainModal();
-
+  /* Original implementation kept for future use
   return (
-    show && (
-      <>
-        <RegisterDomainModal />
-        <div className="relative isolate flex flex-col justify-between gap-3 overflow-hidden rounded-lg border border-green-600/15 bg-gradient-to-r from-lime-100/80 to-emerald-100/80 py-3 pl-4 pr-12 sm:flex-row sm:items-center sm:py-2">
-          <Grid
-            cellSize={13}
-            patternOffset={[0, -1]}
-            className="text-black/30 mix-blend-overlay [mask-image:linear-gradient(to_right,black,transparent)] md:[mask-image:linear-gradient(to_right,black_60%,transparent)]"
-          />
-
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-full border border-green-600/50 bg-white/50 p-1 shadow-[inset_0_0_1px_1px_#fff] sm:block">
-              <LinkBroken className="m-px size-4 text-green-800" />
-            </div>
-            <p className="text-sm text-neutral-900">
-              Claim a free <span className="font-semibold">.link</span> domain,
-              free for 1 year.{" "}
-              <a
-                href="https://dub.co/help/article/free-dot-link-domain"
-                target="_blank"
-                className="text-neutral-700 underline transition-colors hover:text-black"
-              >
-                Learn more
-              </a>
-            </p>
-          </div>
-
-          <div className="flex items-center sm:-my-1">
-            <button
-              type="button"
-              className="whitespace-nowrap rounded-md border border-green-700/50 px-3 py-1 text-sm text-neutral-800 transition-colors hover:bg-green-500/10"
-              onClick={() => setShowRegisterDomainModal(true)}
-            >
-              Claim Domain
-            </button>
-          </div>
-          <button
-            type="button"
-            className="absolute inset-y-0 right-2.5 p-1 text-sm text-green-700 underline transition-colors hover:text-green-900"
-            onClick={() => setShow(false)}
-          >
-            <X className="size-[18px]" />
-          </button>
-        </div>
-      </>
-    )
+    <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+      <div className="flex items-center gap-2">
+        <Star className="h-4 w-4 text-neutral-600" />
+        <p className="text-sm text-neutral-600">
+          Get a free <span className="font-mono">.link</span> domain for your short links
+        </p>
+      </div>
+      <Link
+        href="/settings/domains"
+        className="text-sm text-neutral-600 underline underline-offset-4 hover:text-neutral-800"
+      >
+        Learn more
+      </Link>
+    </div>
   );
+  */
 }

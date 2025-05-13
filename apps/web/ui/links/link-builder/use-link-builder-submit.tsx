@@ -60,10 +60,15 @@ export function useLinkBuilderSubmit({
 
         if (res.status === 200) {
           const data = await res.json();
-          onSuccess?.(data);
+          
+          // Call onSuccess callback if provided
+          if (onSuccess) {
+            onSuccess(data);
+            return;
+          }
 
+          // Default behavior only if no onSuccess callback is provided
           // for editing links, if domain / key is changed, push to new url
-          console.log({ props, data });
           if (
             props &&
             (props.domain !== data.domain || props.key !== data.key)

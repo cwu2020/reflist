@@ -8,12 +8,15 @@ import {
   SimpleTooltipContent,
   Switch,
 } from "@dub/ui";
-import { Plus, Trash } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash, User, Gift } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { useLinkBuilderKeyboardShortcut } from "./use-link-builder-keyboard-shortcut";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import styles from "./commission-splits-toggle.module.css";
 
-export const CommissionSplitsToggle = () => {
+export const CommissionSplitsToggle = ({ forceEnabled = false }: { forceEnabled?: boolean }) => {
   const { slug, plan } = useWorkspace();
   const { control, setValue, register } = useFormContext<LinkFormData>();
   const { fields, append, remove } = useFieldArray({
@@ -25,16 +28,24 @@ export const CommissionSplitsToggle = () => {
     Boolean(fields && fields.length > 0)
   );
 
+  // Always enable splits if forceEnabled is true
+  useEffect(() => {
+    if (forceEnabled) setEnableSplits(true);
+    // If forceEnabled and no splits, append a default split
+    if (forceEnabled && fields.length === 0) {
+      append({ phoneNumber: "", splitPercent: 50 });
+    }
+  }, [forceEnabled, fields.length, append]);
+
   // Use the keyboard shortcut `p` to toggle commission splits
   useLinkBuilderKeyboardShortcut(
     "p",
     () => {
+      if (forceEnabled) return;
       if (enableSplits) {
-        // If already enabled, disable by removing all splits
         setValue("commissionSplits", [], { shouldDirty: true });
         setEnableSplits(false);
       } else {
-        // If disabled, enable and add one empty split
         append({ phoneNumber: "", splitPercent: 50 });
         setEnableSplits(true);
       }
@@ -57,11 +68,10 @@ export const CommissionSplitsToggle = () => {
 
   // Handle enabling/disabling splits
   const handleToggle = (checked: boolean) => {
+    if (forceEnabled) return;
     if (checked) {
-      // Add one empty split
       append({ phoneNumber: "", splitPercent: 50 });
     } else {
-      // Remove all splits
       setValue("commissionSplits", [], { shouldDirty: true });
     }
     setEnableSplits(checked);
@@ -89,72 +99,77 @@ export const CommissionSplitsToggle = () => {
             />
           </span>
         </div>
-        <Switch checked={enableSplits} fn={handleToggle} />
+        {!forceEnabled && (
+          <Switch checked={enableSplits} fn={handleToggle} />
+        )}
       </label>
 
-      {enableSplits && (
-        <div className="space-y-4 rounded-md border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">
-              Creator receives: <span className="font-bold">{creatorPercentage}%</span>
-            </span>
-            <Button 
-              text="Add Split" 
-              variant="secondary" 
-              icon={<Plus className="h-3 w-3" />}
-              onClick={handleAddSplit}
-              disabled={creatorPercentage <= 1}
-              className="px-2 py-1 h-8 text-xs"
-            />
-          </div>
-
+      {(enableSplits || forceEnabled) && (
+        <div className="mx-auto max-w-md rounded-2xl bg-white shadow-lg p-8 flex flex-col gap-8">
           {fields.map((field, index) => (
-            <div key={field.id} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Split #{index + 1}</span>
-                <button
-                  type="button"
-                  onClick={() => remove(index)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <Trash className="h-4 w-4" />
-                </button>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label htmlFor={`commissionSplits.${index}.phoneNumber`}>Phone Number</Label>
-                  <Input 
-                    id={`commissionSplits.${index}.phoneNumber`}
-                    placeholder="+1xxxxxxxxxx" 
-                    {...register(`commissionSplits.${index}.phoneNumber`)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`commissionSplits.${index}.splitPercent`}>
-                      Split Percentage
-                    </Label>
-                    <span className="text-sm font-medium">
-                      {commissionSplits?.[index]?.splitPercent || 0}%
+            <div key={field.id} className="flex flex-col gap-6">
+              {/* Removed Split #1 label since only one split is allowed */}
+              {/* Percent boxes at the top */}
+              <div className="mb-2 p-6 rounded-xl border border-neutral-100 bg-neutral-50">
+                {/* Labels row */}
+                <div className="flex gap-6 mb-2">
+                  <div className="flex-1 flex justify-center">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-neutral-200 text-neutral-700 font-semibold text-sm">
+                      <User className="w-4 h-4" /> For you
                     </span>
                   </div>
-                  <input
-                    id={`commissionSplits.${index}.splitPercent`}
-                    type="range"
-                    min={1}
-                    max={99}
-                    step={1}
-                    className="w-full"
-                    value={commissionSplits?.[index]?.splitPercent || 0}
-                    onChange={(e) => 
-                      setValue(`commissionSplits.${index}.splitPercent`, parseInt(e.target.value), {
-                        shouldDirty: true,
-                      })
-                    }
-                  />
+                  <div className="flex-1 flex justify-center">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm">
+                      <Gift className="w-4 h-4" /> For your friend
+                    </span>
+                  </div>
                 </div>
+                {/* Inputs row */}
+                <div className="flex gap-6">
+                  <div className="flex-1 flex flex-col items-center">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={100 - (commissionSplits?.[index]?.splitPercent || 0)}
+                        readOnly
+                        className="w-20 rounded-lg border px-3 py-2 text-center bg-neutral-100 font-semibold text-lg"
+                      />
+                      <span className="text-neutral-500 font-semibold text-lg">%</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={commissionSplits?.[index]?.splitPercent || 0}
+                        onChange={e => {
+                          const val = Math.max(0, Math.min(100, Number(e.target.value)));
+                          setValue(`commissionSplits.${index}.splitPercent`, val, { shouldDirty: true });
+                        }}
+                        className="w-20 rounded-lg border px-3 py-2 text-center font-semibold text-lg"
+                      />
+                      <span className="text-neutral-500 font-semibold text-lg">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Phone number input below */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`commissionSplits.${index}.phoneNumber`} className="text-base font-semibold text-neutral-700">Phone Number</Label>
+                <PhoneInput
+                  id={`commissionSplits.${index}.phoneNumber`}
+                  defaultCountry="US"
+                  international
+                  countryCallingCodeEditable={true}
+                  value={commissionSplits?.[index]?.phoneNumber || ""}
+                  onChange={val => setValue(`commissionSplits.${index}.phoneNumber`, val || "", { shouldDirty: true })}
+                  className={`w-full rounded-lg border px-3 py-2 text-lg ${styles["phone-input-custom"]}`}
+                  placeholder="Enter phone number"
+                />
               </div>
             </div>
           ))}

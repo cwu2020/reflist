@@ -48,18 +48,18 @@ export function LinkAnalyticsBadge({
   const { slug, plan, id: workspaceId } = useWorkspace();
   const { domain, key, trackConversion } = link;
 
-  // Fetch fresh analytics data including sales data
-  const { data: analyticsData } = useSWR(
-    workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=composite` : null,
-    fetcher,
-    {
-      revalidateOnFocus: true,
-      refreshInterval: 10000, // Refresh every 10 seconds
-      dedupingInterval: 5000,
-    }
-  );
+  // Comment out analytics API call to reduce Tinybird costs
+  // const { data: analyticsData } = useSWR(
+  //   workspaceId ? `/api/analytics?domain=${domain}&key=${key}&workspaceId=${workspaceId}&event=composite` : null,
+  //   fetcher,
+  //   {
+  //     revalidateOnFocus: true,
+  //     refreshInterval: 10000, // Refresh every 10 seconds
+  //     dedupingInterval: 5000,
+  //   }
+  // );
 
-  // Also fetch fresh link stats directly from the database
+  // Fetch fresh link stats directly from the database
   const { data: freshLinkData } = useSWR<LinkStatsResponse>(
     workspaceId ? `/api/links/stats?domain=${domain}&key=${key}&workspaceId=${workspaceId}` : null,
     fetcher,
@@ -70,9 +70,9 @@ export function LinkAnalyticsBadge({
     }
   );
 
-  // Safely extract the metrics from the analytics data
+  // Safely extract the metrics from the link stats data
   const freshMetrics = useMemo(() => {
-    // Use the direct link stats query data if available (most up-to-date source)
+    // Use the direct link stats query data
     if (freshLinkData) {
       return {
         clicks: freshLinkData.clicks || 0,
@@ -83,32 +83,8 @@ export function LinkAnalyticsBadge({
       };
     }
     
-    // Fall back to analytics data if available
-    if (!analyticsData) return null;
-    
-    // Handle different possible response formats
-    if (Array.isArray(analyticsData)) {
-      // If it's an array, sum up the metrics
-      return {
-        clicks: analyticsData.reduce((sum, item) => sum + (Number(item.clicks) || 0), 0),
-        leads: analyticsData.reduce((sum, item) => sum + (Number(item.leads) || 0), 0),
-        sales: analyticsData.reduce((sum, item) => sum + (Number(item.sales) || 0), 0),
-        saleAmount: analyticsData.reduce((sum, item) => sum + (Number(item.saleAmount) || 0), 0),
-        lastClicked: link.lastClicked,
-      };
-    } else if (typeof analyticsData === 'object' && analyticsData !== null) {
-      // If it's an object with the properties
-      return {
-        clicks: 'clicks' in analyticsData ? Number(analyticsData.clicks) : 0,
-        leads: 'leads' in analyticsData ? Number(analyticsData.leads) : 0,
-        sales: 'sales' in analyticsData ? Number(analyticsData.sales) : 0,
-        saleAmount: 'saleAmount' in analyticsData ? Number(analyticsData.saleAmount) : 0,
-        lastClicked: link.lastClicked,
-      };
-    }
-    
     return null;
-  }, [analyticsData, freshLinkData, link.lastClicked]);
+  }, [freshLinkData]);
 
   // Use fresh data if available, fall back to prop data
   const clicks = freshMetrics?.clicks ?? link.clicks;
